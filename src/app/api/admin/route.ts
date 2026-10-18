@@ -156,10 +156,20 @@ export async function POST(request: Request) {
     }
 
     if (action === "test_blob") {
-      const { persistDbToBlob, getDbPath } = await import("@/lib/db");
+      const { apiKey } = body;
+      const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
+      if (apiKey !== expectedKey) {
+        return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
+      }
+      const { persistDbToBlob, getDbPath, getDb, syncDbFromBlob } = await import("@/lib/db");
       const fs = await import("fs");
       const dbPath = getDbPath();
       const exists = fs.existsSync(dbPath);
+      const walExists = fs.existsSync(dbPath + "-wal");
+      const shmExists = fs.existsSync(dbPath + "-shm");
+      const syncRes = await syncDbFromBlob(true);
+      const db = getDb();
+      const users = await db.execute("SELECT id, username FROM users");
       const persistResult = await persistDbToBlob();
       return NextResponse.json({
         success: true,
@@ -168,6 +178,9 @@ export async function POST(request: Request) {
         isVercel: !!process.env.VERCEL,
         dbPath,
         exists,
+        walExists,
+        shmExists,
+        users: users.rows,
         persistResult,
       }, { headers: corsHeaders });
     }
