@@ -1,7 +1,7 @@
 import { getDb, initDb } from "./db";
 
 export const HOUSE_OPERATOR = "JosephArora";
-const DEFAULT_PASSWORD_HASH = "$2b$10$IGd71PXCl2hefhtPMbo1TOM8qQY/Vc1DXLW/jX4mQzAVbAeDwfE46"; // parlamentum123
+const DEFAULT_PASSWORD_HASH = "$2b$10$IGd71PXCl2hefhtPMbo1TOM8qQY/Vc1DXLW/jX4mQzAVbAeDwfE46";
 
 let hasSeeded = false;
 
@@ -25,7 +25,7 @@ export async function seedMarketData(force = false) {
   const defaultPassword = DEFAULT_PASSWORD_HASH;
   const now = new Date().toISOString();
 
-  // Primary Operator Admin: JosephArora (pass: Sanju123$)
+  // Primary Operator Admin: JosephArora (created only if missing; never overwrite an existing password or purse)
   const users = [
     {
       id: "usr_josepharora",
@@ -41,13 +41,13 @@ export async function seedMarketData(force = false) {
 
   for (const u of users) {
     await db.execute({
-      sql: `INSERT OR REPLACE INTO users (id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, avatar, is_admin, created_at)
+      sql: `INSERT OR IGNORE INTO users (id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, avatar, is_admin, created_at)
             VALUES (?, ?, ?, ?, ?, ?, 0.0, ?, ?, ?)`,
       args: [u.id, u.username, u.password_hash, u.display_name, u.parlamentum_name, u.cash_balance, u.avatar, u.is_admin, now],
     });
   }
 
-  // Ensure CardinalSanjay exists with exact 5 gold and password Sanju123$
+  // Ensure CardinalSanjay exists with exact 5 gold (created only if missing)
   const sanjayRes = await db.execute("SELECT id FROM users WHERE LOWER(username) = 'cardinalsanjay'");
   if (sanjayRes.rows.length === 0) {
     await db.execute({
@@ -55,18 +55,7 @@ export async function seedMarketData(force = false) {
             VALUES ('usr_2eb75326', 'CardinalSanjay', '$2b$10$xRYixtfhwn2eJesmqVhZFOUGQVZLjjqza9XfR7A4EcwCHgjL53EWe', 'CardinalSanjay', 'CardinalSanjay', 5.0, 0.0, '🎩', 0, ?)`,
       args: [now],
     });
-  } else {
-    await db.execute({
-      sql: "UPDATE users SET password_hash = '$2b$10$xRYixtfhwn2eJesmqVhZFOUGQVZLjjqza9XfR7A4EcwCHgjL53EWe' WHERE LOWER(username) = 'cardinalsanjay'",
-    });
   }
-
-  // Ensure all admin wallets and exchange operator accounts are emptied (0.0 gold)
-  await db.execute(`
-    UPDATE users 
-    SET cash_balance = 0.0, locked_cash = 0.0 
-    WHERE is_admin = 1 OR id IN ('usr_house', 'usr_treasury')
-  `);
 
   // Set default house_name setting to JosephArora and disable auto-approve for security
   await db.execute(`
