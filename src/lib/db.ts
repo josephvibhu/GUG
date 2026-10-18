@@ -462,6 +462,22 @@ export async function initDb(): Promise<void> {
     );
   `);
 
+  // Indexes for the queries every poll runs (order book, trade tape and charts, holders, purses)
+  for (const ddl of [
+    "CREATE INDEX IF NOT EXISTS idx_orders_book ON orders(company_id, type, status, price)",
+    "CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id, status)",
+    "CREATE INDEX IF NOT EXISTS idx_trades_company_time ON trades(company_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_trades_time ON trades(created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_portfolios_company ON portfolios(company_id, shares)",
+    "CREATE INDEX IF NOT EXISTS idx_wallet_user ON wallet_transactions(user_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_wallet_status ON wallet_transactions(status)",
+    "CREATE INDEX IF NOT EXISTS idx_earnings_company ON earnings_reports(company_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_earnings_due ON earnings_reports(status, scheduled_for)",
+    "CREATE INDEX IF NOT EXISTS idx_payouts_user ON dividend_payouts(user_id, created_at)",
+  ]) {
+    await db.execute(ddl);
+  }
+
   // Default settings
   await db.execute({
     sql: `

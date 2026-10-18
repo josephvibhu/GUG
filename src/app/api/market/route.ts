@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAllCompanies } from "@/lib/market";
+import { getAllCompanies, getSparklines } from "@/lib/market";
 import { seedMarketData } from "@/lib/seed";
 import { getCurrentUser } from "@/lib/auth";
 import { getMarketSchedule } from "@/lib/marketHours";
@@ -7,10 +7,11 @@ import { getMarketSchedule } from "@/lib/marketHours";
 export async function GET() {
   try {
     await seedMarketData();
-    const [companies, user, marketSchedule] = await Promise.all([
+    const [companies, user, marketSchedule, sparklines] = await Promise.all([
       getAllCompanies(),
       getCurrentUser(),
       getMarketSchedule(),
+      getSparklines(),
     ]);
 
     return NextResponse.json({
@@ -18,10 +19,11 @@ export async function GET() {
       companies,
       user,
       marketSchedule,
+      sparklines,
+      serverNow: Date.now(),
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("API /api/market error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
-
