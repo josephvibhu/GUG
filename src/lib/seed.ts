@@ -1,9 +1,12 @@
 import { getDb, initDb } from "./db";
-import bcrypt from "bcryptjs";
 
 export const HOUSE_OPERATOR = "JosephArora";
+const DEFAULT_PASSWORD_HASH = "$2b$10$IGd71PXCl2hefhtPMbo1TOM8qQY/Vc1DXLW/jX4mQzAVbAeDwfE46"; // parlamentum123
+
+let hasSeeded = false;
 
 export async function seedMarketData(force = false) {
+  if (hasSeeded && !force) return;
   await initDb();
   const db = getDb();
 
@@ -19,7 +22,7 @@ export async function seedMarketData(force = false) {
     await db.execute("DELETE FROM users");
   }
 
-  const defaultPassword = await bcrypt.hash("parlamentum123", 10);
+  const defaultPassword = DEFAULT_PASSWORD_HASH;
   const now = new Date().toISOString();
 
   // Create House Operator, Treasury & Demo User
@@ -144,4 +147,5 @@ export async function seedMarketData(force = false) {
 
     console.log("Exchange initialized with premier flagship company $GUG (Grow UR Gold)!");
   }
+  hasSeeded = true;
 }

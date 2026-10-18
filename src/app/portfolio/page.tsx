@@ -52,8 +52,21 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     fetchPortfolio();
-    const interval = setInterval(fetchPortfolio, 6000);
-    return () => clearInterval(interval);
+
+    const handleSync = () => {
+      fetchPortfolio();
+    };
+
+    window.addEventListener("wallet_updated", handleSync);
+    window.addEventListener("focus", handleSync);
+
+    const interval = setInterval(fetchPortfolio, 2500);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("wallet_updated", handleSync);
+      window.removeEventListener("focus", handleSync);
+    };
   }, []);
 
   const handleCancelOrder = async (orderId: string) => {
@@ -130,7 +143,13 @@ export default function PortfolioPage() {
               <PieChart className="w-4 h-4 text-amber-400" />
             </div>
             <div className="text-2xl font-bold font-mono text-white">
-              {(data?.totalNetWorth || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span className="text-xs font-sans text-zinc-400">gold</span>
+              {loading && !data ? (
+                <span className="text-zinc-500 animate-pulse">-- gold</span>
+              ) : (
+                <>
+                  {(data?.totalNetWorth || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span className="text-xs font-sans text-zinc-400">gold</span>
+                </>
+              )}
             </div>
             <div className="text-[11px] text-zinc-400 mt-1">Cash + Stock Holdings</div>
           </div>
@@ -142,7 +161,13 @@ export default function PortfolioPage() {
               <Coins className="w-4 h-4 text-emerald-400" />
             </div>
             <div className="text-2xl font-bold font-mono text-emerald-400">
-              {(data?.cashBalance || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span className="text-xs font-sans text-zinc-400">gold</span>
+              {loading && !data ? (
+                <span className="text-zinc-500 animate-pulse">-- gold</span>
+              ) : (
+                <>
+                  {(data?.cashBalance || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span className="text-xs font-sans text-zinc-400">gold</span>
+                </>
+              )}
             </div>
             <div className="text-[11px] text-zinc-400 mt-1 flex items-center gap-1">
               <Lock className="w-3 h-3 text-zinc-500" />

@@ -127,6 +127,7 @@ export default function WalletModal({
         setFeedback({ type: "success", message: data.message });
         setBalance(data.newBalance);
         onBalanceUpdated();
+        window.dispatchEvent(new Event("wallet_updated"));
         fetchWallet();
       } else {
         setFeedback({ type: "error", message: data.message || "Failed to process deposit." });
@@ -169,6 +170,7 @@ export default function WalletModal({
         setFeedback({ type: "success", message: data.message });
         setBalance(data.newBalance);
         onBalanceUpdated();
+        window.dispatchEvent(new Event("wallet_updated"));
         fetchWallet();
       } else {
         setFeedback({ type: "error", message: data.message || "Failed to process withdrawal." });

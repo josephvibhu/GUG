@@ -90,8 +90,20 @@ function TradeContent({ params }: { params: Promise<{ ticker: string }> }) {
 
   useEffect(() => {
     fetchTerminalData();
-    const interval = setInterval(fetchTerminalData, 4000);
-    return () => clearInterval(interval);
+
+    const handleSync = () => {
+      fetchTerminalData();
+    };
+
+    window.addEventListener("wallet_updated", handleSync);
+    window.addEventListener("focus", handleSync);
+
+    const interval = setInterval(fetchTerminalData, 2000);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("wallet_updated", handleSync);
+      window.removeEventListener("focus", handleSync);
+    };
   }, [ticker]);
 
   if (loading && !company) {
@@ -464,7 +476,10 @@ function TradeContent({ params }: { params: Promise<{ ticker: string }> }) {
             userCash={userCash}
             selectedPrice={selectedPrice}
             marketSchedule={marketSchedule}
-            onTradeSuccess={fetchTerminalData}
+            onTradeSuccess={() => {
+              fetchTerminalData();
+              window.dispatchEvent(new Event("wallet_updated"));
+            }}
           />
 
           {/* Live Order Book */}

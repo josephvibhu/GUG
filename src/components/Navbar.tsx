@@ -96,11 +96,25 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
   useEffect(() => {
     fetchUserData();
     fetchTickers();
+
+    const handleSync = () => {
+      fetchUserData();
+      fetchTickers();
+    };
+
+    window.addEventListener("wallet_updated", handleSync);
+    window.addEventListener("focus", handleSync);
+
     const interval = setInterval(() => {
       fetchTickers();
       fetchUserData();
-    }, 10000);
-    return () => clearInterval(interval);
+    }, 2500);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("wallet_updated", handleSync);
+      window.removeEventListener("focus", handleSync);
+    };
   }, []);
 
   const handleLogout = async () => {
