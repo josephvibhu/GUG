@@ -79,22 +79,70 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action } = body;
 
-    // Webhook bypass: if using secret API key
-    if (action === "webhook_credit") {
-      const { apiKey, buyerName, goldAmount, ironUnits } = body;
+    // Automated Parlamentum in-game sale event webhook
+    if (action === "webhook_credit" || action === "webhook_sale_event") {
+      const { apiKey, buyerName, goldAmount, ironUnits, rawNotification } = body;
       const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
 
       if (apiKey !== expectedKey) {
         return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401 });
       }
 
-      const calculatedGold = goldAmount || (Number(ironUnits) * 5);
-      const res = await manualCreditCitizen(
-        buyerName, 
-        calculatedGold, 
-        `Automated Parlamentum sale webhook (${ironUnits || Math.ceil(calculatedGold/5)} Raw Iron)`
-      );
-      return NextResponse.json(res);
+      const db = getDb();
+      const units = Number(ironUnits) || (goldAmount ? Math.ceil(Number(goldAmount) / 5) : 0);
+      const gold = Number(goldAmount) || (units * 5);
+
+      // 1. If buyerName is specified, find their pending deposit or credit directly
+      if (buyerName) {
+        const pending = await db.execute({
+          sql: `SELECT wt.id FROM wallet_transactions wt
+                JOIN users u ON wt.user_id = u.id
+                WHERE (LOWER(u.username) = ? OR LOWER(wt.parlamentum_name) = ?)
+                AND wt.type = 'DEPOSIT' AND wt.status = 'PENDING'
+                ORDER BY wt.created_at DESC LIMIT 1`,
+          args: [buyerName.toLowerCase(), buyerName.toLowerCase()],
+        });
+
+        if (pending.rows.length > 0) {
+          const res = await approveDeposit(String(pending.rows[0].id));
+          return NextResponse.json({ ...res, matchedPending: true });
+        }
+
+        const res = await manualCreditCitizen(
+          buyerName,
+          gold,
+          `Automated Parlamentum sale webhook (${units} Raw Iron)`
+        );
+        return NextResponse.json(res);
+      }
+
+      // 2. If buyerName is not in the notification (e.g. anonymous market sale: "2× Raw Iron sold — 10.00 gold"):
+      // Automatically match the oldest PENDING deposit waiting for this exact Raw Iron quantity or gold!
+      const pendingMatch = await db.execute({
+        sql: `SELECT id, user_id, amount, iron_units, parlamentum_name 
+              FROM wallet_transactions 
+              WHERE type = 'DEPOSIT' AND status = 'PENDING' 
+              AND (iron_units = ? OR amount = ?)
+              ORDER BY created_at ASC LIMIT 1`,
+        args: [units, gold],
+      });
+
+      if (pendingMatch.rows.length > 0) {
+        const tx = pendingMatch.rows[0];
+        const res = await approveDeposit(String(tx.id));
+        return NextResponse.json({
+          success: true,
+          matched: true,
+          message: `Auto-verified and approved deposit for ${tx.parlamentum_name} (${units} Raw Iron · ${gold} gold)!`,
+          txId: tx.id,
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        matched: false,
+        message: `Sale event recorded (${units} Raw Iron · ${gold} gold), but no pending citizen deposit was waiting for this amount.`,
+      });
     }
 
     // Otherwise require logged-in admin
