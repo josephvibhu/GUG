@@ -23,11 +23,40 @@ export interface UserSession {
 export const COOKIE_NAME = "parlamentum_session_id";
 export const ADMIN_SECRET_CODE = "parlamentum_admin";
 
+// Session cookies are "<userId>.<hmac>" so a user id alone (shown in public shareholder lists) can't be used as a login.
+// Prefer SESSION_SECRET from the environment; otherwise a random secret is generated once and kept in settings.
+async function getSessionSecret(): Promise<string> {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  const db = getDb();
+  const res = await db.execute("SELECT value FROM settings WHERE key = 'session_secret'");
+  if (res.rows.length > 0) return String(res.rows[0].value);
+  await db.execute({
+    sql: "INSERT OR IGNORE INTO settings (key, value) VALUES ('session_secret', ?)",
+    args: [crypto.randomBytes(32).toString("hex")],
+  });
+  const created = await db.execute("SELECT value FROM settings WHERE key = 'session_secret'");
+  return String(created.rows[0].value);
+}
+
+async function signSession(userId: string): Promise<string> {
+  const sig = crypto.createHmac("sha256", await getSessionSecret()).update(userId).digest("hex");
+  return `${userId}.${sig}`;
+}
+
+async function verifySession(value: string): Promise<string | null> {
+  const dot = value.lastIndexOf(".");
+  if (dot <= 0) return null;
+  const userId = value.slice(0, dot);
+  const expected = Buffer.from(await signSession(userId));
+  const given = Buffer.from(value);
+  return given.length === expected.length && crypto.timingSafeEqual(given, expected) ? userId : null;
+}
+
 export async function getCurrentUser(): Promise<UserSession | null> {
   await initDb();
   await syncDbFromBlob(false);
   const db = getDb();
-  let userId: string | undefined;
+  let userId: string | null | undefined;
 
   try {
     const cookieStore = await cookies();
@@ -37,6 +66,11 @@ export async function getCurrentUser(): Promise<UserSession | null> {
   }
 
   // Proper login: if no cookie, user is NOT logged in!
+  if (!userId) {
+    return null;
+  }
+
+  userId = await verifySession(userId);
   if (!userId) {
     return null;
   }
@@ -142,7 +176,7 @@ export async function registerUser(
 
   try {
     const cookieStore = await cookies();
-    cookieStore.set(COOKIE_NAME, id, {
+    cookieStore.set(COOKIE_NAME, await signSession(id), {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
@@ -206,7 +240,7 @@ export async function loginUser(
 
   try {
     const cookieStore = await cookies();
-    cookieStore.set(COOKIE_NAME, String(u.id), {
+    cookieStore.set(COOKIE_NAME, await signSession(String(u.id)), {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
