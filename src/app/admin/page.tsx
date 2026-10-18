@@ -26,8 +26,27 @@ import {
   Calendar,
   Flame,
   Landmark,
-  X
+  X,
+  Search,
+  Wallet,
+  TrendingUp,
+  PieChart,
+  Users,
+  Sliders,
+  DollarSign
 } from "lucide-react";
+
+interface CitizenHolding {
+  companyId: string;
+  ticker: string;
+  companyName: string;
+  shares: number;
+  lockedShares: number;
+  totalShares: number;
+  currentPrice: number;
+  holdingValue: number;
+  avgBuyPrice: number;
+}
 
 interface Citizen {
   id: string;
@@ -36,6 +55,9 @@ interface Citizen {
   parlamentum_name: string;
   cash_balance: number;
   locked_cash: number;
+  portfolio_value?: number;
+  total_net_worth?: number;
+  holdings?: CitizenHolding[];
   is_admin: number;
   is_frozen?: number;
   account_type?: "CITIZEN" | "STATE";
@@ -110,6 +132,14 @@ export default function AdminPage() {
   const [editCrest, setEditCrest] = useState<string>("🏛️");
   const [editStateLoading, setEditStateLoading] = useState<boolean>(false);
 
+  // Citizen & Sovereign State Wealth Inspector
+  const [citizenSearch, setCitizenSearch] = useState<string>("");
+  const [citizenFilter, setCitizenFilter] = useState<"ALL" | "CITIZEN" | "STATE" | "WEALTHY">("ALL");
+  const [adjustingCitizen, setAdjustingCitizen] = useState<Citizen | null>(null);
+  const [adjustBalanceValue, setAdjustBalanceValue] = useState<string>("");
+  const [adjustReason, setAdjustReason] = useState<string>("Operator purse adjustment");
+  const [adjustLoading, setAdjustLoading] = useState<boolean>(false);
+
   // Parlamentum In-Game Trade Ledger Sync (/trade/ledger)
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
   const [tradeInsights, setTradeInsights] = useState<any | null>(null);
@@ -121,7 +151,7 @@ export default function AdminPage() {
 
   const fetchAdminData = async () => {
     try {
-      const res = await fetch("/api/admin", { cache: "no-store" });
+      const res = await fetch(`/api/admin?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setIsAdmin(true);
@@ -357,6 +387,8 @@ export default function AdminPage() {
   }, []);
 
   const handleApproveDeposit = async (txId: string) => {
+    // Optimistically remove immediately so the card never lingers or flickers
+    setPendingDeposits((prev) => prev.filter((p) => p.id !== txId));
     try {
       const res = await fetch("/api/admin", {
         method: "POST",
@@ -369,13 +401,17 @@ export default function AdminPage() {
         fetchAdminData();
       } else {
         setFeedback({ type: "error", message: data.message });
+        fetchAdminData();
       }
     } catch (e: any) {
       setFeedback({ type: "error", message: e.message });
+      fetchAdminData();
     }
   };
 
   const handleRejectTransaction = async (txId: string) => {
+    // Optimistically remove immediately
+    setPendingDeposits((prev) => prev.filter((p) => p.id !== txId));
     try {
       const res = await fetch("/api/admin", {
         method: "POST",
@@ -388,9 +424,51 @@ export default function AdminPage() {
         fetchAdminData();
       } else {
         setFeedback({ type: "error", message: data.message });
+        fetchAdminData();
       }
     } catch (e: any) {
       setFeedback({ type: "error", message: e.message });
+      fetchAdminData();
+    }
+  };
+
+  const handleAdjustBalance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adjustingCitizen) return;
+    const newBal = parseFloat(adjustBalanceValue);
+    if (isNaN(newBal) || newBal < 0) {
+      setFeedback({ type: "error", message: "Please enter a valid positive gold balance." });
+      return;
+    }
+    setAdjustLoading(true);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "adjust_user_balance",
+          userId: adjustingCitizen.id,
+          newBalance: newBal,
+          reason: adjustReason.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+        setCitizens((prev) => prev.map((c) => c.id === adjustingCitizen.id ? { 
+          ...c, 
+          cash_balance: newBal,
+          total_net_worth: newBal + (c.locked_cash || 0) + (c.portfolio_value || 0)
+        } : c));
+        setAdjustingCitizen(null);
+        fetchAdminData();
+      } else {
+        setFeedback({ type: "error", message: data.message || "Failed to adjust citizen purse balance." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", message: err.message || "Network error" });
+    } finally {
+      setAdjustLoading(false);
     }
   };
 
@@ -459,6 +537,8 @@ export default function AdminPage() {
   };
 
   const handleApproveIPO = async (appId: string) => {
+    // Optimistically remove immediately from pending IPO queue so it vanishes instantly
+    setIpoApplications((prev) => prev.filter((a) => a.id !== appId));
     setFeedback(null);
     const form = negotiatingApp[appId] || {};
     try {
@@ -480,13 +560,17 @@ export default function AdminPage() {
         fetchAdminData();
       } else {
         setFeedback({ type: "error", message: data.message });
+        fetchAdminData();
       }
     } catch (e: any) {
       setFeedback({ type: "error", message: e.message });
+      fetchAdminData();
     }
   };
 
   const handleRejectIPO = async (appId: string) => {
+    // Optimistically remove immediately from pending IPO queue
+    setIpoApplications((prev) => prev.filter((a) => a.id !== appId));
     setFeedback(null);
     const form = negotiatingApp[appId] || {};
     const reason = form.notes || "IPO charter terms declined by exchange operator";
@@ -506,9 +590,11 @@ export default function AdminPage() {
         fetchAdminData();
       } else {
         setFeedback({ type: "error", message: data.message });
+        fetchAdminData();
       }
     } catch (e: any) {
       setFeedback({ type: "error", message: e.message });
+      fetchAdminData();
     }
   };
 
@@ -2028,134 +2114,526 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Section 6: Registered Citizens Directory & Sovereign States Registry */}
-        <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-blue-400" />
-                Registered Citizens & Sovereign State Reserves ({citizens.length})
-              </h3>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
-                Manage accounts, designate Sovereign State Republics (e.g. Republic of Milan), and execute Freeze Hammer on fraudulent accounts.
-              </p>
-            </div>
-          </div>
+        {/* Section 6: Citizen & Sovereign State Wealth Inspector */}
+        {(() => {
+          const totalPurseCash = citizens.reduce((sum, c) => sum + (Number(c.cash_balance) || 0), 0);
+          const totalLockedCash = citizens.reduce((sum, c) => sum + (Number(c.locked_cash) || 0), 0);
+          const totalPortfolioValue = citizens.reduce((sum, c) => sum + (Number(c.portfolio_value) || 0), 0);
+          const totalNetWorth = citizens.reduce((sum, c) => sum + (Number(c.total_net_worth) || ((Number(c.cash_balance) || 0) + (Number(c.locked_cash) || 0))), 0);
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
-              <thead>
-                <tr className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
-                  <th className="py-3 px-4">Citizen / Sovereign Realm</th>
-                  <th className="py-3 px-4">Classification</th>
-                  <th className="py-3 px-4">Compliance Status</th>
-                  <th className="py-3 px-4 text-right">Purse Balance</th>
-                  <th className="py-3 px-4 text-right">Locked in Orders</th>
-                  <th className="py-3 px-4 text-center">Freeze Hammer</th>
-                  <th className="py-3 px-4 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/60">
-                {citizens.map((c) => {
-                  const isState = c.account_type === "STATE";
-                  return (
-                    <tr key={c.id} className="hover:bg-zinc-800/30">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">{isState ? (c.state_crest || "🏛️") : "👤"}</span>
-                          <div>
-                            <div className="text-white font-bold font-sans flex items-center gap-1.5">
-                              <span>{isState ? (c.state_realm_name || c.display_name || c.username) : c.username}</span>
-                              {isState && (
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                                  👑 STATE RESERVE
+          const filteredCitizens = citizens.filter((c) => {
+            if (citizenFilter === "CITIZEN" && c.account_type === "STATE") return false;
+            if (citizenFilter === "STATE" && c.account_type !== "STATE") return false;
+            if (citizenFilter === "WEALTHY" && ((Number(c.cash_balance) || 0) <= 0 && (!c.portfolio_value || c.portfolio_value <= 0))) return false;
+
+            if (citizenSearch.trim()) {
+              const q = citizenSearch.toLowerCase().trim();
+              const matchName = c.username.toLowerCase().includes(q);
+              const matchDisplay = (c.display_name || "").toLowerCase().includes(q);
+              const matchParlamentum = (c.parlamentum_name || "").toLowerCase().includes(q);
+              const matchRealm = (c.state_realm_name || "").toLowerCase().includes(q);
+              const matchMotto = (c.state_motto || "").toLowerCase().includes(q);
+              const matchHoldings = (c.holdings || []).some((h) => 
+                h.ticker.toLowerCase().includes(q) || h.companyName.toLowerCase().includes(q)
+              );
+              if (!matchName && !matchDisplay && !matchParlamentum && !matchRealm && !matchMotto && !matchHoldings) {
+                return false;
+              }
+            }
+            return true;
+          });
+
+          return (
+            <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col gap-5 p-5">
+              {/* Header and Title */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-amber-400" />
+                    <h3 className="font-bold text-white text-base flex items-center gap-2">
+                      Citizen & Sovereign State Wealth Inspector
+                    </h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                      LIVE PURSE & EQUITY BALANCES
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mt-1">
+                    Real-time registry of all accounts on the exchange. Monitor circulating purse cash, capital locked in active buy orders, stock equity valuation, and adjust purse balances directly.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => fetchAdminData()}
+                    className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-zinc-400" />
+                    Refresh Balances
+                  </button>
+                </div>
+              </div>
+
+              {/* Platform-Wide Wealth Aggregates */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
+                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-zinc-400">
+                    <Users className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Registered Accounts</span>
+                  </div>
+                  <div className="font-mono text-lg font-black text-white mt-1">
+                    {citizens.length}
+                  </div>
+                  <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                    {citizens.filter(c => c.account_type === "STATE").length} Sovereign Realms
+                  </div>
+                </div>
+
+                <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
+                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-emerald-400">
+                    <Coins className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Purse Gold (Cash)</span>
+                  </div>
+                  <div className="font-mono text-lg font-black text-emerald-400 mt-1">
+                    {totalPurseCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                  </div>
+                  <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                    Available in player purses
+                  </div>
+                </div>
+
+                <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
+                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-amber-400">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Locked in Orders</span>
+                  </div>
+                  <div className="font-mono text-lg font-black text-amber-400 mt-1">
+                    {totalLockedCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                  </div>
+                  <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                    Committed in active limit bids
+                  </div>
+                </div>
+
+                <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
+                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-purple-400">
+                    <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Stock Holdings Value</span>
+                  </div>
+                  <div className="font-mono text-lg font-black text-purple-300 mt-1">
+                    {totalPortfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                  </div>
+                  <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                    Market value of citizen shares
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl col-span-2 sm:col-span-1">
+                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-amber-300">
+                    <Award className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Combined Net Worth</span>
+                  </div>
+                  <div className="font-mono text-lg font-black text-amber-400 mt-1">
+                    {totalNetWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                  </div>
+                  <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                    Purse + Locked + Stocks
+                  </div>
+                </div>
+              </div>
+
+              {/* Search & Filter Toolbar */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={citizenSearch}
+                    onChange={(e) => setCitizenSearch(e.target.value)}
+                    placeholder="Search by username, display name, realm title, or stock holding (e.g. GUG)..."
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-8 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400 font-sans"
+                  />
+                  {citizenSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCitizenSearch("")}
+                      className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                  <button
+                    type="button"
+                    onClick={() => setCitizenFilter("ALL")}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                      citizenFilter === "ALL"
+                        ? "bg-amber-500 text-black font-bold"
+                        : "bg-zinc-800 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    All ({citizens.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCitizenFilter("CITIZEN")}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                      citizenFilter === "CITIZEN"
+                        ? "bg-amber-500 text-black font-bold"
+                        : "bg-zinc-800 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    Citizens ({citizens.filter(c => c.account_type !== 'STATE').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCitizenFilter("STATE")}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                      citizenFilter === "STATE"
+                        ? "bg-amber-500 text-black font-bold"
+                        : "bg-zinc-800 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    Sovereign States ({citizens.filter(c => c.account_type === 'STATE').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCitizenFilter("WEALTHY")}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                      citizenFilter === "WEALTHY"
+                        ? "bg-amber-500 text-black font-bold"
+                        : "bg-zinc-800 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    With Wealth &gt; 0g ({citizens.filter(c => (Number(c.cash_balance) || 0) > 0 || (c.portfolio_value && c.portfolio_value > 0)).length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Wealth & Purse Balances Table */}
+              <div className="overflow-x-auto border border-zinc-800/80 rounded-xl bg-zinc-950/40">
+                <table className="w-full text-left font-mono text-xs">
+                  <thead>
+                    <tr className="bg-zinc-900/90 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
+                      <th className="py-3 px-4">Citizen / Sovereign Realm</th>
+                      <th className="py-3 px-3">Classification</th>
+                      <th className="py-3 px-3 text-right">Purse Gold (Cash)</th>
+                      <th className="py-3 px-3 text-right">Locked in Orders</th>
+                      <th className="py-3 px-3">Stock Holdings &amp; Equities</th>
+                      <th className="py-3 px-3 text-right">Total Net Worth</th>
+                      <th className="py-3 px-3 text-center">Compliance</th>
+                      <th className="py-3 px-4 text-center">Operator Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/60">
+                    {filteredCitizens.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-8 text-center text-zinc-500 font-sans">
+                          No citizens match the search query or active filter.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredCitizens.map((c) => {
+                        const isState = c.account_type === "STATE";
+                        const purseCash = Number(c.cash_balance || 0);
+                        const lockedCash = Number(c.locked_cash || 0);
+                        const portVal = Number(c.portfolio_value || 0);
+                        const netWorth = Number(c.total_net_worth || (purseCash + lockedCash + portVal));
+                        const holdings = c.holdings || [];
+
+                        return (
+                          <tr key={c.id} className="hover:bg-zinc-800/30 transition">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-xl shrink-0">{isState ? (c.state_crest || "🏛️") : "👤"}</span>
+                                <div>
+                                  <div className="text-white font-bold font-sans flex items-center gap-1.5">
+                                    <span>{isState ? (c.state_realm_name || c.display_name || c.username) : c.display_name || c.username}</span>
+                                    {isState && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                        👑 STATE
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-zinc-400 font-sans flex items-center gap-1.5 mt-0.5">
+                                    <span className="font-mono text-zinc-300">@{c.username}</span>
+                                    {c.parlamentum_name && c.parlamentum_name !== c.username && (
+                                      <span className="text-zinc-500">· Game: {c.parlamentum_name}</span>
+                                    )}
+                                    {c.state_motto && (
+                                      <span className="text-amber-400/80 italic">&ldquo;{c.state_motto}&rdquo;</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-3 text-[11px] font-sans">
+                              {c.is_admin ? (
+                                <span className="px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold">
+                                  🛡️ Operator
+                                </span>
+                              ) : isState ? (
+                                <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold">
+                                  🏛️ Sovereign Realm
+                                </span>
+                              ) : (
+                                <span className="text-zinc-400">
+                                  👤 Citizen
                                 </span>
                               )}
-                            </div>
-                            <div className="text-[10px] text-zinc-400 font-sans">
-                              {isState ? `Chancellor: @${c.username}` : `@${c.username}`}
-                              {c.state_motto && <span className="text-amber-400/80 italic ml-1">&ldquo;{c.state_motto}&rdquo;</span>}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-zinc-400 text-[11px] font-sans">
-                        {c.is_admin ? (
-                          <span className="text-amber-400 font-semibold">Operator</span>
-                        ) : isState ? (
-                          <span className="text-amber-300 font-semibold">Sovereign Realm</span>
-                        ) : (
-                          <span>Citizen</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-[11px] font-sans">
-                        {Number(c.is_frozen || 0) === 1 ? (
-                          <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
-                            ❄️ FROZEN
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
-                            Active
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-400">
-                        {c.cash_balance.toLocaleString()} gold
-                      </td>
-                      <td className="py-3 px-4 text-right text-zinc-400">
-                        {c.locked_cash.toLocaleString()} gold
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        {Number(c.is_frozen || 0) === 1 ? (
-                          <button
-                            onClick={() => handleFreezeUser(c.id, false)}
-                            className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-sans font-semibold transition cursor-pointer"
-                          >
-                            Unfreeze Wallet
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleFreezeUser(c.id, true)}
-                            className="px-2.5 py-1 rounded bg-rose-950 hover:bg-rose-800 text-rose-300 border border-rose-700/50 text-[10px] font-sans font-semibold transition cursor-pointer"
-                          >
-                            Freeze Wallet
-                          </button>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              setTargetCitizen(c.username);
-                              window.scrollTo({ top: 0, behavior: "smooth" });
-                            }}
-                            className="px-2 py-1 rounded bg-zinc-800 hover:bg-emerald-500 hover:text-black text-zinc-200 text-[10px] font-sans transition cursor-pointer"
-                            title="Load Funds"
-                          >
-                            Load
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingUserState(c);
-                              setEditAccountType(c.account_type || "STATE");
-                              setEditRealmName(c.state_realm_name || (c.account_type === "STATE" ? c.display_name : "Republic of Milan"));
-                              setEditMotto(c.state_motto || "Scuto et Glodio");
-                              setEditCrest(c.state_crest || "🏛️");
-                            }}
-                            className="px-2 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-sans transition cursor-pointer"
-                            title="Configure Sovereign State"
-                          >
-                            🏛️ State
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            </td>
+
+                            <td className="py-3 px-3 text-right">
+                              <div className="font-mono font-black text-emerald-400 text-sm">
+                                {purseCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAdjustingCitizen(c);
+                                  setAdjustBalanceValue(String(purseCash));
+                                  setAdjustReason(`Operator purse adjustment for @${c.username}`);
+                                }}
+                                className="text-[10px] font-sans text-amber-400/80 hover:text-amber-300 underline cursor-pointer mt-0.5"
+                                title="Adjust this citizen's purse balance"
+                              >
+                                Adjust Purse
+                              </button>
+                            </td>
+
+                            <td className="py-3 px-3 text-right font-mono text-zinc-400">
+                              {lockedCash > 0 ? (
+                                <span className="text-amber-300 font-semibold">
+                                  {lockedCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                                </span>
+                              ) : (
+                                "0.00g"
+                              )}
+                            </td>
+
+                            <td className="py-3 px-3">
+                              {holdings.length === 0 ? (
+                                <span className="text-zinc-500 font-sans text-[11px]">No shares held</span>
+                              ) : (
+                                <div className="flex flex-wrap gap-1 max-w-[240px]">
+                                  {holdings.map((h, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/30 text-[10px] font-mono text-purple-300 flex items-center gap-1"
+                                      title={`${h.companyName} (${h.totalShares.toLocaleString()} shares @ ${h.currentPrice.toFixed(2)}g)`}
+                                    >
+                                      <b className="text-amber-400">${h.ticker}</b>: {h.totalShares.toLocaleString()} sh
+                                      <span className="text-zinc-400">({h.holdingValue.toFixed(1)}g)</span>
+                                    </span>
+                                  ))}
+                                  <div className="w-full text-[10px] text-zinc-400 font-mono mt-0.5">
+                                    Valuation: {portVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="py-3 px-3 text-right">
+                              <div className="font-mono font-black text-amber-400 text-sm">
+                                {netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                              </div>
+                              <div className="text-[9px] text-zinc-500 font-mono">
+                                Total Platform Capital
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-3 text-center text-[11px] font-sans">
+                              {Number(c.is_frozen || 0) === 1 ? (
+                                <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
+                                  ❄️ FROZEN
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
+                                  Active
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1 font-sans">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAdjustingCitizen(c);
+                                    setAdjustBalanceValue(String(purseCash));
+                                    setAdjustReason(`Operator purse adjustment for @${c.username}`);
+                                  }}
+                                  className="px-2 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-medium transition cursor-pointer"
+                                  title="Adjust Purse Gold"
+                                >
+                                  ⚡ Adjust
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTargetCitizen(c.username);
+                                    window.scrollTo({ top: 0, behavior: "smooth" });
+                                  }}
+                                  className="px-2 py-1 rounded bg-zinc-800 hover:bg-emerald-500 hover:text-black text-zinc-200 text-[10px] transition cursor-pointer"
+                                  title="Load Funds into Purse"
+                                >
+                                  Load
+                                </button>
+                                {Number(c.is_frozen || 0) === 1 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleFreezeUser(c.id, false)}
+                                    className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-semibold transition cursor-pointer"
+                                    title="Unfreeze Account"
+                                  >
+                                    Unfreeze
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleFreezeUser(c.id, true)}
+                                    className="px-2 py-1 rounded bg-rose-950 hover:bg-rose-800 text-rose-300 border border-rose-700/50 text-[10px] font-semibold transition cursor-pointer"
+                                    title="Freeze Wallet Hammer"
+                                  >
+                                    Freeze
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingUserState(c);
+                                    setEditAccountType(c.account_type || "STATE");
+                                    setEditRealmName(c.state_realm_name || (c.account_type === "STATE" ? c.display_name : "Republic of Milan"));
+                                    setEditMotto(c.state_motto || "Scuto et Glodio");
+                                    setEditCrest(c.state_crest || "🏛️");
+                                  }}
+                                  className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-[10px] transition cursor-pointer"
+                                  title="Configure Sovereign State Realm"
+                                >
+                                  🏛️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Modal: Adjust Citizen Purse Balance */}
+        {adjustingCitizen && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+              <button
+                type="button"
+                onClick={() => setAdjustingCitizen(null)}
+                className="absolute right-4 top-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl">
+                  {adjustingCitizen.account_type === "STATE" ? (adjustingCitizen.state_crest || "🏛️") : "💰"}
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">
+                    Adjust Citizen Purse Balance
+                  </h3>
+                  <p className="text-zinc-400 text-xs">
+                    Target: @{adjustingCitizen.username} ({adjustingCitizen.display_name || adjustingCitizen.username})
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleAdjustBalance} className="space-y-4 text-xs font-sans">
+                <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between font-mono">
+                  <span className="text-zinc-400">Current Purse Balance:</span>
+                  <span className="text-emerald-400 font-bold text-sm">
+                    {Number(adjustingCitizen.cash_balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold
+                  </span>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">
+                    New Purse Balance (Gold)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    value={adjustBalanceValue}
+                    onChange={(e) => setAdjustBalanceValue(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono text-base font-bold focus:outline-none focus:border-amber-400"
+                  />
+
+                  {/* Quick Delta Adjust Buttons */}
+                  <div className="grid grid-cols-4 gap-1.5 mt-2">
+                    {[
+                      { label: "+50g", delta: 50 },
+                      { label: "+100g", delta: 100 },
+                      { label: "+500g", delta: 500 },
+                      { label: "+1000g", delta: 1000 },
+                    ].map((btn) => (
+                      <button
+                        key={btn.label}
+                        type="button"
+                        onClick={() => {
+                          const cur = parseFloat(adjustBalanceValue) || 0;
+                          setAdjustBalanceValue(Math.max(0, cur + btn.delta).toString());
+                        }}
+                        className="py-1 text-[10px] font-mono bg-zinc-800 hover:bg-zinc-700 rounded text-emerald-400 transition cursor-pointer"
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">
+                    Audit Log Reason
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={adjustReason}
+                    onChange={(e) => setAdjustReason(e.target.value)}
+                    placeholder="e.g. Operator direct balance correction"
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-sans text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdjustingCitizen(null)}
+                    className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={adjustLoading}
+                    className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+                  >
+                    {adjustLoading ? "Saving Balance..." : "Save Purse Balance"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Sovereign State Configuration Modal */}
         {editingUserState && (

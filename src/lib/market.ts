@@ -1,4 +1,4 @@
-import { getDb, initDb } from "./db";
+import { getDb, initDb, scheduleBlobPersist } from "./db";
 import crypto from "crypto";
 
 export interface Company {
@@ -666,6 +666,8 @@ export async function approveAndListIPO(
     args: [finalPrice, operatorNotes || "Charter approved and listed on exchange", appId],
   });
 
+  scheduleBlobPersist();
+
   return {
     success: true,
     message: `Successfully approved and listed $${app.ticker} at negotiated price of ${finalPrice.toFixed(2)} gold!`,
@@ -681,6 +683,8 @@ export async function rejectIPOApplication(appId: string, reason: string): Promi
     sql: `UPDATE ipo_applications SET status = 'REJECTED', operator_notes = ? WHERE id = ?`,
     args: [reason || "Application rejected by exchange operator", appId],
   });
+
+  scheduleBlobPersist();
 
   return { success: true, message: "IPO application rejected." };
 }

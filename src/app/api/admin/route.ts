@@ -51,6 +51,55 @@ export async function GET() {
       ORDER BY cash_balance DESC
     `);
 
+    // Fetch user portfolios with company tickers and current prices
+    const portfoliosRes = await db.execute(`
+      SELECT p.user_id, p.company_id, p.shares, p.locked_shares, p.avg_buy_price,
+             c.ticker, c.name as company_name, c.current_price
+      FROM portfolios p
+      JOIN companies c ON p.company_id = c.id
+      WHERE (p.shares + p.locked_shares) > 0
+    `);
+
+    const userPortfoliosMap: { [userId: string]: { holdings: any[]; portfolioValue: number } } = {};
+    for (const row of portfoliosRes.rows as any[]) {
+      const uId = String(row.user_id);
+      if (!userPortfoliosMap[uId]) {
+        userPortfoliosMap[uId] = { holdings: [], portfolioValue: 0 };
+      }
+      const totalShares = Number(row.shares || 0) + Number(row.locked_shares || 0);
+      const curPrice = Number(row.current_price || 0);
+      const val = totalShares * curPrice;
+      userPortfoliosMap[uId].portfolioValue += val;
+      userPortfoliosMap[uId].holdings.push({
+        companyId: row.company_id,
+        ticker: row.ticker,
+        companyName: row.company_name,
+        shares: Number(row.shares || 0),
+        lockedShares: Number(row.locked_shares || 0),
+        totalShares,
+        currentPrice: curPrice,
+        holdingValue: val,
+        avgBuyPrice: Number(row.avg_buy_price || 0),
+      });
+    }
+
+    const enrichedCitizens = (citizensRes.rows as any[]).map((c) => {
+      const uId = String(c.id);
+      const port = userPortfoliosMap[uId] || { holdings: [], portfolioValue: 0 };
+      const cash = Number(c.cash_balance || 0);
+      const lockedCash = Number(c.locked_cash || 0);
+      const portfolioValue = port.portfolioValue;
+      const totalNetWorth = cash + lockedCash + portfolioValue;
+      return {
+        ...c,
+        cash_balance: cash,
+        locked_cash: lockedCash,
+        portfolio_value: portfolioValue,
+        total_net_worth: totalNetWorth,
+        holdings: port.holdings,
+      };
+    });
+
     const { getEarningsReports, getNextFridayUtc, processScheduledDividends } = await import("@/lib/dividends");
     await processScheduledDividends().catch(() => {});
     const earningsReports = await getEarningsReports();
@@ -74,7 +123,7 @@ export async function GET() {
       pendingDeposits: pendingRes.rows,
       ipoApplications,
       companies,
-      citizens: citizensRes.rows,
+      citizens: enrichedCitizens,
       earningsReports,
       nextFriday: nextFriday.toISOString(),
       ledgerEntries,
@@ -327,6 +376,8 @@ export async function POST(request: Request) {
     if (action === "approve") {
       const { txId } = body;
       const res = await approveDeposit(txId);
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
       return NextResponse.json(res);
     }
 
@@ -334,13 +385,68 @@ export async function POST(request: Request) {
       const { txId } = body;
       const { rejectTransaction } = await import("@/lib/wallet");
       const res = await rejectTransaction(txId);
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
       return NextResponse.json(res);
     }
 
     if (action === "manual_credit") {
       const { parlamentumName, goldAmount, reason } = body;
       const res = await manualCreditCitizen(parlamentumName, Number(goldAmount), reason);
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
       return NextResponse.json(res);
+    }
+
+    if (action === "adjust_user_balance") {
+      const { userId, newBalance, reason } = body;
+      const db = getDb();
+      const targetBalance = Number(newBalance);
+      if (isNaN(targetBalance) || targetBalance < 0) {
+        return NextResponse.json({ success: false, message: "Invalid gold balance value." }, { status: 400 });
+      }
+
+      const userRes = await db.execute({
+        sql: "SELECT id, username, cash_balance FROM users WHERE id = ?",
+        args: [userId],
+      });
+      if (userRes.rows.length === 0) {
+        return NextResponse.json({ success: false, message: "Citizen not found." }, { status: 404 });
+      }
+      const targetUser = userRes.rows[0];
+      const oldBalance = Number(targetUser.cash_balance);
+      const diff = targetBalance - oldBalance;
+
+      await db.execute({
+        sql: "UPDATE users SET cash_balance = ? WHERE id = ?",
+        args: [targetBalance, userId],
+      });
+
+      const now = new Date().toISOString();
+      const txId = `tx_adj_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      await db.execute({
+        sql: `INSERT INTO wallet_transactions (id, user_id, type, method, amount, parlamentum_name, status, recipe_note, created_at)
+              VALUES (?, ?, ?, 'OPERATOR_ADJUSTMENT', ?, ?, 'COMPLETED', ?, ?)`,
+        args: [
+          txId,
+          userId,
+          diff >= 0 ? "DEPOSIT" : "WITHDRAWAL",
+          Math.abs(diff),
+          String(targetUser.username),
+          reason || `Operator balance adjustment (${oldBalance}g -> ${targetBalance}g)`,
+          now,
+        ],
+      });
+
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
+
+      return NextResponse.json({
+        success: true,
+        message: `Updated @${targetUser.username}'s purse from ${oldBalance}g to ${targetBalance}g!`,
+        oldBalance,
+        newBalance: targetBalance,
+      });
     }
 
     if (action === "update_settings") {
@@ -352,6 +458,9 @@ export async function POST(request: Request) {
       if (tradeFee !== undefined) await setSetting("trade_fee_percent", String(tradeFee));
       if (listingFee !== undefined) await setSetting("ipo_listing_fee", String(listingFee));
 
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
+
       return NextResponse.json({ success: true, message: "Operator settings updated successfully!" });
     }
 
@@ -362,6 +471,8 @@ export async function POST(request: Request) {
         sql: "UPDATE users SET is_frozen = 1 WHERE id = ?",
         args: [userId],
       });
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
       return NextResponse.json({ success: true, message: "Citizen wallet FROZEN. All trading & withdrawal halted." });
     }
 
@@ -372,6 +483,8 @@ export async function POST(request: Request) {
         sql: "UPDATE users SET is_frozen = 0 WHERE id = ?",
         args: [userId],
       });
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
       return NextResponse.json({ success: true, message: "Citizen wallet UNFROZEN. Trading restored." });
     }
 
@@ -385,6 +498,8 @@ export async function POST(request: Request) {
         sql: "UPDATE companies SET status = ? WHERE id = ?",
         args: [status, companyId],
       });
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
       return NextResponse.json({ success: true, message: `Company status updated to ${status}.` });
     }
 
@@ -406,6 +521,8 @@ export async function POST(request: Request) {
         retainPercent,
         operatorNotes
       );
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
       return NextResponse.json(res);
     }
 
@@ -413,6 +530,8 @@ export async function POST(request: Request) {
       const { appId, reason } = body;
       const { rejectIPOApplication } = await import("@/lib/market");
       const res = await rejectIPOApplication(appId, reason);
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
       return NextResponse.json(res);
     }
 

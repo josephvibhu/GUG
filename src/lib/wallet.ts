@@ -1,4 +1,4 @@
-import { getDb, initDb } from "./db";
+import { getDb, initDb, scheduleBlobPersist } from "./db";
 import crypto from "crypto";
 
 export const IRON_UNIT_PRICE = 5; // 5 gold per Raw Iron
@@ -115,6 +115,7 @@ export async function approveDeposit(txId: string): Promise<{ success: boolean; 
     args: [txId],
   });
 
+  scheduleBlobPersist();
   return { success: true, message: `Approved and credited ${amount.toLocaleString()} gold to citizen's purse!` };
 }
 
@@ -147,6 +148,7 @@ export async function rejectTransaction(txId: string): Promise<{ success: boolea
       sql: "UPDATE wallet_transactions SET status = 'REJECTED' WHERE id = ?",
       args: [txId],
     });
+    scheduleBlobPersist();
     return { success: true, message: `Withdrawal cancelled and ${amount.toLocaleString()} gold refunded back to citizen's purse.` };
   }
 
@@ -155,6 +157,7 @@ export async function rejectTransaction(txId: string): Promise<{ success: boolea
     args: [txId],
   });
 
+  scheduleBlobPersist();
   return { success: true, message: "Deposit announcement rejected." };
 }
 
@@ -199,6 +202,7 @@ export async function manualCreditCitizen(
     args: [user.id],
   });
 
+  scheduleBlobPersist();
   return {
     success: true,
     message: `Successfully credited ${amount.toLocaleString()} gold (${ironUnits} Raw Iron) to ${user.username}!`,
