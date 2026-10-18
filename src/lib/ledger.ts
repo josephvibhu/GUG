@@ -103,10 +103,35 @@ export async function syncLedgerData(
       continue;
     }
 
-    syncedCount++;
     const entryId = `ledg_${crypto.randomUUID().slice(0, 8)}`;
     const now = new Date().toISOString();
 
+    // Record the entry before crediting anything: the UNIQUE signature lets only one of several
+    // concurrent syncs (e.g. two operator tabs) claim this fill, so it is credited once
+    const claimed = await db.execute({
+      sql: `INSERT OR IGNORE INTO parlamentum_ledger_entries (
+              id, trade_date, side, item_name, quantity, price_str, total_amount, currency, tax_amount, with_user, status, matched_user_id, signature, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'LOGGED', NULL, ?, ?)`,
+      args: [
+        entryId,
+        cleanDate,
+        cleanSide,
+        cleanItem,
+        qty,
+        priceStr,
+        totalAmount,
+        currency,
+        taxAmount,
+        withUser || null,
+        signature,
+        now,
+      ],
+    });
+    if (claimed.rowsAffected === 0) {
+      continue;
+    }
+
+    syncedCount++;
     let entryStatus = "LOGGED";
     let matchedUserId: string | null = null;
 
@@ -168,27 +193,12 @@ export async function syncLedgerData(
       }
     }
 
-    await db.execute({
-      sql: `INSERT INTO parlamentum_ledger_entries (
-              id, trade_date, side, item_name, quantity, price_str, total_amount, currency, tax_amount, with_user, status, matched_user_id, signature, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        entryId,
-        cleanDate,
-        cleanSide,
-        cleanItem,
-        qty,
-        priceStr,
-        totalAmount,
-        currency,
-        taxAmount,
-        withUser || null,
-        entryStatus,
-        matchedUserId,
-        signature,
-        now,
-      ],
-    });
+    if (entryStatus !== "LOGGED") {
+      await db.execute({
+        sql: "UPDATE parlamentum_ledger_entries SET status = ?, matched_user_id = ? WHERE id = ?",
+        args: [entryStatus, matchedUserId, entryId],
+      });
+    }
   }
 
   // Save high-level stats if provided
