@@ -73,6 +73,16 @@ export async function GET() {
   }
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key",
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function POST(request: Request) {
   try {
     await initDb();
@@ -85,7 +95,7 @@ export async function POST(request: Request) {
       const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
 
       if (apiKey !== expectedKey) {
-        return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401 });
+        return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
       }
 
       const db = getDb();
@@ -105,7 +115,7 @@ export async function POST(request: Request) {
 
         if (pending.rows.length > 0) {
           const res = await approveDeposit(String(pending.rows[0].id));
-          return NextResponse.json({ ...res, matchedPending: true });
+          return NextResponse.json({ ...res, matchedPending: true }, { headers: corsHeaders });
         }
 
         const res = await manualCreditCitizen(
@@ -113,7 +123,7 @@ export async function POST(request: Request) {
           gold,
           `Automated Parlamentum sale webhook (${units} Raw Iron)`
         );
-        return NextResponse.json(res);
+        return NextResponse.json(res, { headers: corsHeaders });
       }
 
       // 2. If buyerName is not in the notification (e.g. anonymous market sale: "2× Raw Iron sold — 10.00 gold"):
@@ -135,14 +145,14 @@ export async function POST(request: Request) {
           matched: true,
           message: `Auto-verified and approved deposit for ${tx.parlamentum_name} (${units} Raw Iron · ${gold} gold)!`,
           txId: tx.id,
-        });
+        }, { headers: corsHeaders });
       }
 
       return NextResponse.json({
         success: true,
         matched: false,
         message: `Sale event recorded (${units} Raw Iron · ${gold} gold), but no pending citizen deposit was waiting for this amount.`,
-      });
+      }, { headers: corsHeaders });
     }
 
     // Otherwise require logged-in admin
