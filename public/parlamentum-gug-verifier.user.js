@@ -82,7 +82,7 @@
       }
     }
 
-    statusBadge.innerHTML = htmlContent;
+    statusBadge.textContent = htmlContent; // text only: messages include usernames, which players choose
     statusBadge.style.backgroundColor = bgColor;
     statusBadge.style.borderColor = borderColor;
     statusBadge.style.color = textColor;
