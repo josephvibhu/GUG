@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  Grow Ur Gold palette. The chart, panes and rules use TradingView's dark graphite so the chart sits flush;
+  gold is for money (brand, purse, trading hour, main actions); teal and red only ever mean price direction.
+
+  Most of the app is written with Tailwind's zinc / amber / emerald / rose classes, so those scales are
+  remapped here: zinc -> graphite, amber -> bullion gold, emerald -> bull teal, rose -> bear red.
+*/
+@theme {
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+
+  --color-floor: #131722;
+  --color-pane: #1a1e29;
+  --color-rule: #2a2e39;
+  --color-paper: #d1d4dc;
+  --color-ash: #8b90a0;
+  --color-bullion: #e9b440;
+  --color-bull: #26a69a;
+  --color-bear: #ef5350;
+
+  --color-zinc-50: #f4f5f8;
+  --color-zinc-100: #e6e8ee;
+  --color-zinc-200: #d1d4dc;
+  --color-zinc-300: #b2b5be;
+  --color-zinc-400: #8b90a0;
+  --color-zinc-500: #6a6f7d;
+  --color-zinc-600: #4a4f5c;
+  --color-zinc-700: #363a45;
+  --color-zinc-800: #2a2e39;
+  --color-zinc-900: #1a1e29;
+  --color-zinc-950: #131722;
+
+  --color-amber-50: #fdf6e6;
+  --color-amber-100: #fbecc8;
+  --color-amber-200: #f7dea0;
+  --color-amber-300: #f2cc72;
+  --color-amber-400: #e9b440;
+  --color-amber-500: #dca52c;
+  --color-amber-600: #b8841c;
+  --color-amber-700: #8f6516;
+  --color-amber-800: #654812;
+  --color-amber-900: #43300d;
+  --color-amber-950: #2a1e08;
+
+  --color-emerald-50: #ecf9f7;
+  --color-emerald-100: #d4f2ee;
+  --color-emerald-200: #a8e3db;
+  --color-emerald-300: #6fd0c4;
+  --color-emerald-400: #2fb5a8;
+  --color-emerald-500: #26a69a;
+  --color-emerald-600: #1e8a80;
+  --color-emerald-700: #176e66;
+  --color-emerald-800: #12544e;
+  --color-emerald-900: #0d3d38;
+  --color-emerald-950: #082622;
+
+  --color-rose-50: #fef0f0;
+  --color-rose-100: #fcd9d8;
+  --color-rose-200: #f9b3b1;
+  --color-rose-300: #f58784;
+  --color-rose-400: #f0625f;
+  --color-rose-500: #ef5350;
+  --color-rose-600: #d9403d;
+  --color-rose-700: #b02f2c;
+  --color-rose-800: #8a2422;
+  --color-rose-900: #5e1817;
+  --color-rose-950: #3a0f0e;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Condensed width of the same family, for symbols, prices and the wordmark */
+@utility condensed {
+  font-stretch: 78%;
+  word-spacing: 0.12em;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+html {
+  color-scheme: dark;
+  background: var(--color-floor);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-floor);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-rule) transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-bullion);
+  outline-offset: 2px;
+}
+
+/* Room for the phone tab bar so it never covers the end of a page */
+@media (max-width: 767px) {
+  body:has(.mobile-tabbar) {
+    padding-bottom: 56px;
+  }
+}
+
+/* Chart legend values take the colour of the bar under the crosshair */
+.tv-legend b[data-k] { font-weight: 500; }
+.tv-legend[data-dir="up"] b[data-k] { color: var(--color-bull); }
+.tv-legend[data-dir="down"] b[data-k] { color: var(--color-bear); }
+
+/* The one motion: the last price briefly tints when it moves */
+@keyframes tick-up {
+  from { background-color: rgb(38 166 154 / 0.3); }
+  to { background-color: transparent; }
+}
+@keyframes tick-down {
+  from { background-color: rgb(239 83 80 / 0.3); }
+  to { background-color: transparent; }
+}
+.tick-up { animation: tick-up 900ms ease-out; }
+.tick-down { animation: tick-down 900ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
