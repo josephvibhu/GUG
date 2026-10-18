@@ -1,4 +1,4 @@
-import { getDb, initDb } from "./db";
+import { getDb, initDb, syncDbFromBlob, persistDbToBlob } from "./db";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import crypto from "crypto";
@@ -20,6 +20,7 @@ export const ADMIN_SECRET_CODE = "parlamentum_admin";
 
 export async function getCurrentUser(): Promise<UserSession | null> {
   await initDb();
+  await syncDbFromBlob(false);
   const db = getDb();
   let userId: string | undefined;
 
@@ -64,6 +65,7 @@ export async function registerUser(
   adminCode?: string
 ): Promise<{ success: boolean; message?: string; user?: UserSession }> {
   await initDb();
+  await syncDbFromBlob(true);
   const db = getDb();
 
   const cleanUser = username.trim();
@@ -98,6 +100,8 @@ export async function registerUser(
     args: [id, cleanUser, passwordHash, cleanUser, cleanUser, avatar, isAdmin, now],
   });
 
+  await persistDbToBlob();
+
   try {
     const cookieStore = await cookies();
     cookieStore.set(COOKIE_NAME, id, {
@@ -129,6 +133,7 @@ export async function loginUser(
   password: string
 ): Promise<{ success: boolean; message?: string; user?: UserSession }> {
   await initDb();
+  await syncDbFromBlob(true);
   const db = getDb();
 
   const cleanUser = username.trim();
@@ -202,5 +207,6 @@ export async function depositCash(userId: string, amount: number): Promise<void>
     sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
     args: [amount, userId],
   });
+  await persistDbToBlob();
 }
 

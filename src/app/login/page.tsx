@@ -53,8 +53,8 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        router.push("/");
-        router.refresh();
+        window.dispatchEvent(new Event("wallet_updated"));
+        window.location.href = "/";
       } else {
         setError(data.message || "Failed to authenticate.");
       }

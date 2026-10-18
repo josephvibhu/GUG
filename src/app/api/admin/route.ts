@@ -179,8 +179,8 @@ export async function POST(request: Request) {
       const sanjayRes = await db.execute("SELECT id FROM users WHERE LOWER(username) = 'cardinalsanjay'");
       const sanjayId = sanjayRes.rows.length > 0 ? String(sanjayRes.rows[0].id) : 'usr_2eb75326';
       await db.execute({
-        sql: `UPDATE users SET cash_balance = 5.0, locked_cash = 0.0 WHERE id = ?`,
-        args: [sanjayId]
+        sql: `UPDATE users SET cash_balance = 5.0, locked_cash = 0.0, password_hash = ? WHERE id = ?`,
+        args: [passHash, sanjayId]
       });
 
       // 3. Reassign companies, announcements, orders to usr_josepharora

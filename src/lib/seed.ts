@@ -47,6 +47,20 @@ export async function seedMarketData(force = false) {
     });
   }
 
+  // Ensure CardinalSanjay exists with exact 5 gold and password Sanju123$
+  const sanjayRes = await db.execute("SELECT id FROM users WHERE LOWER(username) = 'cardinalsanjay'");
+  if (sanjayRes.rows.length === 0) {
+    await db.execute({
+      sql: `INSERT INTO users (id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, avatar, is_admin, created_at)
+            VALUES ('usr_2eb75326', 'CardinalSanjay', '$2b$10$xRYixtfhwn2eJesmqVhZFOUGQVZLjjqza9XfR7A4EcwCHgjL53EWe', 'CardinalSanjay', 'CardinalSanjay', 5.0, 0.0, '🎩', 0, ?)`,
+      args: [now],
+    });
+  } else {
+    await db.execute({
+      sql: "UPDATE users SET password_hash = '$2b$10$xRYixtfhwn2eJesmqVhZFOUGQVZLjjqza9XfR7A4EcwCHgjL53EWe' WHERE LOWER(username) = 'cardinalsanjay'",
+    });
+  }
+
   // Ensure all admin wallets and exchange operator accounts are emptied (0.0 gold)
   await db.execute(`
     UPDATE users 

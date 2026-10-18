@@ -3,6 +3,120 @@ import path from "path";
 import fs from "fs";
 
 let clientInstance: Client | null = null;
+let lastBlobSyncedAt = 0;
+let lastBlobCheckAt = 0;
+let isSyncing = false;
+let persistTimer: NodeJS.Timeout | null = null;
+
+export function getDbPath(): string {
+  if (process.env.VERCEL) {
+    return "/tmp/parlamentum_market.db";
+  }
+  return path.resolve(process.cwd(), "parlamentum_market.db");
+}
+
+export async function syncDbFromBlob(force = false): Promise<void> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token || process.env.DATABASE_URL) return;
+
+  const now = Date.now();
+  if (!force && now - lastBlobCheckAt < 3000) {
+    return;
+  }
+  lastBlobCheckAt = now;
+
+  if (isSyncing) return;
+  isSyncing = true;
+
+  try {
+    const { head, get, put } = await import("@vercel/blob");
+    const dbPath = getDbPath();
+    const repoDbPath = path.resolve(process.cwd(), "parlamentum_market.db");
+
+    let meta: any = null;
+    try {
+      meta = await head("parlamentum_market.db", { token });
+    } catch {
+      meta = null;
+    }
+
+    if (!meta) {
+      if (fs.existsSync(repoDbPath)) {
+        const buf = fs.readFileSync(repoDbPath);
+        await put("parlamentum_market.db", buf, {
+          token,
+          access: "private",
+          addRandomSuffix: false,
+          allowOverwrite: true,
+        });
+        if (process.env.VERCEL && !fs.existsSync(dbPath)) {
+          fs.writeFileSync(dbPath, buf);
+        }
+        lastBlobSyncedAt = Date.now();
+      }
+      return;
+    }
+
+    const remoteTime = new Date(meta.uploadedAt).getTime();
+    const localExists = fs.existsSync(dbPath);
+
+    if (force || !localExists || remoteTime > lastBlobSyncedAt) {
+      const fileBlob = await get("parlamentum_market.db", { token, access: "private" });
+      if (fileBlob && fileBlob.stream) {
+        const buf = Buffer.from(await new Response(fileBlob.stream).arrayBuffer());
+        if (clientInstance) {
+          try {
+            clientInstance.close();
+          } catch {}
+          clientInstance = null;
+        }
+        fs.writeFileSync(dbPath, buf);
+        lastBlobSyncedAt = remoteTime;
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to sync DB from Vercel Blob:", err);
+  } finally {
+    isSyncing = false;
+  }
+}
+
+export async function persistDbToBlob(): Promise<void> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token || process.env.DATABASE_URL) return;
+
+  try {
+    const dbPath = getDbPath();
+    if (!fs.existsSync(dbPath)) return;
+
+    if (clientInstance) {
+      try {
+        await clientInstance.execute("PRAGMA wal_checkpoint(TRUNCATE);");
+      } catch {}
+    }
+
+    const { put } = await import("@vercel/blob");
+    const buf = fs.readFileSync(dbPath);
+    await put("parlamentum_market.db", buf, {
+      token,
+      access: "private",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
+    lastBlobSyncedAt = Date.now();
+    lastBlobCheckAt = Date.now();
+  } catch (err) {
+    console.error("Failed to persist DB to Vercel Blob:", err);
+  }
+}
+
+export function scheduleBlobPersist(): void {
+  if (process.env.DATABASE_URL || !process.env.BLOB_READ_WRITE_TOKEN) return;
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistDbToBlob().catch((e) => console.warn("Background Blob persist error:", e));
+  }, 300);
+}
 
 export function getDb(): Client {
   if (!clientInstance) {
@@ -14,25 +128,31 @@ export function getDb(): Client {
         url: databaseUrl,
         authToken: authToken,
       });
-    } else if (process.env.VERCEL) {
-      // In Vercel serverless functions, /tmp is the only writable directory
-      const tmpDbPath = "/tmp/parlamentum_market.db";
+    } else {
+      const dbPath = getDbPath();
       const repoDbPath = path.resolve(process.cwd(), "parlamentum_market.db");
-      if (!fs.existsSync(tmpDbPath) && fs.existsSync(repoDbPath)) {
+      if (process.env.VERCEL && !fs.existsSync(dbPath) && fs.existsSync(repoDbPath)) {
         try {
-          fs.copyFileSync(repoDbPath, tmpDbPath);
+          fs.copyFileSync(repoDbPath, dbPath);
         } catch (e) {
           console.warn("Failed to copy bundled database to /tmp:", e);
         }
       }
-      clientInstance = createClient({
-        url: `file:${tmpDbPath}`,
-      });
-    } else {
-      const dbPath = path.resolve(process.cwd(), "parlamentum_market.db");
-      clientInstance = createClient({
+      const rawClient = createClient({
         url: `file:${dbPath}`,
       });
+
+      const originalExecute = rawClient.execute.bind(rawClient);
+      rawClient.execute = async function (stmt: any) {
+        const res = await originalExecute(stmt);
+        const sql = typeof stmt === "string" ? stmt : stmt?.sql;
+        if (sql && /^\s*(INSERT|UPDATE|DELETE|REPLACE|ALTER)/i.test(sql)) {
+          scheduleBlobPersist();
+        }
+        return res;
+      };
+
+      clientInstance = rawClient;
     }
   }
   return clientInstance;
@@ -43,7 +163,12 @@ let isInitialized = false;
 export async function initDb(): Promise<void> {
   if (isInitialized) return;
 
+  await syncDbFromBlob();
+
   const db = getDb();
+  try {
+    await db.execute("PRAGMA journal_mode = DELETE;");
+  } catch {}
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS users (
