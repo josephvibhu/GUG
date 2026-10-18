@@ -234,38 +234,6 @@ export async function POST(request: Request) {
       }, { headers: corsHeaders });
     }
 
-    if (action === "credit_ledger_entry_manual") {
-      const { entryId, username } = body;
-      const db = getDb();
-      const entryRes = await db.execute({
-        sql: "SELECT * FROM parlamentum_ledger_entries WHERE id = ?",
-        args: [entryId],
-      });
-      if (entryRes.rows.length === 0) {
-        return NextResponse.json({ success: false, message: "Ledger transaction entry not found" }, { status: 404 });
-      }
-      const entry = entryRes.rows[0];
-      const targetUser = username || entry.with_user;
-      if (!targetUser) {
-        return NextResponse.json({ success: false, message: "No citizen username specified for credit." }, { status: 400 });
-      }
-      const { manualCreditCitizen } = await import("@/lib/wallet");
-      const res = await manualCreditCitizen(
-        String(targetUser),
-        Number(entry.total_amount),
-        `Manual Ledger Credit for ${entry.quantity}x ${entry.item_name} (Fill: ${entry.trade_date})`
-      );
-      if (res.success) {
-        await db.execute({
-          sql: "UPDATE parlamentum_ledger_entries SET status = 'AUTO_CREDITED', with_user = ? WHERE id = ?",
-          args: [String(targetUser), entryId],
-        });
-        const { scheduleBlobPersist } = await import("@/lib/db");
-        scheduleBlobPersist();
-      }
-      return NextResponse.json(res);
-    }
-
     if (action === "test_blob") {
       const { apiKey } = body;
       if (!(await isValidApiKey(apiKey))) {
@@ -371,6 +339,48 @@ export async function POST(request: Request) {
     const user = await getCurrentUser();
     if (!user || !user.isAdmin) {
       return NextResponse.json({ success: false, message: "Forbidden: Admin access required." }, { status: 403 });
+    }
+
+    if (action === "credit_ledger_entry_manual") {
+      const { entryId, username } = body;
+      const db = getDb();
+      const entryRes = await db.execute({
+        sql: "SELECT * FROM parlamentum_ledger_entries WHERE id = ?",
+        args: [entryId],
+      });
+      if (entryRes.rows.length === 0) {
+        return NextResponse.json({ success: false, message: "Ledger transaction entry not found" }, { status: 404 });
+      }
+      const entry = entryRes.rows[0];
+      const targetUser = username || entry.with_user;
+      if (!targetUser) {
+        return NextResponse.json({ success: false, message: "No citizen username specified for credit." }, { status: 400 });
+      }
+      // Claim the entry before crediting so it can only ever be paid out once
+      const claim = await db.execute({
+        sql: `UPDATE parlamentum_ledger_entries SET status = 'AUTO_CREDITED', with_user = ?
+              WHERE id = ? AND status NOT IN ('AUTO_CREDITED', 'MATCHED_PENDING')`,
+        args: [String(targetUser), entryId],
+      });
+      if (claim.rowsAffected === 0) {
+        return NextResponse.json({ success: false, message: "This ledger entry has already been credited." }, { status: 409 });
+      }
+      const { manualCreditCitizen } = await import("@/lib/wallet");
+      const res = await manualCreditCitizen(
+        String(targetUser),
+        Number(entry.total_amount),
+        `Manual Ledger Credit for ${entry.quantity}x ${entry.item_name} (Fill: ${entry.trade_date})`
+      );
+      if (res.success) {
+        const { scheduleBlobPersist } = await import("@/lib/db");
+        scheduleBlobPersist();
+      } else {
+        await db.execute({
+          sql: "UPDATE parlamentum_ledger_entries SET status = ?, with_user = ? WHERE id = ?",
+          args: [entry.status, entry.with_user, entryId],
+        });
+      }
+      return NextResponse.json(res);
     }
 
     if (action === "approve") {
