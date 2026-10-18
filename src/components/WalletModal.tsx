@@ -48,7 +48,7 @@ export default function WalletModal({
   const [parlamentumName, setParlamentumName] = useState<string>("");
   const [depositAmount, setDepositAmount] = useState<string>("500");
   const [withdrawAmount, setWithdrawAmount] = useState<string>("500");
-  const [houseOperator, setHouseOperator] = useState<string>("Parliament_Exchange");
+  const [houseOperator, setHouseOperator] = useState<string>("JosephArora");
   const [ironPrice, setIronPrice] = useState<number>(5);
   const [taxRate, setTaxRate] = useState<number>(10);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
@@ -63,7 +63,7 @@ export default function WalletModal({
       if (data.success) {
         setBalance(data.balance);
         setParlamentumName(data.parlamentumName || "");
-        setHouseOperator(data.houseOperator || "Parliament_Exchange");
+        setHouseOperator(data.houseOperator || "JosephArora");
         setIronPrice(data.ironPrice || 5);
         setTaxRate(data.taxRate || 10);
         setLedger(data.ledger || []);

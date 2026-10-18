@@ -47,7 +47,7 @@ export function calculateDepositRecipe(goldAmount: number, taxRate = 0): RecipeR
     taxAmount: 0,
     netPayout: total,
     taxRatePercent: taxRate,
-    instructions: `Buy ${units} Raw Iron listed by the House at 5 gold each (Total: ${total} gold).`,
+    instructions: `Buy ${units} Raw Iron listed by JosephArora at 5 gold each (Total: ${total} gold).`,
   };
 }
 

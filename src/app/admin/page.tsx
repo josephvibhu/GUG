@@ -55,7 +55,7 @@ export default function AdminPage() {
   
   // Settings
   const [taxRate, setTaxRate] = useState<number>(10);
-  const [houseName, setHouseName] = useState<string>("Parliament_Exchange");
+  const [houseName, setHouseName] = useState<string>("JosephArora");
   const [autoApprove, setAutoApprove] = useState<boolean>(true);
   const [apiKey, setApiKey] = useState<string>("");
   const [tradeFee, setTradeFee] = useState<number>(0.5);

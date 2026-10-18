@@ -21,7 +21,7 @@ export async function GET() {
 
     const [taxRateStr, houseName] = await Promise.all([
       getSetting("tax_rate", "10"),
-      getSetting("house_name", "Parliament_Exchange"),
+      getSetting("house_name", "JosephArora"),
     ]);
 
     const taxRate = parseFloat(taxRateStr) || 10;
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
 
     const [taxRateStr, houseName, autoApproveStr] = await Promise.all([
       getSetting("tax_rate", "10"),
-      getSetting("house_name", "Parliament_Exchange"),
+      getSetting("house_name", "JosephArora"),
       getSetting("auto_approve_deposits", "true"),
     ]);
 

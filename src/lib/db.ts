@@ -242,7 +242,7 @@ export async function initDb(): Promise<void> {
     INSERT OR IGNORE INTO settings (key, value) VALUES 
     ('tax_rate', '10'),
     ('iron_price', '5'),
-    ('house_name', 'Parliament_Exchange'),
+    ('house_name', 'JosephArora'),
     ('api_key', 'pse_secret_parlamentum_key_2026'),
     ('ipo_listing_fee', '200'),
     ('auto_approve_deposits', 'true');

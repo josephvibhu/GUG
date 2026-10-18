@@ -1,7 +1,7 @@
 import { getDb, initDb } from "./db";
 import bcrypt from "bcryptjs";
 
-export const HOUSE_OPERATOR = "Parliament_Exchange";
+export const HOUSE_OPERATOR = "JosephArora";
 
 export async function seedMarketData(force = false) {
   await initDb();
@@ -30,7 +30,7 @@ export async function seedMarketData(force = false) {
       username: "Parliament_Exchange",
       password_hash: defaultPassword,
       display_name: "Parliament Exchange House",
-      parlamentum_name: "Parliament_Exchange",
+      parlamentum_name: "JosephArora",
       cash_balance: 0.0,
       avatar: "🏛️",
       is_admin: 1,
@@ -70,6 +70,11 @@ export async function seedMarketData(force = false) {
     UPDATE users 
     SET cash_balance = 0.0, locked_cash = 0.0 
     WHERE is_admin = 1 OR id IN ('usr_house', 'usr_treasury')
+  `);
+
+  // Set default house_name setting to JosephArora
+  await db.execute(`
+    INSERT OR REPLACE INTO settings (key, value) VALUES ('house_name', 'JosephArora')
   `);
 
   // Remove legacy/imperial iron companies and previous seeds

@@ -20,7 +20,7 @@ export async function GET() {
 
     const [taxRate, houseName, apiKey, autoApprove, tradeFee, listingFee] = await Promise.all([
       getSetting("tax_rate", "10"),
-      getSetting("house_name", "Parliament_Exchange"),
+      getSetting("house_name", "JosephArora"),
       getSetting("api_key", "pse_secret_parlamentum_key_2026"),
       getSetting("auto_approve_deposits", "true"),
       getSetting("trade_fee_percent", "0.5"),
