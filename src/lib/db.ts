@@ -81,13 +81,13 @@ export async function syncDbFromBlob(force = false): Promise<void> {
   }
 }
 
-export async function persistDbToBlob(): Promise<void> {
+export async function persistDbToBlob(): Promise<{ success: boolean; error?: string }> {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token || process.env.DATABASE_URL) return;
+  if (!token || process.env.DATABASE_URL) return { success: false, error: "No BLOB_READ_WRITE_TOKEN or DATABASE_URL set" };
 
   try {
     const dbPath = getDbPath();
-    if (!fs.existsSync(dbPath)) return;
+    if (!fs.existsSync(dbPath)) return { success: false, error: "dbPath does not exist: " + dbPath };
 
     if (clientInstance) {
       try {
@@ -105,8 +105,10 @@ export async function persistDbToBlob(): Promise<void> {
     });
     lastBlobSyncedAt = Date.now();
     lastBlobCheckAt = Date.now();
-  } catch (err) {
+    return { success: true };
+  } catch (err: any) {
     console.error("Failed to persist DB to Vercel Blob:", err);
+    return { success: false, error: err?.message || String(err) };
   }
 }
 

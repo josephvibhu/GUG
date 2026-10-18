@@ -155,6 +155,23 @@ export async function POST(request: Request) {
       }, { headers: corsHeaders });
     }
 
+    if (action === "test_blob") {
+      const { persistDbToBlob, getDbPath } = await import("@/lib/db");
+      const fs = await import("fs");
+      const dbPath = getDbPath();
+      const exists = fs.existsSync(dbPath);
+      const persistResult = await persistDbToBlob();
+      return NextResponse.json({
+        success: true,
+        tokenExists: !!process.env.BLOB_READ_WRITE_TOKEN,
+        tokenPrefix: process.env.BLOB_READ_WRITE_TOKEN ? process.env.BLOB_READ_WRITE_TOKEN.slice(0, 15) : null,
+        isVercel: !!process.env.VERCEL,
+        dbPath,
+        exists,
+        persistResult,
+      }, { headers: corsHeaders });
+    }
+
     // Direct Purge & Admin Setup (secured by API key)
     if (action === "purge_users_and_create_admin") {
       const { apiKey } = body;
