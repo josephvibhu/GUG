@@ -21,7 +21,12 @@ import {
   Timer,
   Building2,
   Zap,
-  ExternalLink
+  ExternalLink,
+  Award,
+  Calendar,
+  Flame,
+  Landmark,
+  X
 } from "lucide-react";
 
 interface Citizen {
@@ -33,6 +38,11 @@ interface Citizen {
   locked_cash: number;
   is_admin: number;
   is_frozen?: number;
+  account_type?: "CITIZEN" | "STATE";
+  state_realm_name?: string;
+  state_motto?: string;
+  state_delegate_name?: string;
+  state_crest?: string;
   created_at: string;
 }
 
@@ -78,6 +88,27 @@ export default function AdminPage() {
   const [targetCitizen, setTargetCitizen] = useState<string>("");
   const [creditAmount, setCreditAmount] = useState<string>("500");
   const [creditReason, setCreditReason] = useState<string>("Verified Parlamentum Raw Iron sale");
+
+  // 50% Profit Dividend & Friday UTC 00:00 Engine
+  const [earningsReports, setEarningsReports] = useState<any[]>([]);
+  const [nextFriday, setNextFriday] = useState<string>("");
+  const [divCompanyId, setDivCompanyId] = useState<string>("");
+  const [divGrossRev, setDivGrossRev] = useState<string>("");
+  const [divExpenses, setDivExpenses] = useState<string>("");
+  const [divNetProfit, setDivNetProfit] = useState<string>("1000");
+  const [divPeriod, setDivPeriod] = useState<string>("Weekly Audit Cycle");
+  const [divNotes, setDivNotes] = useState<string>("Audited weekly trading and enterprise revenue.");
+  const [divImmediate, setDivImmediate] = useState<boolean>(false);
+  const [divSubmitting, setDivSubmitting] = useState<boolean>(false);
+  const [processScheduledLoading, setProcessScheduledLoading] = useState<boolean>(false);
+
+  // Sovereign State Management Modal
+  const [editingUserState, setEditingUserState] = useState<Citizen | null>(null);
+  const [editAccountType, setEditAccountType] = useState<"CITIZEN" | "STATE">("STATE");
+  const [editRealmName, setEditRealmName] = useState<string>("");
+  const [editMotto, setEditMotto] = useState<string>("");
+  const [editCrest, setEditCrest] = useState<string>("🏛️");
+  const [editStateLoading, setEditStateLoading] = useState<boolean>(false);
   
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -92,6 +123,11 @@ export default function AdminPage() {
         setPendingDeposits(data.pendingDeposits || []);
         setIpoApplications(data.ipoApplications || []);
         setCompanies(data.companies || []);
+        if (data.earningsReports) setEarningsReports(data.earningsReports);
+        if (data.nextFriday) setNextFriday(data.nextFriday);
+        if (data.companies && data.companies.length > 0 && !divCompanyId) {
+          setDivCompanyId(data.companies[0].id);
+        }
         if (data.settings) {
           setTaxRate(data.settings.taxRate);
           setHouseName(data.settings.houseName);
@@ -152,6 +188,124 @@ export default function AdminPage() {
       }
     } catch (e: any) {
       setFeedback({ type: "error", message: e.message });
+    }
+  };
+
+  const handleReportEarnings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!divCompanyId) {
+      setFeedback({ type: "error", message: "Please select an enterprise to report earnings for." });
+      return;
+    }
+    const profit = parseFloat(divNetProfit);
+    if (isNaN(profit) || profit <= 0) {
+      setFeedback({ type: "error", message: "Net profit must be greater than 0 gold." });
+      return;
+    }
+    setDivSubmitting(true);
+    setFeedback(null);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "report_earnings",
+          companyId: divCompanyId,
+          grossRevenue: divGrossRev ? parseFloat(divGrossRev) : undefined,
+          operatingExpenses: divExpenses ? parseFloat(divExpenses) : undefined,
+          netProfit: profit,
+          periodTitle: divPeriod,
+          notes: divNotes,
+          distributeImmediately: divImmediate,
+          scheduledFor: nextFriday,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+        setDivNetProfit("1000");
+        fetchAdminData();
+      } else {
+        setFeedback({ type: "error", message: data.message || "Failed to submit earnings report." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", message: err.message || "Network error" });
+    } finally {
+      setDivSubmitting(false);
+    }
+  };
+
+  const handleDistributeNow = async (reportId: string) => {
+    if (!confirm("Are you sure you want to distribute this 50% profit dividend now? Shareholder purses will immediately receive gold credits.")) return;
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "distribute_dividend_now", reportId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+        fetchAdminData();
+      } else {
+        setFeedback({ type: "error", message: data.message || "Failed to distribute dividend." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", message: err.message || "Network error" });
+    }
+  };
+
+  const handleProcessScheduledDividends = async () => {
+    setProcessScheduledLoading(true);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "process_scheduled_dividends" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+        fetchAdminData();
+      } else {
+        setFeedback({ type: "error", message: data.message || "Failed to sweep scheduled dividends." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", message: err.message || "Network error" });
+    } finally {
+      setProcessScheduledLoading(false);
+    }
+  };
+
+  const handleSaveUserState = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUserState) return;
+    setEditStateLoading(true);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_user_state",
+          userId: editingUserState.id,
+          accountType: editAccountType,
+          stateRealmName: editAccountType === "STATE" ? editRealmName : null,
+          stateMotto: editAccountType === "STATE" ? editMotto : null,
+          stateCrest: editAccountType === "STATE" ? editCrest : null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+        setEditingUserState(null);
+        fetchAdminData();
+      } else {
+        setFeedback({ type: "error", message: data.message || "Failed to update sovereign state profile." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", message: err.message || "Network error" });
+    } finally {
+      setEditStateLoading(false);
     }
   };
 
@@ -1393,16 +1547,245 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* Section 5: Registered Citizens Directory & Freeze Hammer */}
+        {/* Section 5: Corporate Earnings & Friday 50% Profit Dividend Desk */}
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Coins className="w-5 h-5 text-amber-400" />
+                <h3 className="font-bold text-white text-base">
+                  Corporate Earnings & Friday 50% Profit Dividend Desk
+                </h3>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                  WEEKLY UTC 00:00 PAYOUT
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-1">
+                Audit weekly net profits, declare 50% profit distributions, and automatically sweep dividend gold into shareholder purses every Friday at 00:00 UTC.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="bg-zinc-950 px-3 py-1.5 rounded-xl border border-zinc-800 text-right font-mono text-xs">
+                <span className="text-[10px] text-zinc-400 block font-sans uppercase">Next Friday Payout</span>
+                <span className="text-amber-400 font-bold">
+                  {nextFriday ? new Date(nextFriday).toUTCString().slice(0, 22) : "Calculating..."}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleProcessScheduledDividends}
+                disabled={processScheduledLoading}
+                className="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Zap className="w-4 h-4 text-amber-400" />
+                {processScheduledLoading ? "Sweeping Dividends..." : "Force Friday Sweeper"}
+              </button>
+            </div>
+          </div>
+
+          {/* Form to report earnings */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <form onSubmit={handleReportEarnings} className="lg:col-span-5 bg-zinc-950/80 border border-zinc-800/80 rounded-xl p-4 flex flex-col gap-3 font-sans text-xs">
+              <h4 className="font-bold text-zinc-200 text-sm flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-amber-400" />
+                Declare Corporate Earnings & Dividend
+              </h4>
+
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                  Enterprise / Company
+                </label>
+                <select
+                  value={divCompanyId}
+                  onChange={(e) => setDivCompanyId(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                >
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      ${c.ticker} — {c.name} ({Number(c.totalShares).toLocaleString()} shares)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                    Gross Revenue (gold)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 5000"
+                    value={divGrossRev}
+                    onChange={(e) => setDivGrossRev(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                    Expenses (gold)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 2000"
+                    value={divExpenses}
+                    onChange={(e) => setDivExpenses(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-[11px] font-semibold text-zinc-300">
+                    Net Audited Profit (gold) *
+                  </label>
+                  <span className="text-[10px] text-amber-400 font-mono font-bold">
+                    50% Pool = {(parseFloat(divNetProfit || "0") * 0.5).toFixed(1)}g
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  step="0.01"
+                  placeholder="e.g. 3000"
+                  value={divNetProfit}
+                  onChange={(e) => setDivNetProfit(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-emerald-400 font-mono text-sm font-bold focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                  Audit Notes / Cycle Label
+                </label>
+                <input
+                  type="text"
+                  value={divNotes}
+                  onChange={(e) => setDivNotes(e.target.value)}
+                  placeholder="e.g. Iron trade surplus from Milan route"
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-white font-sans text-xs focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="p-2.5 bg-zinc-900/90 rounded-lg border border-zinc-800 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-zinc-200 text-xs">Immediate Distribution?</div>
+                  <div className="text-[10px] text-zinc-400">
+                    If checked, pays out now instead of waiting for Friday 00:00 UTC
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={divImmediate}
+                  onChange={(e) => setDivImmediate(e.target.checked)}
+                  className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={divSubmitting || !divCompanyId}
+                className="mt-1 w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+              >
+                {divSubmitting ? "Committing Report..." : divImmediate ? "Declare & Distribute 50% Profit Now" : "Schedule 50% Profit for Next Friday (00:00 UTC)"}
+              </button>
+            </form>
+
+            {/* List of earnings reports */}
+            <div className="lg:col-span-7 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-zinc-200 text-xs uppercase tracking-wider font-sans">
+                  Earnings & Friday Dividend Audit Log ({earningsReports.length})
+                </h4>
+              </div>
+
+              {earningsReports.length === 0 ? (
+                <div className="py-12 text-center text-zinc-500 font-mono text-xs border border-dashed border-zinc-800 rounded-xl">
+                  No earnings reports logged yet. Submit the audit report on the left to schedule the upcoming Friday distribution.
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-zinc-800/80 rounded-xl bg-zinc-950/60 max-h-[360px] overflow-y-auto">
+                  <table className="w-full text-left font-mono text-xs">
+                    <thead className="sticky top-0 bg-zinc-900">
+                      <tr className="text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
+                        <th className="py-2.5 px-3">Enterprise</th>
+                        <th className="py-2.5 px-3">Audited Profit</th>
+                        <th className="py-2.5 px-3">50% Pool</th>
+                        <th className="py-2.5 px-3">Per Share</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/60 text-[11px]">
+                      {earningsReports.map((r) => {
+                        const targetCmp = companies.find((c) => c.id === r.companyId);
+                        const isPaid = r.status === "DISTRIBUTED";
+                        return (
+                          <tr key={r.id} className="hover:bg-zinc-800/30">
+                            <td className="py-2.5 px-3">
+                              <span className="font-bold text-white font-sans">
+                                ${targetCmp?.ticker || r.companyId}
+                              </span>
+                              <span className="block text-[10px] text-zinc-400 font-sans">
+                                {new Date(r.scheduledFor || r.createdAt).toUTCString().slice(0, 16)}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-bold text-zinc-200">
+                              {Number(r.netProfit).toFixed(0)}g
+                            </td>
+                            <td className="py-2.5 px-3 font-bold text-amber-400">
+                              {Number(r.dividendPool).toFixed(1)}g
+                            </td>
+                            <td className="py-2.5 px-3 text-emerald-400">
+                              {Number(r.dividendPerShare).toFixed(4)}g
+                            </td>
+                            <td className="py-2.5 px-3">
+                              {isPaid ? (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-sans">
+                                  PAID OUT
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 font-sans animate-pulse">
+                                  SCHEDULED
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {!isPaid && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDistributeNow(r.id)}
+                                  className="px-2 py-1 rounded bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-bold font-sans transition cursor-pointer"
+                                >
+                                  Distribute Now
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Section 6: Registered Citizens Directory & Sovereign States Registry */}
         <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
             <div>
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-blue-400" />
-                Registered Parlamentum Citizens ({citizens.length})
+                Registered Citizens & Sovereign State Reserves ({citizens.length})
               </h3>
               <p className="text-[11px] text-zinc-400 mt-0.5">
-                Freeze Hammer: instantly freeze any citizen wallet to block order execution and withdrawals if fraud is suspected.
+                Manage accounts, designate Sovereign State Republics (e.g. Republic of Milan), and execute Freeze Hammer on fraudulent accounts.
               </p>
             </div>
           </div>
@@ -1411,79 +1794,270 @@ export default function AdminPage() {
             <table className="w-full text-left font-mono text-xs">
               <thead>
                 <tr className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
-                  <th className="py-3 px-4">Citizen Name</th>
-                  <th className="py-3 px-4">Role</th>
+                  <th className="py-3 px-4">Citizen / Sovereign Realm</th>
+                  <th className="py-3 px-4">Classification</th>
                   <th className="py-3 px-4">Compliance Status</th>
                   <th className="py-3 px-4 text-right">Purse Balance</th>
                   <th className="py-3 px-4 text-right">Locked in Orders</th>
                   <th className="py-3 px-4 text-center">Freeze Hammer</th>
-                  <th className="py-3 px-4 text-center">Quick Load</th>
+                  <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/60">
-                {citizens.map((c) => (
-                  <tr key={c.id} className="hover:bg-zinc-800/30">
-                    <td className="py-3 px-4 text-white font-bold font-sans">
-                      {c.username}
-                    </td>
-                    <td className="py-3 px-4 text-zinc-400 text-[11px] font-sans">
-                      {c.is_admin ? (
-                        <span className="text-amber-400 font-semibold">Operator</span>
-                      ) : (
-                        <span>Citizen</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-[11px] font-sans">
-                      {Number(c.is_frozen || 0) === 1 ? (
-                        <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
-                          ❄️ FROZEN
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
-                          Active
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right font-bold text-emerald-400">
-                      {c.cash_balance.toLocaleString()} gold
-                    </td>
-                    <td className="py-3 px-4 text-right text-zinc-400">
-                      {c.locked_cash.toLocaleString()} gold
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      {Number(c.is_frozen || 0) === 1 ? (
-                        <button
-                          onClick={() => handleFreezeUser(c.id, false)}
-                          className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-sans font-semibold transition cursor-pointer"
-                        >
-                          Unfreeze Wallet
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleFreezeUser(c.id, true)}
-                          className="px-2.5 py-1 rounded bg-rose-950 hover:bg-rose-800 text-rose-300 border border-rose-700/50 text-[10px] font-sans font-semibold transition cursor-pointer"
-                        >
-                          Freeze Wallet
-                        </button>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <button
-                        onClick={() => {
-                          setTargetCitizen(c.username);
-                          window.scrollTo({ top: 0, behavior: "smooth" });
-                        }}
-                        className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-emerald-500 hover:text-black text-zinc-200 text-[10px] font-sans transition cursor-pointer"
-                      >
-                        Load Funds
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {citizens.map((c) => {
+                  const isState = c.account_type === "STATE";
+                  return (
+                    <tr key={c.id} className="hover:bg-zinc-800/30">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{isState ? (c.state_crest || "🏛️") : "👤"}</span>
+                          <div>
+                            <div className="text-white font-bold font-sans flex items-center gap-1.5">
+                              <span>{isState ? (c.state_realm_name || c.display_name || c.username) : c.username}</span>
+                              {isState && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                  👑 STATE RESERVE
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-zinc-400 font-sans">
+                              {isState ? `Chancellor: @${c.username}` : `@${c.username}`}
+                              {c.state_motto && <span className="text-amber-400/80 italic ml-1">&ldquo;{c.state_motto}&rdquo;</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-zinc-400 text-[11px] font-sans">
+                        {c.is_admin ? (
+                          <span className="text-amber-400 font-semibold">Operator</span>
+                        ) : isState ? (
+                          <span className="text-amber-300 font-semibold">Sovereign Realm</span>
+                        ) : (
+                          <span>Citizen</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-[11px] font-sans">
+                        {Number(c.is_frozen || 0) === 1 ? (
+                          <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
+                            ❄️ FROZEN
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-emerald-400">
+                        {c.cash_balance.toLocaleString()} gold
+                      </td>
+                      <td className="py-3 px-4 text-right text-zinc-400">
+                        {c.locked_cash.toLocaleString()} gold
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {Number(c.is_frozen || 0) === 1 ? (
+                          <button
+                            onClick={() => handleFreezeUser(c.id, false)}
+                            className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-sans font-semibold transition cursor-pointer"
+                          >
+                            Unfreeze Wallet
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleFreezeUser(c.id, true)}
+                            className="px-2.5 py-1 rounded bg-rose-950 hover:bg-rose-800 text-rose-300 border border-rose-700/50 text-[10px] font-sans font-semibold transition cursor-pointer"
+                          >
+                            Freeze Wallet
+                          </button>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setTargetCitizen(c.username);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            className="px-2 py-1 rounded bg-zinc-800 hover:bg-emerald-500 hover:text-black text-zinc-200 text-[10px] font-sans transition cursor-pointer"
+                            title="Load Funds"
+                          >
+                            Load
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingUserState(c);
+                              setEditAccountType(c.account_type || "STATE");
+                              setEditRealmName(c.state_realm_name || (c.account_type === "STATE" ? c.display_name : "Republic of Milan"));
+                              setEditMotto(c.state_motto || "Scuto et Glodio");
+                              setEditCrest(c.state_crest || "🏛️");
+                            }}
+                            className="px-2 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-sans transition cursor-pointer"
+                            title="Configure Sovereign State"
+                          >
+                            🏛️ State
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
+
+        {/* Sovereign State Configuration Modal */}
+        {editingUserState && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+              <button
+                onClick={() => setEditingUserState(null)}
+                className="absolute right-4 top-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl">
+                  {editCrest || "🏛️"}
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">
+                    Sovereign State & Realm Status
+                  </h3>
+                  <p className="text-zinc-400 text-xs">
+                    Target: @{editingUserState.username} ({editingUserState.display_name})
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveUserState} className="space-y-4 text-xs font-sans">
+                {/* Account Type Toggle */}
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">
+                    Account Classification
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditAccountType("CITIZEN")}
+                      className={`p-2.5 rounded-xl border text-left font-medium transition cursor-pointer ${
+                        editAccountType === "CITIZEN"
+                          ? "bg-amber-500/15 border-amber-500 text-amber-300"
+                          : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                      }`}
+                    >
+                      <div className="font-bold text-white text-xs">👤 Citizen Wallet</div>
+                      <div className="text-[10px] text-zinc-400 mt-0.5">Individual trader account</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditAccountType("STATE")}
+                      className={`p-2.5 rounded-xl border text-left font-medium transition cursor-pointer ${
+                        editAccountType === "STATE"
+                          ? "bg-amber-500/15 border-amber-500 text-amber-300"
+                          : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                      }`}
+                    >
+                      <div className="font-bold text-amber-400 text-xs">🏛️ Sovereign State</div>
+                      <div className="text-[10px] text-zinc-400 mt-0.5">Republic / State Treasury</div>
+                    </button>
+                  </div>
+                </div>
+
+                {editAccountType === "STATE" && (
+                  <>
+                    <div>
+                      <label className="font-semibold text-zinc-300 block mb-1">
+                        Sovereign Realm Title
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editRealmName}
+                        onChange={(e) => setEditRealmName(e.target.value)}
+                        placeholder="e.g. Republic of Milan"
+                        className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+
+                    {/* Quick State Presets */}
+                    <div>
+                      <span className="text-[10px] text-zinc-400 block mb-1">Historical Realm Presets:</span>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { name: "Republic of Milan", crest: "🏛️", motto: "Scuto et Glodio" },
+                          { name: "Republic of Venice", crest: "🦁", motto: "Pax Tibi Marce" },
+                          { name: "Florentine Republic", crest: "⚜️", motto: "Libertas" },
+                          { name: "Kingdom of France", crest: "👑", motto: "Montjoie Saint Denis" },
+                          { name: "Holy Roman Empire", crest: "🦅", motto: "A.E.I.O.U." },
+                          { name: "Republic of Genoa", crest: "⚓", motto: "Respublica Ianuensis" },
+                        ].map((preset) => (
+                          <button
+                            key={preset.name}
+                            type="button"
+                            onClick={() => {
+                              setEditRealmName(preset.name);
+                              setEditCrest(preset.crest);
+                              setEditMotto(preset.motto);
+                            }}
+                            className="p-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 hover:border-amber-500/40 text-[10px] text-zinc-300 flex items-center gap-1 transition text-left cursor-pointer truncate"
+                          >
+                            <span>{preset.crest}</span>
+                            <span className="truncate">{preset.name.replace("Republic of ", "Rep. ")}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="font-semibold text-zinc-300 block mb-1">
+                          Heraldic Crest
+                        </label>
+                        <input
+                          type="text"
+                          value={editCrest}
+                          onChange={(e) => setEditCrest(e.target.value)}
+                          placeholder="🏛️"
+                          className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white text-center text-lg focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold text-zinc-300 block mb-1">
+                          State Motto
+                        </label>
+                        <input
+                          type="text"
+                          value={editMotto}
+                          onChange={(e) => setEditMotto(e.target.value)}
+                          placeholder="Scuto et Glodio"
+                          className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white text-xs font-mono focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setEditingUserState(null)}
+                    className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editStateLoading}
+                    className="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold transition shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+                  >
+                    {editStateLoading ? "Saving State..." : "Save Classification"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

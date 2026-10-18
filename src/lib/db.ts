@@ -227,6 +227,79 @@ export async function initDb(): Promise<void> {
     await db.execute(`ALTER TABLE companies ADD COLUMN buyback_gold_spent REAL NOT NULL DEFAULT 0.0;`);
   } catch {}
 
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT 'CITIZEN';`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN state_realm_name TEXT;`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN state_motto TEXT;`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN state_delegate_name TEXT;`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN state_crest TEXT DEFAULT '🏛️';`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE companies ADD COLUMN dividend_rate REAL NOT NULL DEFAULT 50.0;`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE companies ADD COLUMN total_dividends_paid REAL NOT NULL DEFAULT 0.0;`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE companies ADD COLUMN last_dividend_date TEXT;`);
+  } catch {}
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS earnings_reports (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      reporter_id TEXT NOT NULL,
+      period_title TEXT NOT NULL,
+      gross_revenue REAL NOT NULL DEFAULT 0.0,
+      operating_expenses REAL NOT NULL DEFAULT 0.0,
+      net_profit REAL NOT NULL,
+      dividend_percent REAL NOT NULL DEFAULT 50.0,
+      dividend_pool REAL NOT NULL,
+      eligible_shares INTEGER NOT NULL,
+      dividend_per_share REAL NOT NULL,
+      scheduled_for TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('SCHEDULED', 'DISTRIBUTED', 'CANCELLED')),
+      notes TEXT,
+      distributed_at TEXT,
+      total_distributed REAL NOT NULL DEFAULT 0.0,
+      shareholders_count INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (company_id) REFERENCES companies(id),
+      FOREIGN KEY (reporter_id) REFERENCES users(id)
+    );
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS dividend_payouts (
+      id TEXT PRIMARY KEY,
+      report_id TEXT NOT NULL,
+      company_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      shares_count INTEGER NOT NULL,
+      dividend_per_share REAL NOT NULL,
+      payout_amount REAL NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (report_id) REFERENCES earnings_reports(id),
+      FOREIGN KEY (company_id) REFERENCES companies(id),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+  `);
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS buybacks (
       id TEXT PRIMARY KEY,

@@ -29,6 +29,9 @@ interface UserInfo {
   lockedCash: number;
   avatar: string;
   isAdmin?: boolean;
+  accountType?: "CITIZEN" | "STATE";
+  stateRealmName?: string;
+  stateCrest?: string;
 }
 
 interface CompanyTicker {
@@ -363,28 +366,48 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
             <div className="relative">
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 px-3 py-1.5 rounded-lg text-sm text-zinc-200 transition cursor-pointer"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition cursor-pointer border ${
+                  user.accountType === "STATE"
+                    ? "bg-purple-950/40 border-purple-500/50 hover:border-purple-400 text-purple-200"
+                    : "bg-zinc-900 border-zinc-800 hover:border-zinc-700 text-zinc-200"
+                }`}
               >
-                <span className="text-base">{user.avatar || "👤"}</span>
-                <span className="font-medium hidden sm:inline max-w-[120px] truncate">
-                  {user.displayName}
+                <span className="text-base">{user.accountType === "STATE" ? (user.stateCrest || "🏛️") : (user.avatar || "👤")}</span>
+                <span className="font-medium hidden sm:inline max-w-[130px] truncate">
+                  {user.accountType === "STATE" ? (user.stateRealmName || user.displayName) : user.displayName}
                 </span>
+                {user.accountType === "STATE" && (
+                  <span className="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-1 py-0.2 rounded font-mono font-bold hidden md:inline">
+                    STATE
+                  </span>
+                )}
                 <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
               </button>
 
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
                   <div className="px-3.5 py-2.5 border-b border-zinc-800 text-xs">
-                    <div className="text-zinc-400 text-[10px] uppercase font-semibold">Active Citizen</div>
+                    <div className="text-[10px] uppercase font-semibold flex items-center justify-between">
+                      <span className={user.accountType === "STATE" ? "text-purple-400 font-bold flex items-center gap-1" : "text-zinc-400"}>
+                        {user.accountType === "STATE" ? "👑 Sovereign State Treasury" : "Active Citizen"}
+                      </span>
+                      {user.accountType === "STATE" && (
+                        <span className="text-[9px] font-mono text-purple-300 bg-purple-950 px-1 py-0.5 rounded border border-purple-500/40">
+                          {user.stateCrest || "🏛️"} State
+                        </span>
+                      )}
+                    </div>
                     <div className="font-bold text-white text-sm truncate mt-0.5 flex items-center gap-1.5">
-                      <span>{user.displayName}</span>
+                      <span>{user.accountType === "STATE" ? (user.stateRealmName || user.displayName) : user.displayName}</span>
                       {user.isAdmin && (
                         <span className="text-[10px] font-mono px-1.5 py-0.2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded">
                           Operator
                         </span>
                       )}
                     </div>
-                    <div className="font-mono text-[11px] text-zinc-400">In-Game: {user.username}</div>
+                    <div className="font-mono text-[11px] text-zinc-400">
+                      {user.accountType === "STATE" ? `Delegate / Handle: @${user.username}` : `In-Game: ${user.username}`}
+                    </div>
                     <div className="mt-1.5 font-mono text-emerald-400 font-bold text-xs bg-zinc-950 p-1.5 rounded border border-zinc-800 flex justify-between">
                       <span className="text-zinc-400 font-sans font-normal">Purse:</span>
                       <span>{user.cashBalance.toLocaleString()} gold</span>

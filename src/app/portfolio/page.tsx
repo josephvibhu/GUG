@@ -30,6 +30,9 @@ interface PortfolioResponse {
 export default function PortfolioPage() {
   const [data, setData] = useState<PortfolioResponse | null>(null);
   const [openOrders, setOpenOrders] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [dividendHistory, setDividendHistory] = useState<any[]>([]);
+  const [totalDividendsEarned, setTotalDividendsEarned] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
@@ -42,6 +45,9 @@ export default function PortfolioPage() {
       if (json.success) {
         setData(json.portfolio);
         setOpenOrders(json.openOrders || []);
+        setCurrentUser(json.user || null);
+        setDividendHistory(json.dividendHistory || []);
+        setTotalDividendsEarned(json.totalDividendsEarned || 0);
       }
     } catch (e) {
       console.error(e);
@@ -101,14 +107,29 @@ export default function PortfolioPage() {
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6 flex-1">
         {/* Title & Quick Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2.5">
-              <Wallet className="w-7 h-7 text-amber-400" />
-              Citizen Investment Portfolio
-            </h1>
-            <p className="text-xs text-zinc-400 mt-1">
-              Track your asset holdings, net worth valuation, and manage your gold purse.
-            </p>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl p-2 bg-zinc-900 border border-zinc-800 rounded-xl">
+              {currentUser?.accountType === "STATE" ? (currentUser?.stateCrest || "🏛️") : "👤"}
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">
+                  {currentUser?.accountType === "STATE"
+                    ? `${currentUser?.stateRealmName || currentUser?.displayName} Treasury & Reserves`
+                    : "Citizen Investment Portfolio"}
+                </h1>
+                {currentUser?.accountType === "STATE" && (
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded font-mono font-bold">
+                    👑 SOVEREIGN STATE
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-zinc-400 mt-1">
+                {currentUser?.accountType === "STATE"
+                  ? `Managing state sovereign equity reserves, bourse holdings, and collecting 50% weekly corporate dividends.`
+                  : "Track your asset holdings, net worth valuation, and manage your gold purse."}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -135,7 +156,7 @@ export default function PortfolioPage() {
         </div>
 
         {/* Financial Net Worth Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Total Net Worth */}
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
             <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
@@ -209,6 +230,18 @@ export default function PortfolioPage() {
             <div className="text-[11px] font-mono text-zinc-400 mt-1">
               {totalPnl >= 0 ? "+" : ""}{totalPnlPercent}% overall return
             </div>
+          </div>
+
+          {/* Dividend Earnings */}
+          <div className="bg-zinc-900/60 border border-amber-500/30 rounded-xl p-4">
+            <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
+              <span>Dividends Collected</span>
+              <Coins className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="text-2xl font-bold font-mono text-amber-400">
+              {totalDividendsEarned.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} <span className="text-xs font-sans text-zinc-400">gold</span>
+            </div>
+            <div className="text-[11px] text-zinc-400 mt-1">50% Net Profit Friday Payouts</div>
           </div>
         </div>
 
@@ -370,6 +403,65 @@ export default function PortfolioPage() {
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Friday Profit Dividend Payouts Received */}
+        <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Coins className="w-4 h-4 text-amber-400" />
+              <h3 className="font-bold text-white text-sm">Friday Profit Dividend Payouts Received</h3>
+            </div>
+            <span className="text-zinc-400 text-xs font-mono">
+              {dividendHistory.length} payout{dividendHistory.length !== 1 ? "s" : ""} · {totalDividendsEarned.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} gold total
+            </span>
+          </div>
+
+          {dividendHistory.length === 0 ? (
+            <div className="p-8 text-center text-zinc-400 text-xs flex flex-col items-center gap-2">
+              <span>No dividend distributions collected yet.</span>
+              <span className="text-[11px] text-zinc-500">
+                Hold shares in companies on Friday at 00:00 UTC to automatically receive 50% net profit payouts deposited directly to your purse!
+              </span>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-mono text-xs">
+                <thead>
+                  <tr className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
+                    <th className="py-3 px-4">Payout Date</th>
+                    <th className="py-3 px-4">Company</th>
+                    <th className="py-3 px-4 text-right">Shares Held</th>
+                    <th className="py-3 px-4 text-right">Dividend / Share</th>
+                    <th className="py-3 px-4 text-right">Gold Deposited</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/60 text-[11px]">
+                  {dividendHistory.map((d) => (
+                    <tr key={d.id} className="hover:bg-zinc-800/30">
+                      <td className="py-3 px-4 text-zinc-400">
+                        {new Date(d.createdAt).toLocaleDateString()} {new Date(d.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="py-3 px-4 font-bold text-white">
+                        <Link href={`/trade/${d.ticker}`} className="hover:text-amber-400 transition">
+                          ${d.ticker} ({d.companyName})
+                        </Link>
+                      </td>
+                      <td className="py-3 px-4 text-right text-zinc-300">
+                        {d.sharesCount.toLocaleString()} shares
+                      </td>
+                      <td className="py-3 px-4 text-right text-zinc-300">
+                        {d.dividendPerShare.toFixed(4)} gold
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-emerald-400">
+                        +{d.payoutAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

@@ -44,12 +44,17 @@ export async function GET() {
       ORDER BY w.created_at DESC
     `);
 
-    // Fetch citizens list with freeze status
+    // Fetch citizens and sovereign states list with freeze and realm status
     const citizensRes = await db.execute(`
-      SELECT id, username, display_name, parlamentum_name, cash_balance, locked_cash, is_admin, is_frozen, created_at 
+      SELECT id, username, display_name, parlamentum_name, cash_balance, locked_cash, is_admin, is_frozen, account_type, state_realm_name, state_motto, state_crest, created_at 
       FROM users 
       ORDER BY cash_balance DESC
     `);
+
+    const { getEarningsReports, getNextFridayUtc, processScheduledDividends } = await import("@/lib/dividends");
+    await processScheduledDividends().catch(() => {});
+    const earningsReports = await getEarningsReports();
+    const nextFriday = getNextFridayUtc();
 
     return NextResponse.json({
       success: true,
@@ -66,6 +71,8 @@ export async function GET() {
       ipoApplications,
       companies,
       citizens: citizensRes.rows,
+      earningsReports,
+      nextFriday: nextFriday.toISOString(),
     });
   } catch (error: any) {
     console.error("GET /api/admin error:", error);
@@ -366,6 +373,57 @@ export async function POST(request: Request) {
       const { getMarketSchedule } = await import("@/lib/marketHours");
       const updatedSchedule = await getMarketSchedule();
       return NextResponse.json({ success: true, message: "Market schedule updated successfully!", schedule: updatedSchedule });
+    }
+
+    if (action === "update_user_state") {
+      const { userId, accountType, stateRealmName, stateMotto, stateCrest } = body;
+      const db = getDb();
+      await db.execute({
+        sql: "UPDATE users SET account_type = ?, state_realm_name = ?, state_motto = ?, state_crest = ? WHERE id = ?",
+        args: [
+          accountType || "STATE", 
+          stateRealmName || null, 
+          stateMotto || null, 
+          stateCrest || (accountType === "STATE" ? "🏛️" : null), 
+          userId
+        ],
+      });
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
+      return NextResponse.json({ success: true, message: `Account type and sovereign realm title updated successfully!` });
+    }
+
+    if (action === "report_earnings") {
+      const { companyId, grossRevenue, operatingExpenses, netProfit, periodTitle, notes, distributeImmediately, scheduledFor } = body;
+      const user = await getCurrentUser();
+      if (!user) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+
+      const { reportEarningsAndDividend } = await import("@/lib/dividends");
+      const res = await reportEarningsAndDividend({
+        companyId,
+        reporterId: user.id,
+        grossRevenue: grossRevenue ? parseFloat(grossRevenue) : undefined,
+        operatingExpenses: operatingExpenses ? parseFloat(operatingExpenses) : undefined,
+        netProfit: parseFloat(netProfit),
+        periodTitle,
+        notes,
+        distributeImmediately: Boolean(distributeImmediately),
+        scheduledFor,
+      });
+      return NextResponse.json(res);
+    }
+
+    if (action === "distribute_dividend_now") {
+      const { reportId } = body;
+      const { executeDividendPayout } = await import("@/lib/dividends");
+      const res = await executeDividendPayout(reportId);
+      return NextResponse.json(res);
+    }
+
+    if (action === "process_scheduled_dividends") {
+      const { processScheduledDividends } = await import("@/lib/dividends");
+      const res = await processScheduledDividends();
+      return NextResponse.json({ success: true, message: `Processed ${res.executedCount} scheduled Friday dividend distributions.`, ...res });
     }
 
     return NextResponse.json({ success: false, message: "Invalid action" }, { status: 400 });

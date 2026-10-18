@@ -12,16 +12,22 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    const [portfolio, openOrders] = await Promise.all([
+    const { getUserDividendHistory } = await import("@/lib/dividends");
+    const [portfolio, openOrders, dividendHistory] = await Promise.all([
       getUserPortfolio(user.id),
       getUserOrders(user.id),
+      getUserDividendHistory(user.id),
     ]);
+
+    const totalDividendsEarned = dividendHistory.reduce((sum, d) => sum + d.payoutAmount, 0);
 
     return NextResponse.json({
       success: true,
       user,
       portfolio,
       openOrders,
+      dividendHistory,
+      totalDividendsEarned: Math.round(totalDividendsEarned * 100) / 100,
     });
   } catch (error: any) {
     console.error("API /api/portfolio error:", error);
