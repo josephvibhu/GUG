@@ -97,22 +97,29 @@ export async function approveDeposit(txId: string): Promise<{ success: boolean; 
   if (type === "WITHDRAWAL") {
     // Withdrawal fulfillment: gold was already deducted upon request.
     // Operator confirmed in-game purchase in Parlamentum.
-    await db.execute({
-      sql: "UPDATE wallet_transactions SET status = 'COMPLETED' WHERE id = ?",
+    const done = await db.execute({
+      sql: "UPDATE wallet_transactions SET status = 'COMPLETED' WHERE id = ? AND status = 'PENDING'",
       args: [txId],
     });
+    if (done.rowsAffected === 0) {
+      return { success: false, message: "Transaction not found or already processed." };
+    }
     return { success: true, message: `Withdrawal of ${amount.toLocaleString()} gold marked as fulfilled! In-game purchase confirmed.` };
   }
 
-  // Otherwise DEPOSIT: Credit user purse
+  // Otherwise DEPOSIT: mark it credited first (only while still PENDING) so it can only be credited once
+  const claim = await db.execute({
+    sql: "UPDATE wallet_transactions SET status = 'CREDITED' WHERE id = ? AND status = 'PENDING'",
+    args: [txId],
+  });
+  if (claim.rowsAffected === 0) {
+    return { success: false, message: "Transaction not found or already processed." };
+  }
+
+  // Credit user purse
   await db.execute({
     sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
     args: [amount, userId],
-  });
-
-  await db.execute({
-    sql: "UPDATE wallet_transactions SET status = 'CREDITED' WHERE id = ?",
-    args: [txId],
   });
 
   scheduleBlobPersist();
@@ -138,24 +145,24 @@ export async function rejectTransaction(txId: string): Promise<{ success: boolea
   const userId = String(tx.user_id);
   const type = String(tx.type);
 
+  // Reject only while still PENDING, so a withdrawal is refunded at most once (and never after it was fulfilled)
+  const claim = await db.execute({
+    sql: "UPDATE wallet_transactions SET status = 'REJECTED' WHERE id = ? AND status = 'PENDING'",
+    args: [txId],
+  });
+  if (claim.rowsAffected === 0) {
+    return { success: false, message: "Transaction not found or already processed." };
+  }
+
   if (type === "WITHDRAWAL") {
     // Refund the deducted gold back to the citizen!
     await db.execute({
       sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
       args: [amount, userId],
     });
-    await db.execute({
-      sql: "UPDATE wallet_transactions SET status = 'REJECTED' WHERE id = ?",
-      args: [txId],
-    });
     scheduleBlobPersist();
     return { success: true, message: `Withdrawal cancelled and ${amount.toLocaleString()} gold refunded back to citizen's purse.` };
   }
-
-  await db.execute({
-    sql: "UPDATE wallet_transactions SET status = 'REJECTED' WHERE id = ?",
-    args: [txId],
-  });
 
   scheduleBlobPersist();
   return { success: true, message: "Deposit announcement rejected." };

@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     const numAmount = Math.floor(Number(amount));
     const targetName = (parlamentumName || user.parlamentumName || user.username).trim();
 
-    if (!numAmount || numAmount < 10) {
+    if (!Number.isFinite(numAmount) || numAmount < 10) {
       return NextResponse.json({ success: false, message: "Minimum transaction is 10 gold." }, { status: 400 });
     }
 
@@ -160,11 +160,17 @@ export async function POST(request: Request) {
       const unitPrice = withdrawCalc.unitPrice;
       const taxAbsorbed = withdrawCalc.taxAmount;
 
-      // Deduct net requested gold from user purse
-      await db.execute({
-        sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ?",
-        args: [numAmount, user.id],
+      // Deduct net requested gold from user purse, only if it is still there (parallel requests can't overdraw)
+      const debit = await db.execute({
+        sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ? AND cash_balance >= ?",
+        args: [numAmount, user.id, numAmount],
       });
+      if (debit.rowsAffected === 0) {
+        return NextResponse.json({
+          success: false,
+          message: `Insufficient purse balance. Requested: ${numAmount.toLocaleString()} gold.`,
+        }, { status: 400 });
+      }
 
       const recipe = `List ${ironUnits} Raw Iron on Parlamentum market at ${unitPrice.toFixed(2)} gold each (Total: ${grossListing.toFixed(2)} gold). ${houseName} pays the ${taxAbsorbed.toFixed(2)} gold game tax so you get exactly ${numAmount.toLocaleString()} gold net.`;
 
