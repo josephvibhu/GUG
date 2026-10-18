@@ -19,7 +19,9 @@ import {
   AlertCircle,
   Clock,
   Timer,
-  Building2
+  Building2,
+  Zap,
+  ExternalLink
 } from "lucide-react";
 
 interface Citizen {
@@ -980,6 +982,74 @@ export default function AdminPage() {
             </div>
           </div>
         </form>
+
+        {/* Section 3.5: In-Game Deposit Auto-Verifier (Method 2 Userscript) */}
+        <div className="bg-gradient-to-r from-emerald-950/40 via-zinc-900/60 to-zinc-900/60 border border-emerald-500/30 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                <h3 className="font-bold text-white text-sm">
+                  In-Game Deposit Auto-Verifier (Method 2 Userscript)
+                </h3>
+                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                  ZERO RISK & MULTI-TAB SAFE
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                Automatically detects when someone buys your Raw Iron in Parlamentum and immediately approves their pending deposit in Grow UR Gold.
+              </p>
+            </div>
+
+            <a
+              href="/parlamentum-gug-verifier.user.js"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition shadow-lg shadow-emerald-500/20 shrink-0"
+            >
+              <span>Install Userscript</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div className="p-3 bg-zinc-950/60 rounded-xl border border-zinc-800">
+              <span className="font-bold text-zinc-200 block mb-1">🛡️ Multi-Account Isolation</span>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                If you keep multiple accounts open in different tabs, the script checks the active player card and only activates on <span className="font-mono text-amber-300 font-bold">JosephArora</span>. Tabs for other characters (e.g. CardinalSanjay) remain completely dormant.
+              </p>
+            </div>
+
+            <div className="p-3 bg-zinc-950/60 rounded-xl border border-zinc-800">
+              <span className="font-bold text-zinc-200 block mb-1">🎯 Smart Queue Matcher</span>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Because Parlamentum market notifications are anonymous (e.g. <span className="text-zinc-300 italic">&ldquo;2× Raw Iron sold — 10 gold&rdquo;</span>), the backend instantly matches the sale to the oldest citizen pending deposit requesting that amount.
+              </p>
+            </div>
+
+            <div className="p-3 bg-zinc-950/60 rounded-xl border border-zinc-800">
+              <span className="font-bold text-zinc-200 block mb-1">🔑 Secret Webhook Key</span>
+              <p className="text-[11px] text-zinc-400 leading-relaxed mb-2">
+                Embedded directly in the script for authenticated webhook callbacks:
+              </p>
+              <div className="flex items-center justify-between bg-zinc-900 px-2.5 py-1.5 rounded font-mono text-[11px] text-amber-300 border border-zinc-700">
+                <span className="truncate">{apiKey || "pse_secret_parlamentum_key_2026"}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(apiKey || "pse_secret_parlamentum_key_2026");
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="ml-2 text-zinc-400 hover:text-white"
+                  title="Copy Key"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Section 4: Listed Companies & Ticker Controls (Method 5) */}
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
