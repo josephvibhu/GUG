@@ -163,7 +163,7 @@ export async function reportEarningsAndDividend(params: {
   const db = getDb();
 
   const netProfit = Math.round(Number(params.netProfit) * 100) / 100;
-  if (isNaN(netProfit) || netProfit <= 0) {
+  if (!Number.isFinite(netProfit) || netProfit <= 0) {
     return { success: false, message: "Net profit must be a positive gold amount." };
   }
 
@@ -236,6 +236,13 @@ export async function reportEarningsAndDividend(params: {
   // If immediate distribution requested or scheduled date is already passed
   if (params.distributeImmediately || new Date(scheduledIso) <= new Date()) {
     const distRes = await executeDividendPayout(reportId);
+    if (!distRes.success) {
+      return {
+        success: false,
+        message: `Earnings filed and scheduled for ${new Date(scheduledIso).toUTCString()}, but not paid now: ${distRes.message}`,
+        reportId,
+      };
+    }
     return {
       success: true,
       message: `Earnings filed and 50% dividend (${dividendPool.toLocaleString()} gold) distributed immediately to ${distRes.shareholdersPaid} shareholders!`,
@@ -275,6 +282,9 @@ export async function executeDividendPayout(reportId: string): Promise<{
   if (report.status === "DISTRIBUTED") {
     return { success: false, message: "Dividends for this period have already been distributed.", totalPaid: 0, shareholdersPaid: 0 };
   }
+  if (report.status !== "SCHEDULED") {
+    return { success: false, message: "This earnings report was cancelled.", totalPaid: 0, shareholdersPaid: 0 };
+  }
 
   const companyId = String(report.company_id);
   const compRes = await db.execute({
@@ -302,6 +312,41 @@ export async function executeDividendPayout(reportId: string): Promise<{
   let totalPaid = 0;
   let shareholdersPaid = 0;
   const now = new Date().toISOString();
+
+  // The dividend is paid out of the founder's purse; it used to be credited to holders from nowhere
+  const founderId = String(company.creator_id);
+  const totalDue = Math.round(holdersRes.rows.reduce((sum, row) => sum + Math.round(Number(row.shares) * dividendPerShare * 100) / 100, 0) * 100) / 100;
+  const founderRes = await db.execute({ sql: "SELECT cash_balance FROM users WHERE id = ?", args: [founderId] });
+  const founderCash = founderRes.rows.length > 0 ? Number(founderRes.rows[0].cash_balance) : 0;
+  if (founderCash < totalDue) {
+    return {
+      success: false,
+      message: `The founder's purse holds ${founderCash.toLocaleString()} gold but this dividend needs ${totalDue.toLocaleString()} gold.`,
+      totalPaid: 0,
+      shareholdersPaid: 0,
+    };
+  }
+
+  // Claim the report first so concurrent calls can't pay it twice
+  const claim = await db.execute({
+    sql: "UPDATE earnings_reports SET status = 'DISTRIBUTED', distributed_at = ? WHERE id = ? AND status = 'SCHEDULED'",
+    args: [now, reportId],
+  });
+  if (claim.rowsAffected === 0) {
+    return { success: false, message: "Dividends for this period have already been distributed.", totalPaid: 0, shareholdersPaid: 0 };
+  }
+
+  const debit = await db.execute({
+    sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ? AND cash_balance >= ?",
+    args: [totalDue, founderId, totalDue],
+  });
+  if (debit.rowsAffected === 0) {
+    await db.execute({
+      sql: "UPDATE earnings_reports SET status = 'SCHEDULED', distributed_at = NULL WHERE id = ?",
+      args: [reportId],
+    });
+    return { success: false, message: `The founder's purse no longer covers this dividend (${totalDue.toLocaleString()} gold).`, totalPaid: 0, shareholdersPaid: 0 };
+  }
 
   for (const row of holdersRes.rows) {
     const userId = String(row.user_id);
