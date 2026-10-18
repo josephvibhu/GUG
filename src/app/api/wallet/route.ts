@@ -108,14 +108,8 @@ export async function POST(request: Request) {
         ? `In-game contract to ${houseName} giving ${actualGold} gold + 1 courier ticket for 1 Raw Iron.`
         : `Bought ${ironUnits} Raw Iron listed by ${houseName} at 5 gold each (${actualGold} gold total).`;
 
-      const status = autoApprove ? "CREDITED" : "PENDING";
-
-      if (autoApprove) {
-        await db.execute({
-          sql: "UPDATE users SET cash_balance = cash_balance + ?, parlamentum_name = ? WHERE id = ?",
-          args: [actualGold, targetName, user.id],
-        });
-      }
+      // All deposits are strictly PENDING until operator confirms receipt in Parlamentum
+      const status = "PENDING";
 
       await db.execute({
         sql: `INSERT INTO wallet_transactions (id, user_id, type, method, amount, iron_units, parlamentum_name, status, recipe_note, created_at)
@@ -123,20 +117,25 @@ export async function POST(request: Request) {
         args: [txId, user.id, method || "MARKET_IRON", actualGold, ironUnits, targetName, status, recipe, now],
       });
 
+      // Update player's character name if not set
+      await db.execute({
+        sql: "UPDATE users SET parlamentum_name = ? WHERE id = ? AND (parlamentum_name IS NULL OR parlamentum_name = '')",
+        args: [targetName, user.id],
+      });
+
       const updatedUser = await db.execute({
         sql: "SELECT cash_balance FROM users WHERE id = ?",
         args: [user.id],
       });
 
-      const message = autoApprove
-        ? `${actualGold.toLocaleString()} gold landed in your purse! Verified ${ironUnits} Raw Iron bought from ${houseName}.`
-        : `Deposit announced! The House (${houseName}) will credit ${actualGold.toLocaleString()} gold once the ${ironUnits} Raw Iron purchase is verified.`;
+      const message = `Deposit announced! ${houseName} will credit ${actualGold.toLocaleString()} gold once the in-game Raw Iron purchase (${ironUnits} units) is verified in Parlamentum.`;
 
       return NextResponse.json({
         success: true,
         message,
         newBalance: Number(updatedUser.rows[0].cash_balance),
         txId,
+        pending: true,
       });
     }
 

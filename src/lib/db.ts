@@ -245,7 +245,7 @@ export async function initDb(): Promise<void> {
     ('house_name', 'JosephArora'),
     ('api_key', 'pse_secret_parlamentum_key_2026'),
     ('ipo_listing_fee', '200'),
-    ('auto_approve_deposits', 'true');
+    ('auto_approve_deposits', 'false');
   `);
 
   isInitialized = true;

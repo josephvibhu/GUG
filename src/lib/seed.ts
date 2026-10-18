@@ -72,9 +72,12 @@ export async function seedMarketData(force = false) {
     WHERE is_admin = 1 OR id IN ('usr_house', 'usr_treasury')
   `);
 
-  // Set default house_name setting to JosephArora
+  // Set default house_name setting to JosephArora and disable auto-approve for security
   await db.execute(`
-    INSERT OR REPLACE INTO settings (key, value) VALUES ('house_name', 'JosephArora')
+    INSERT OR REPLACE INTO settings (key, value) VALUES ('house_name', 'JosephArora');
+  `);
+  await db.execute(`
+    INSERT OR REPLACE INTO settings (key, value) VALUES ('auto_approve_deposits', 'false');
   `);
 
   // Remove legacy/imperial iron companies and previous seeds
