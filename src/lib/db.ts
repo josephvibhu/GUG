@@ -219,6 +219,29 @@ export async function initDb(): Promise<void> {
     );
   `);
 
+  // Must exist before the companies ALTER migrations below, or a fresh DB gets a companies table without them
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS companies (
+      id TEXT PRIMARY KEY,
+      ticker TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      sector TEXT NOT NULL,
+      creator_id TEXT NOT NULL,
+      total_shares INTEGER NOT NULL,
+      float_shares INTEGER NOT NULL,
+      ipo_price REAL NOT NULL,
+      current_price REAL NOT NULL,
+      change_24h REAL NOT NULL DEFAULT 0.0,
+      volume_24h REAL NOT NULL DEFAULT 0.0,
+      high_24h REAL NOT NULL,
+      low_24h REAL NOT NULL,
+      logo_url TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (creator_id) REFERENCES users(id)
+    );
+  `);
+
   try {
     await db.execute(`ALTER TABLE wallet_transactions ADD COLUMN iron_units INTEGER NOT NULL DEFAULT 0;`);
   } catch {}
@@ -330,28 +353,6 @@ export async function initDb(): Promise<void> {
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
-    );
-  `);
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS companies (
-      id TEXT PRIMARY KEY,
-      ticker TEXT UNIQUE NOT NULL,
-      name TEXT NOT NULL,
-      description TEXT NOT NULL,
-      sector TEXT NOT NULL,
-      creator_id TEXT NOT NULL,
-      total_shares INTEGER NOT NULL,
-      float_shares INTEGER NOT NULL,
-      ipo_price REAL NOT NULL,
-      current_price REAL NOT NULL,
-      change_24h REAL NOT NULL DEFAULT 0.0,
-      volume_24h REAL NOT NULL DEFAULT 0.0,
-      high_24h REAL NOT NULL,
-      low_24h REAL NOT NULL,
-      logo_url TEXT,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY (creator_id) REFERENCES users(id)
     );
   `);
 
