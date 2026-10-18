@@ -358,9 +358,6 @@ export default function LoginPage() {
                       onChange={(e) => setAdminCode(e.target.value)}
                       className="w-full bg-zinc-950 border border-zinc-700/80 rounded-xl px-3 py-2 text-xs font-mono text-amber-300 focus:outline-none focus:border-amber-400"
                     />
-                    <span className="text-[9px] text-zinc-400 mt-1 block">
-                      Code: <code className="text-zinc-300 font-mono">parlamentum_admin</code> grants Operator controls.
-                    </span>
                   </div>
                 )}
               </div>

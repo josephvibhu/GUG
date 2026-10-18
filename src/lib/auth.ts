@@ -21,7 +21,8 @@ export interface UserSession {
 }
 
 export const COOKIE_NAME = "parlamentum_session_id";
-export const ADMIN_SECRET_CODE = "parlamentum_admin";
+// Operator sign-up code comes from the environment; with ADMIN_SIGNUP_CODE unset nobody can self-register as admin.
+const ADMIN_SECRET_CODE = process.env.ADMIN_SIGNUP_CODE || "";
 
 // Session cookies are "<userId>.<hmac>" so a user id alone (shown in public shareholder lists) can't be used as a login.
 // Prefer SESSION_SECRET from the environment; otherwise a random secret is generated once and kept in settings.
@@ -140,7 +141,7 @@ export async function registerUser(
   const now = new Date().toISOString();
   
   // Admin role granted if secret admin code matches
-  const isAdmin = adminCode && adminCode.trim() === ADMIN_SECRET_CODE ? 1 : 0;
+  const isAdmin = ADMIN_SECRET_CODE && adminCode && adminCode.trim() === ADMIN_SECRET_CODE ? 1 : 0;
   let avatar = isAdmin ? "🏛️" : "🎩";
   let displayName = cleanUser;
 
