@@ -254,10 +254,12 @@ export async function getCandles(companyId: string): Promise<CandleData[]> {
   const db = getDb();
 
   const res = await db.execute({
-    sql: `SELECT * FROM candles 
-          WHERE company_id = ? 
-          ORDER BY time_bucket ASC 
-          LIMIT 50`,
+    sql: `SELECT * FROM (
+            SELECT * FROM candles
+            WHERE company_id = ?
+            ORDER BY time_bucket DESC
+            LIMIT 50
+          ) ORDER BY time_bucket ASC`,
     args: [companyId],
   });
 
