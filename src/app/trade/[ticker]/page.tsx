@@ -1,918 +1,442 @@
 "use client";
 
-import { useEffect, useState, use, Suspense } from "react";
+import { use, useCallback, useRef, useState, useSyncExternalStore, Suspense } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import CandleChart from "@/components/CandleChart";
+import TVChart from "@/components/TVChart";
 import OrderBook from "@/components/OrderBook";
 import TradeForm from "@/components/TradeForm";
 import RecentTrades from "@/components/RecentTrades";
-import OpenOrdersTable from "@/components/OpenOrdersTable";
-import { Company, OrderBookData, TradeItem, CandleData, PortfolioPosition } from "@/lib/market";
-import { TrendingUp, TrendingDown, PieChart, ShieldAlert, FileText, ArrowLeft, AlertTriangle, Flame, X, Coins, Shield } from "lucide-react";
-import Link from "next/link";
+import OpenOrdersTable, { type OpenOrder } from "@/components/OpenOrdersTable";
+import { BuybackDialog, EarningsDialog } from "@/components/FounderTools";
+import { Company, OrderBookData, TradeItem, PortfolioPosition } from "@/lib/market";
+import { usePoll, stableBody } from "@/hooks/usePoll";
+import { useMarketFeed, type FeedUser } from "@/hooks/useMarketFeed";
+import { fmtPrice, fmtPct, fmtSigned, fmtCompact, fmtQty, fmtGold, fmtUtcDate, moveColor } from "@/lib/format";
 
-function TradeContent({ params }: { params: Promise<{ ticker: string }> }) {
-  const resolvedParams = use(params);
-  const ticker = resolvedParams.ticker.toUpperCase();
+interface Holder {
+  userId: string;
+  username: string;
+  displayName: string;
+  accountType: "CITIZEN" | "STATE";
+  stateRealmName?: string;
+  stateCrest?: string;
+  shares: number;
+  equityPercent: number;
+}
 
-  const [company, setCompany] = useState<Company | null>(null);
-  const [orderBook, setOrderBook] = useState<OrderBookData | null>(null);
-  const [recentTrades, setRecentTrades] = useState<TradeItem[]>([]);
-  const [candles, setCandles] = useState<CandleData[]>([]);
-  const [userHolding, setUserHolding] = useState<PortfolioPosition | null>(null);
-  const [userOrders, setUserOrders] = useState<any[]>([]);
-  const [userCash, setUserCash] = useState<number>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const val = localStorage.getItem("gug_cached_cash");
-        if (val) return parseFloat(val) || 0;
-      } catch {}
-    }
-    return 0;
-  });
-  const [currentUser, setCurrentUser] = useState<any>(null);
+interface Report {
+  id: string;
+  periodTitle: string;
+  netProfit: number;
+  dividendPool: number;
+  dividendPerShare: number;
+  status: "SCHEDULED" | "DISTRIBUTED" | "CANCELLED";
+  scheduledFor: string;
+  distributedAt?: string;
+  totalDistributed: number;
+  notes?: string;
+}
+
+interface TerminalData {
+  company: Company;
+  orderBook: OrderBookData;
+  recentTrades: TradeItem[];
+  lastTradeId: string | null;
+  serverNow: number;
+  user: FeedUser | null;
+  userHolding: PortfolioPosition | null;
+  userOrders: OpenOrder[];
+  marketSchedule: { isOpen: boolean; statusText: string } | null;
+  earningsReports: Report[];
+  nextFriday: string;
+  shareholders: Holder[];
+}
+
+type Tab = "book" | "trades" | "orders" | "position" | "holders" | "dividends" | "about" | "founder";
+
+// Desktop layout switch read from CSS media, so the default tab suits the screen (false on the server)
+const LG = "(min-width: 1024px)";
+const subscribeLg = (cb: () => void) => {
+  const m = window.matchMedia(LG);
+  m.addEventListener("change", cb);
+  return () => m.removeEventListener("change", cb);
+};
+const useIsLg = () => useSyncExternalStore(subscribeLg, () => window.matchMedia(LG).matches, () => false);
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col">
+      <dt className="text-[11px] text-ash">{label}</dt>
+      <dd className="text-[13px] text-paper whitespace-nowrap">{value}</dd>
+    </div>
+  );
+}
+
+function Terminal({ ticker }: { ticker: string }) {
+  const router = useRouter();
+  const { companies } = useMarketFeed();
+  const isLg = useIsLg();
+  const [data, setData] = useState<TerminalData | null>(null);
+  const [missing, setMissing] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
-  const [marketSchedule, setMarketSchedule] = useState<any>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [tab, setTab] = useState<Tab | null>(null);
+  const [dialog, setDialog] = useState<"buyback" | "earnings" | null>(null);
+  const lastBody = useRef("");
 
-  // Buyback state
-  const [isBuybackOpen, setIsBuybackOpen] = useState<boolean>(false);
-  const [buybackGold, setBuybackGold] = useState<string>("500");
-  const [buybackLoading, setBuybackLoading] = useState<boolean>(false);
-  const [buybackFeedback, setBuybackFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
-
-  // 50% Profit Dividend & Earnings state
-  const [isDividendModalOpen, setIsDividendModalOpen] = useState<boolean>(false);
-  const [dividendProfit, setDividendProfit] = useState<string>("1000");
-  const [dividendRevenue, setDividendRevenue] = useState<string>("2000");
-  const [dividendExpenses, setDividendExpenses] = useState<string>("1000");
-  const [dividendNotes, setDividendNotes] = useState<string>("Weekly 50% profit allocation from in-game operations.");
-  const [distributeImmediately, setDistributeImmediately] = useState<boolean>(false);
-  const [dividendLoading, setDividendLoading] = useState<boolean>(false);
-  const [dividendFeedback, setDividendFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [earningsReports, setEarningsReports] = useState<any[]>([]);
-  const [shareholders, setShareholders] = useState<any[]>([]);
-  const [nextFriday, setNextFriday] = useState<string>("");
-
-  const fetchTerminalData = async () => {
-    try {
-      const res = await fetch(`/api/market/${ticker}`, { cache: "no-store" });
-      const data = await res.json();
-      if (data.success) {
-        setCompany(data.company);
-        setOrderBook(data.orderBook);
-        setRecentTrades(data.recentTrades);
-        setCandles(data.candles);
-        setUserHolding(data.userHolding);
-        setUserOrders(data.userOrders);
-        if (data.user) {
-          setCurrentUser(data.user);
-          setUserCash(data.user.cashBalance);
-          try { localStorage.setItem("gug_cached_cash", data.user.cashBalance.toString()); } catch {}
-        }
-        if (data.marketSchedule) {
-          setMarketSchedule(data.marketSchedule);
-        }
-        if (data.earningsReports) setEarningsReports(data.earningsReports);
-        if (data.shareholders) setShareholders(data.shareholders);
-        if (data.nextFriday) setNextFriday(data.nextFriday);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      const res = await fetch(`/api/market/${ticker}`, { cache: "no-store", signal });
+      if (res.status === 404) {
+        setMissing(true);
+        return;
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleReportDividend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setDividendFeedback(null);
-    const profit = parseFloat(dividendProfit);
-    if (isNaN(profit) || profit <= 0) {
-      setDividendFeedback({ type: "error", message: "Net profit must be greater than 0 gold." });
-      return;
-    }
-    setDividendLoading(true);
-    try {
-      const res = await fetch("/api/dividends", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "report_earnings",
-          companyId: company?.id,
-          grossRevenue: dividendRevenue ? parseFloat(dividendRevenue) : profit,
-          operatingExpenses: dividendExpenses ? parseFloat(dividendExpenses) : 0,
-          netProfit: profit,
-          notes: dividendNotes,
-          distributeImmediately,
-          scheduledFor: nextFriday,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setDividendFeedback({ type: "success", message: data.message });
-        fetchTerminalData();
-      } else {
-        setDividendFeedback({ type: "error", message: data.message || "Failed to submit earnings report." });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "terminal load failed");
+      // Skip the re-render when nothing changed (most polls on a quiet market)
+      const body = stableBody(json, ["serverNow", "currentUTC", "timeRemainingSeconds", "timeRemainingFormatted"]);
+      if (body !== lastBody.current) {
+        lastBody.current = body;
+        setData(json);
       }
-    } catch (err: any) {
-      setDividendFeedback({ type: "error", message: err.message || "Network error" });
-    } finally {
-      setDividendLoading(false);
-    }
-  };
+    },
+    [ticker]
+  );
 
-  const handleExecuteBuyback = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBuybackFeedback(null);
-    const gold = parseFloat(buybackGold);
-    if (isNaN(gold) || gold < 10) {
-      setBuybackFeedback({ type: "error", message: "Minimum buyback allocation is 10 gold." });
-      return;
-    }
-    setBuybackLoading(true);
-    try {
-      const res = await fetch("/api/buyback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticker, goldToSpend: gold }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setBuybackFeedback({ type: "success", message: data.message });
-        fetchTerminalData();
-      } else {
-        setBuybackFeedback({ type: "error", message: data.message || "Buyback failed." });
-      }
-    } catch (err: any) {
-      setBuybackFeedback({ type: "error", message: err.message || "Network error" });
-    } finally {
-      setBuybackLoading(false);
-    }
-  };
+  // 3 s while the floor is open, 15 s while closed; paused in background tabs
+  usePoll(load, data?.marketSchedule?.isOpen === false ? 15000 : 3000, ticker);
+  const refresh = useCallback(() => window.dispatchEvent(new Event("wallet_updated")), []);
 
-  useEffect(() => {
-    fetchTerminalData();
-
-    const handleSync = () => {
-      fetchTerminalData();
-    };
-
-    window.addEventListener("wallet_updated", handleSync);
-    window.addEventListener("focus", handleSync);
-
-    const interval = setInterval(fetchTerminalData, 2000);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("wallet_updated", handleSync);
-      window.removeEventListener("focus", handleSync);
-    };
-  }, [ticker]);
-
-  if (loading && !company) {
+  if (missing) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-        <div className="flex items-center gap-3 text-amber-400 font-mono text-sm">
-          <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-          Loading exchange order books for ${ticker}...
-        </div>
-      </div>
-    );
-  }
-
-  if (!company) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-[60vh]">
-        <ShieldAlert className="w-12 h-12 text-rose-500" />
-        <h2 className="text-xl font-bold">Company ${ticker} Not Found</h2>
-        <p className="text-zinc-400 text-sm">This ticker symbol is not currently listed on the exchange.</p>
-        <Link href="/" className="px-4 py-2 bg-amber-500 text-black font-semibold rounded-lg text-sm">
-          Back to Markets
+      <main className="flex-1 flex flex-col items-start gap-3 px-6 py-16 max-w-xl mx-auto w-full">
+        <h1 className="text-xl font-semibold text-zinc-50">{ticker} isn&apos;t listed.</h1>
+        <p className="text-sm text-ash">Check the ticker, or pick a company from the market list.</p>
+        <Link href="/" className="h-9 px-4 rounded-[4px] border border-rule text-[13px] text-paper flex items-center hover:border-zinc-500">
+          Back to markets
         </Link>
-      </div>
+      </main>
     );
   }
 
-  const isUp = company.change24h >= 0;
+  if (!data) {
+    return (
+      <main className="flex-1 flex flex-col">
+        <div className="h-[61px] border-b border-rule" />
+        <div className="flex-1 grid lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="h-[420px] lg:h-[min(64vh,640px)] border-b lg:border-r border-rule flex items-center justify-center text-sm text-ash">
+            Loading {ticker}…
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const c = data.company;
+  const trades = data.recentTrades || [];
+  const lastDirection: "up" | "down" | "flat" =
+    trades.length > 1 ? (trades[0].price > trades[1].price ? "up" : trades[0].price < trades[1].price ? "down" : "flat") : "flat";
+  const freshTrade = trades[0] && data.serverNow - Date.parse(trades[0].timestamp) < 6000;
+  const prevRef = c.currentPrice / (1 + c.change24h / 100);
+  const canFound = !!data.user && (c.creatorId === data.user.id || !!data.user.isAdmin);
+  const founderShares = data.shareholders.find((h) => h.userId === c.creatorId)?.shares || 0;
+  const latestReport = data.earningsReports[0];
+
+  const tabs: { id: Tab; label: string; mobileOnly?: boolean }[] = [
+    { id: "book", label: "Book", mobileOnly: true },
+    { id: "trades", label: "Trades", mobileOnly: true },
+    { id: "orders", label: `Open orders${data.userOrders.length ? ` ${data.userOrders.length}` : ""}` },
+    { id: "position", label: "Position" },
+    { id: "holders", label: "Holders" },
+    { id: "dividends", label: "Dividends" },
+    { id: "about", label: "About" },
+    ...(canFound ? [{ id: "founder" as Tab, label: "Founder" }] : []),
+  ];
+  let active: Tab = tab ?? (isLg ? "orders" : "book");
+  if (isLg && (active === "book" || active === "trades")) active = "orders";
 
   return (
-    <main className="max-w-[1600px] w-full mx-auto p-3 sm:p-4 md:p-6 flex flex-col gap-4">
-      {/* Ticker Header Banner */}
-      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="p-2 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition"
-            title="All Markets"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div className="text-3xl bg-zinc-950 border border-zinc-800 w-12 h-12 rounded-xl flex items-center justify-center">
-            {company.logoUrl || "🏛️"}
+    <main className="flex-1 flex flex-col">
+      {/* Instrument bar */}
+      <div className="border-b border-rule px-3 sm:px-4 py-2 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="h-9 w-9 shrink-0 rounded-[4px] bg-pane border border-rule flex items-center justify-center text-lg" aria-hidden>
+            {c.logoUrl}
+          </span>
+          <div className="relative">
+            <span className="flex items-center gap-1">
+              <span className="condensed text-[24px] leading-none font-extrabold text-zinc-50 tracking-tight">{c.ticker}</span>
+              {companies.length > 1 && <ChevronDown className="h-4 w-4 text-ash" />}
+            </span>
+            {companies.length > 1 && (
+              <select
+                aria-label="Switch company"
+                value={c.ticker}
+                onChange={(e) => router.push(`/trade/${e.target.value}`)}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              >
+                {companies.map((x) => (
+                  <option key={x.id} value={x.ticker}>
+                    {x.ticker} ({x.name})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                {company.name}
-              </h1>
-              <span className="font-mono text-sm font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded">
-                ${company.ticker}
-              </span>
-              <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
-                {company.sector}
-              </span>
-            </div>
-            <p className="text-xs text-zinc-400 mt-0.5 max-w-xl line-clamp-1">
-              {company.description}
-            </p>
+          <div className="min-w-0 hidden sm:block">
+            <div className="text-[13px] text-paper truncate max-w-[240px]">{c.name}</div>
+            <div className="text-[11px] text-ash">{c.sector}</div>
           </div>
+          {c.status !== "ACTIVE" && (
+            <span className="text-[11px] px-1.5 py-0.5 rounded-[3px] border border-bear/50 text-bear">{c.status === "HALTED" ? "Halted" : "Defaulted"}</span>
+          )}
         </div>
 
-        {/* Key Financial Metrics */}
-        <div className="flex flex-wrap items-center gap-6 font-mono text-xs">
-          <div>
-            <div className="text-[10px] text-zinc-400 uppercase font-sans">Last Traded Price</div>
-            <div className="text-xl sm:text-2xl font-bold text-white flex items-center gap-1.5">
-              <span>{company.currentPrice.toFixed(2)} gold</span>
-              <span
-                className={`text-xs px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 ${
-                  isUp ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400"
+        <div className="flex items-baseline gap-2">
+          <span
+            key={data.lastTradeId || "none"}
+            className={`condensed text-[26px] leading-none font-bold px-1 -mx-1 rounded-[3px] ${
+              lastDirection === "up" ? "text-bull" : lastDirection === "down" ? "text-bear" : "text-zinc-50"
+            } ${freshTrade ? (lastDirection === "down" ? "tick-down" : "tick-up") : ""}`}
+          >
+            {fmtPrice(c.currentPrice)}
+          </span>
+          <span className={`text-[13px] ${moveColor(c.change24h)}`}>
+            {fmtSigned(c.currentPrice - prevRef)} {fmtPct(c.change24h)}
+          </span>
+        </div>
+
+        <dl className="flex flex-wrap gap-x-5 gap-y-1">
+          <Stat label="24h high" value={fmtPrice(c.high24h)} />
+          <Stat label="24h low" value={fmtPrice(c.low24h)} />
+          <Stat label="24h volume" value={`${fmtCompact(c.volume24h)} gold`} />
+          <Stat label="Market cap" value={`${fmtCompact(c.marketCap)} gold`} />
+        </dl>
+      </div>
+
+      {/* Terminal grid: chart | book | ticket, then tabs | trades */}
+      <div
+        className="flex-1 grid grid-cols-1
+          lg:grid-cols-[minmax(0,1fr)_320px] lg:[grid-template-areas:'chart_ticket'_'tabs_book'_'tabs_trades']
+          xl:grid-cols-[minmax(0,1fr)_272px_320px] xl:[grid-template-areas:'chart_book_ticket'_'tabs_trades_trades']"
+      >
+        <section aria-label="Price chart" className="lg:[grid-area:chart] h-[380px] sm:h-[440px] lg:h-[min(66vh,660px)] lg:min-h-[480px] border-b border-rule lg:border-r">
+          <TVChart key={c.ticker} ticker={c.ticker} name={c.name} lastTradeId={data.lastTradeId} />
+        </section>
+
+        <aside aria-label="Place an order" className="lg:[grid-area:ticket] border-b border-rule">
+          <TradeForm
+            company={c}
+            userHolding={data.userHolding}
+            userCash={data.user?.cashBalance || 0}
+            loggedIn={!!data.user}
+            selectedPrice={selectedPrice}
+            marketSchedule={data.marketSchedule}
+            onTradeSuccess={refresh}
+          />
+        </aside>
+
+        <section aria-label="Order book" className="lg:[grid-area:book] hidden lg:flex flex-col border-b border-rule xl:border-r">
+          <OrderBook orderBook={data.orderBook} ticker={c.ticker} lastDirection={lastDirection} onSelectPrice={setSelectedPrice} />
+        </section>
+
+        <section aria-label="Details" className="lg:[grid-area:tabs] lg:border-r border-rule min-w-0">
+          <div className="h-10 flex items-stretch gap-1 px-2 border-b border-rule overflow-x-auto" role="tablist">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={active === t.id}
+                onClick={() => setTab(t.id)}
+                className={`px-2.5 text-[13px] whitespace-nowrap border-b-2 -mb-px transition-colors ${t.mobileOnly ? "lg:hidden" : ""} ${
+                  active === t.id ? "text-zinc-50 border-zinc-50" : "text-ash border-transparent hover:text-paper"
                 }`}
               >
-                {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {isUp ? "+" : ""}
-                {company.change24h.toFixed(2)}%
-              </span>
-            </div>
+                {t.label}
+              </button>
+            ))}
           </div>
 
-          <div className="hidden sm:block border-l border-zinc-800 pl-4">
-            <div className="text-[10px] text-zinc-400 uppercase font-sans">24h High / Low</div>
-            <div className="text-zinc-200 font-semibold mt-0.5">
-              {company.high24h.toFixed(2)} / {company.low24h.toFixed(2)} gold
-            </div>
-          </div>
-
-          <div className="hidden sm:block border-l border-zinc-800 pl-4">
-            <div className="text-[10px] text-zinc-400 uppercase font-sans">24h Volume</div>
-            <div className="text-zinc-200 font-semibold mt-0.5">
-              {company.volume24h.toLocaleString("en-US", { maximumFractionDigits: 0 })} gold
-            </div>
-          </div>
-
-          <div className="border-l border-zinc-800 pl-4">
-            <div className="text-[10px] text-zinc-400 uppercase font-sans">Market Cap</div>
-            <div className="text-amber-400 font-bold mt-0.5">
-              {company.marketCap.toLocaleString("en-US", { maximumFractionDigits: 0 })} gold
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Company Status Alerts */}
-      {company.status === "HALTED" && (
-        <div className="bg-amber-950/70 border border-amber-500/60 text-amber-200 px-4 py-3 rounded-xl flex items-center gap-3 text-xs shadow-lg">
-          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
-          <div>
-            <span className="font-bold uppercase tracking-wider block">⏸️ Trading Halted by Exchange Operator</span>
-            <span>Trading for ${company.ticker} is temporarily paused for price stabilization.</span>
-          </div>
-        </div>
-      )}
-
-      {company.status === "DEFAULTED" && (
-        <div className="bg-rose-950/80 border border-rose-600/80 text-rose-200 px-4 py-3 rounded-xl flex items-center gap-3 text-xs shadow-lg">
-          <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0" />
-          <div>
-            <span className="font-bold uppercase tracking-wider block">🚨 Flagged as Defaulted / Suspected Scam</span>
-            <span>The Exchange Operator has flagged this enterprise for default or breach of terms. Order matching is permanently locked.</span>
-          </div>
-        </div>
-      )}
-
-      {/* Founder Control & Share Buyback Banner (Method 3) */}
-      {currentUser && (company.creatorId === currentUser.id || currentUser.isAdmin) && (
-        <div className="bg-gradient-to-r from-amber-950/30 via-zinc-900/80 to-zinc-950 border border-amber-500/40 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 text-xl">
-              👑
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                  Founder Control · Method 3
-                </span>
-                <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-mono">
-                  Corporate Buyback
-                </span>
-              </div>
-              <h3 className="text-white font-bold text-sm mt-0.5">
-                Redeem & Buy Back Public Shares
-              </h3>
-              <p className="text-zinc-400 text-xs mt-0.5 max-w-xl">
-                Deploy your in-game profits to sweep open sell orders from the book. Bought shares are retired from circulation, shrinking the float and pumping the stock price!
-              </p>
-              {company.sharesBoughtBack > 0 && (
-                <div className="text-[11px] text-emerald-400 font-mono mt-1 font-semibold flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-amber-400" />
-                  Total Bought Back: {company.sharesBoughtBack.toLocaleString()} shares ({company.buybackGoldSpent.toLocaleString()} gold deployed)
-                </div>
-              )}
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              setIsBuybackOpen(true);
-              setBuybackFeedback(null);
-            }}
-            className="px-4 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shrink-0 cursor-pointer shadow-lg shadow-amber-500/20 flex items-center gap-2"
-          >
-            <Coins className="w-3.5 h-3.5" />
-            Initiate Share Buyback
-          </button>
-        </div>
-      )}
-
-      {/* 50% Net Profit Weekly Dividend Desk (Friday 00:00 UTC) */}
-      <div className="bg-gradient-to-r from-purple-950/40 via-zinc-900/90 to-zinc-950 border border-purple-500/40 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0 text-xl font-bold">
-            🪙
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-purple-400 uppercase tracking-wider">
-                Dividend Policy
-              </span>
-              <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded font-mono font-bold">
-                50% Net Profits Weekly
-              </span>
-              <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono">
-                Friday 00:00 UTC
-              </span>
-            </div>
-            <h3 className="text-white font-bold text-sm mt-0.5">
-              Weekly Profit Dividend Distribution
-            </h3>
-            <p className="text-zinc-400 text-xs mt-0.5 max-w-xl leading-relaxed">
-              50% of audited weekly in-game enterprise profits are automatically allocated and credited to all citizen and sovereign state shareholders every Friday at 00:00 UTC.
-            </p>
-            <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono mt-1.5">
-              <span className="text-zinc-400">
-                Next Payout: <strong className="text-amber-400">{nextFriday ? new Date(nextFriday).toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' }) : "Every Friday"} at 00:00 UTC</strong>
-              </span>
-              <span className="text-zinc-600">·</span>
-              <span className="text-zinc-400">
-                Total Distributed to Date: <strong className="text-emerald-400 font-bold">{((company as any).totalDividendsPaid || 0).toLocaleString()} gold</strong>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {currentUser && (company.creatorId === currentUser.id || currentUser.isAdmin) && (
-          <button
-            onClick={() => {
-              setIsDividendModalOpen(true);
-              setDividendFeedback(null);
-            }}
-            className="px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shrink-0 cursor-pointer shadow-lg shadow-purple-600/20 flex items-center gap-2"
-          >
-            <Coins className="w-3.5 h-3.5" />
-            Report Friday Earnings & Declare 50% Dividend
-          </button>
-        )}
-      </div>
-
-      {/* Friday Earnings & 50% Profit Dividend Modal */}
-      {isDividendModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <button
-              onClick={() => setIsDividendModalOpen(false)}
-              className="absolute right-4 top-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xl font-bold">
-                🪙
-              </div>
-              <div>
-                <h3 className="font-bold text-white text-base">
-                  File Weekly Earnings & 50% Dividend (${company.ticker})
-                </h3>
-                <p className="text-zinc-400 text-xs">
-                  Allocate in-game enterprise profits to your investors
+          <div role="tabpanel" className="min-h-[220px]">
+            {active === "book" && (
+              <OrderBook orderBook={data.orderBook} ticker={c.ticker} lastDirection={lastDirection} onSelectPrice={setSelectedPrice} showTitle={false} />
+            )}
+            {active === "trades" && <RecentTrades trades={trades} showTitle={false} />}
+            {active === "orders" &&
+              (data.user ? (
+                <OpenOrdersTable orders={data.userOrders} onOrderCancelled={refresh} />
+              ) : (
+                <p className="px-4 py-6 text-[13px] text-ash">
+                  <Link href="/login" className="text-paper underline underline-offset-4">Log in</Link> to see your orders.
                 </p>
-              </div>
-            </div>
+              ))}
 
-            <form onSubmit={handleReportDividend} className="space-y-4 text-xs font-sans">
-              <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl space-y-1.5 text-zinc-300 text-[11px]">
-                <div className="flex justify-between">
-                  <span className="text-zinc-400">Total Authorized Shares:</span>
-                  <strong className="text-white font-mono">{company.totalShares.toLocaleString()} shares</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-400">Charter Dividend Rate:</span>
-                  <strong className="text-purple-400 font-mono">50.00% of Net Profits</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-400">Scheduled Payout Date:</span>
-                  <strong className="text-amber-400 font-mono">{nextFriday ? new Date(nextFriday).toLocaleDateString("en-US", { weekday: 'long', month: 'short', day: 'numeric' }) : "Friday"} 00:00 UTC</strong>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold uppercase text-zinc-300 block mb-1">
-                  Net Profit to Distribute (Gold)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    required
-                    value={dividendProfit}
-                    onChange={(e) => setDividendProfit(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 font-mono text-emerald-400 font-bold text-sm focus:outline-none focus:border-purple-400"
-                  />
-                  <span className="absolute right-3 top-2.5 text-zinc-500 text-xs font-mono">gold</span>
-                </div>
-              </div>
-
-              {/* Dynamic Live Calculation Card */}
-              {(() => {
-                const profitNum = parseFloat(dividendProfit) || 0;
-                const poolNum = Math.round(profitNum * 0.5 * 100) / 100;
-                const perShareNum = company.totalShares > 0 ? (poolNum / company.totalShares) : 0;
-                return (
-                  <div className="p-3 bg-purple-950/20 border border-purple-500/30 rounded-xl grid grid-cols-2 gap-2 font-mono text-[11px]">
-                    <div>
-                      <span className="text-zinc-400 block font-sans text-[10px]">50% Dividend Pool:</span>
-                      <strong className="text-amber-400 text-sm">{poolNum.toLocaleString()} gold</strong>
-                    </div>
-                    <div>
-                      <span className="text-zinc-400 block font-sans text-[10px]">Per-Share Payout:</span>
-                      <strong className="text-emerald-400 text-sm">{perShareNum.toFixed(4)} gold</strong>
-                    </div>
+            {active === "position" &&
+              (data.userHolding ? (
+                <dl className="px-4 py-4 grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                  <Stat label="Shares" value={fmtQty(data.userHolding.shares)} />
+                  <Stat label="Free to sell" value={fmtQty(data.userHolding.availableShares)} />
+                  <Stat label="In sell orders" value={fmtQty(data.userHolding.lockedShares)} />
+                  <Stat label="Average price" value={fmtPrice(data.userHolding.avgBuyPrice)} />
+                  <Stat label="Value" value={`${fmtPrice(data.userHolding.marketValue)} gold`} />
+                  <div className="flex flex-col">
+                    <dt className="text-[11px] text-ash">Unrealized</dt>
+                    <dd className={`text-[13px] ${moveColor(data.userHolding.pnl)}`}>
+                      {fmtSigned(data.userHolding.pnl)} ({fmtPct(data.userHolding.pnlPercent)})
+                    </dd>
                   </div>
-                );
-              })()}
+                </dl>
+              ) : (
+                <p className="px-4 py-6 text-[13px] text-ash">You don&apos;t hold {c.ticker}.</p>
+              ))}
 
-              <div>
-                <label className="text-[11px] font-bold uppercase text-zinc-300 block mb-1">
-                  Note to Shareholders / Earnings Lore
-                </label>
-                <input
-                  type="text"
-                  value={dividendNotes}
-                  onChange={(e) => setDividendNotes(e.target.value)}
-                  placeholder="e.g. Iron smelting expansion profits distributed"
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400"
-                />
-              </div>
+            {active === "holders" && (
+              <table className="w-full text-[12px]">
+                <thead>
+                  <tr className="text-ash text-left">
+                    <th scope="col" className="font-normal py-2 pl-4 pr-2">Holder</th>
+                    <th scope="col" className="font-normal py-2 px-2 text-right">Shares</th>
+                    <th scope="col" className="font-normal py-2 px-2 text-right">Of company</th>
+                    <th scope="col" className="font-normal py-2 pl-2 pr-4 text-right hidden sm:table-cell">Last dividend</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.shareholders.map((h) => {
+                    const state = h.accountType === "STATE";
+                    return (
+                      <tr key={h.userId} className="border-t border-rule">
+                        <td className="py-2 pl-4 pr-2">
+                          <span className="text-paper">{state ? h.stateRealmName || h.displayName : h.displayName}</span>
+                          {state && <span className="ml-2 text-[11px] text-ash">state</span>}
+                          {h.userId === c.creatorId && <span className="ml-2 text-[11px] text-bullion">founder</span>}
+                        </td>
+                        <td className="py-2 px-2 text-right text-zinc-50">{fmtQty(h.shares)}</td>
+                        <td className="py-2 px-2 text-right text-paper">{h.equityPercent.toFixed(2)}%</td>
+                        <td className="py-2 pl-2 pr-4 text-right text-ash hidden sm:table-cell">
+                          {latestReport ? `${fmtPrice(h.shares * latestReport.dividendPerShare)} gold` : "–"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
 
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="distributeImmediately"
-                  checked={distributeImmediately}
-                  onChange={(e) => setDistributeImmediately(e.target.checked)}
-                  className="accent-purple-500 rounded cursor-pointer"
-                />
-                <label htmlFor="distributeImmediately" className="text-[11px] text-zinc-300 cursor-pointer select-none">
-                  Distribute immediately now (override Friday 00:00 UTC schedule)
-                </label>
-              </div>
-
-              {dividendFeedback && (
-                <div
-                  className={`p-3 rounded-lg text-[11px] border leading-relaxed ${
-                    dividendFeedback.type === "success"
-                      ? "bg-emerald-950/60 border-emerald-600/40 text-emerald-300"
-                      : "bg-rose-950/60 border-rose-600/40 text-rose-300"
-                  }`}
-                >
-                  {dividendFeedback.message}
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setIsDividendModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold transition cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  type="submit"
-                  disabled={dividendLoading}
-                  className={`px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold transition shadow-lg shadow-purple-600/20 cursor-pointer ${
-                    dividendLoading ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {dividendLoading ? "Allocating..." : distributeImmediately ? "Authorize & Distribute Now" : "Schedule Friday Payout"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Buyback Modal */}
-      {isBuybackOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <button
-              onClick={() => setIsBuybackOpen(false)}
-              className="absolute right-4 top-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl">
-                🔥
-              </div>
-              <div>
-                <h3 className="font-bold text-white text-base">
-                  Corporate Share Buyback (${company.ticker})
-                </h3>
-                <p className="text-zinc-400 text-xs">
-                  Reclaim equity & reward your shareholders
+            {active === "dividends" && (
+              <div className="flex flex-col">
+                <p className="px-4 py-3 text-[13px] text-ash border-b border-rule">
+                  {c.ticker} pays half of each week&apos;s reported net profit to shareholders, every Friday at 00:00 UTC.
+                  {data.nextFriday && ` Next payout: ${new Date(data.nextFriday).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}.`}
+                  {` Paid so far: ${fmtGold(c.totalDividendsPaid || 0)} gold.`}
                 </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleExecuteBuyback} className="space-y-4 text-xs font-sans">
-              <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-300 leading-relaxed text-[11px]">
-                Enter how much gold from your purse to allocate. The matching engine will execute market buys starting from the lowest sell ask, sweeping orders and permanently retiring the shares.
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="font-semibold text-zinc-300">
-                    Gold To Deploy (Purse: {userCash.toFixed(0)}g)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setBuybackGold(Math.floor(userCash).toString())}
-                    className="text-amber-400 hover:underline text-[10px]"
-                  >
-                    Max ({Math.floor(userCash)}g)
-                  </button>
-                </div>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="10"
-                    max={userCash}
-                    value={buybackGold}
-                    onChange={(e) => setBuybackGold(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-amber-400"
-                    placeholder="e.g. 500"
-                  />
-                  <span className="absolute right-3 top-2.5 text-zinc-500 text-xs font-mono">gold</span>
-                </div>
-              </div>
-
-              {/* Quick Preset Buttons */}
-              <div className="grid grid-cols-4 gap-2">
-                {[100, 500, 1000, 2500].map((amt) => (
-                  <button
-                    key={amt}
-                    type="button"
-                    onClick={() => setBuybackGold(amt.toString())}
-                    className="py-1 px-2 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono text-[11px] transition cursor-pointer"
-                  >
-                    +{amt}g
-                  </button>
-                ))}
-              </div>
-
-              {buybackFeedback && (
-                <div
-                  className={`p-3 rounded-lg text-[11px] border leading-relaxed ${
-                    buybackFeedback.type === "success"
-                      ? "bg-emerald-950/60 border-emerald-600/40 text-emerald-300"
-                      : "bg-rose-950/60 border-rose-600/40 text-rose-300"
-                  }`}
-                >
-                  {buybackFeedback.message}
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setIsBuybackOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold transition cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  type="submit"
-                  disabled={buybackLoading || userCash < 10}
-                  className={`px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold transition shadow-lg shadow-amber-500/20 cursor-pointer ${
-                    buybackLoading ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {buybackLoading ? "Sweeping Order Book..." : "Execute Buyback"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Main Grid: Left Chart & Panels, Right Trading & Order Books */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left Column (8 cols): Chart, Holdings, Open Orders */}
-        <div className="lg:col-span-8 flex flex-col gap-4">
-          {/* Candlestick Chart */}
-          <CandleChart
-            candles={candles}
-            ticker={company.ticker}
-            currentPrice={company.currentPrice}
-          />
-
-          {/* User Holdings Card for this stock */}
-          {userHolding && userHolding.shares > 0 && (
-            <div className="bg-zinc-900/60 border border-emerald-500/30 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
-                  <PieChart className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xs text-zinc-400 uppercase font-bold tracking-wider">
-                    Your Position in ${company.ticker}
-                  </div>
-                  <div className="text-base font-bold text-white font-mono">
-                    {userHolding.shares.toLocaleString()} shares{" "}
-                    <span className="text-xs text-zinc-400 font-normal">
-                      ({userHolding.lockedShares} locked in sell orders)
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-6 font-mono text-xs">
-                <div>
-                  <div className="text-[10px] text-zinc-400 uppercase font-sans">Avg Entry Price</div>
-                  <div className="font-semibold text-zinc-200">{userHolding.avgBuyPrice.toFixed(2)} gold</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-zinc-400 uppercase font-sans">Market Value</div>
-                  <div className="font-semibold text-zinc-200">{userHolding.marketValue.toFixed(2)} gold</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-zinc-400 uppercase font-sans">Unrealized P&L</div>
-                  <div
-                    className={`font-bold ${
-                      userHolding.pnl >= 0 ? "text-emerald-400" : "text-rose-400"
-                    }`}
-                  >
-                    {userHolding.pnl >= 0 ? "+" : ""}{userHolding.pnl.toFixed(2)} gold ({userHolding.pnlPercent}%)
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Open Orders Table */}
-          <OpenOrdersTable
-            orders={userOrders}
-            onOrderCancelled={fetchTerminalData}
-          />
-
-          {/* Company Lore & Financial Details */}
-          <div className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4 text-xs">
-            <h4 className="font-bold text-white text-sm flex items-center gap-2 mb-2">
-              <FileText className="w-4 h-4 text-amber-400" />
-              Parliamentary Charter & Shareholder Lore
-            </h4>
-            <p className="text-zinc-400 leading-relaxed mb-3">
-              {company.description}
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-[11px] pt-3 border-t border-zinc-800/60">
-              <div>
-                <span className="text-zinc-400 block font-sans text-[10px]">Total Shares</span>
-                <span className="text-zinc-200">{company.totalShares.toLocaleString()}</span>
-              </div>
-              <div>
-                <span className="text-zinc-400 block font-sans text-[10px]">Public Float</span>
-                <span className="text-zinc-200">{company.floatShares.toLocaleString()}</span>
-              </div>
-              <div>
-                <span className="text-zinc-400 block font-sans text-[10px]">Charter Founder</span>
-                <span className="text-zinc-200">{company.creatorName}</span>
-              </div>
-              <div>
-                <span className="text-zinc-400 block font-sans text-[10px]">Initial IPO Price</span>
-                <span className="text-amber-400">{company.ipoPrice.toFixed(2)} gold</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Major & Sovereign State Shareholders Registry */}
-          <div className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4 text-xs">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-amber-400" />
-                  Major & Sovereign State Shareholders
-                </h4>
-                <p className="text-zinc-400 text-[11px]">
-                  Institutional sovereign vaults, republics, and premier citizens backing ${company.ticker}
-                </p>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
-                Top {shareholders.length} Holders
-              </span>
-            </div>
-
-            {shareholders.length === 0 ? (
-              <div className="py-6 text-center text-zinc-400 font-mono text-xs border border-dashed border-zinc-800 rounded-lg">
-                No recorded shareholdings registered yet.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left font-mono text-xs">
-                  <thead>
-                    <tr className="border-b border-zinc-800 text-[10px] uppercase tracking-wider text-zinc-400 font-sans">
-                      <th className="pb-2">Shareholder / Sovereign Realm</th>
-                      <th className="pb-2 text-right">Shares Held</th>
-                      <th className="pb-2 text-right">Equity Share</th>
-                      <th className="pb-2 text-right">Est. Weekly 50% Payout</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-800/60">
-                    {shareholders.map((sh, idx) => {
-                      const isState = sh.accountType === "STATE";
-                      return (
-                        <tr key={sh.userId || idx} className="hover:bg-zinc-800/30 transition">
-                          <td className="py-2.5 pr-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm">
-                                {isState ? (sh.stateCrest || "🏛️") : "👤"}
-                              </span>
-                              <div>
-                                <div className="flex items-center gap-1.5 font-sans font-bold text-zinc-200">
-                                  <span>{isState ? (sh.stateRealmName || sh.displayName) : (sh.displayName || sh.username)}</span>
-                                  {isState && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                                      👑 STATE RESERVE
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-[10px] text-zinc-400 font-sans">
-                                  {isState ? `Delegate: ${sh.username}` : `@${sh.username}`}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-2.5 text-right font-bold text-white">
-                            {sh.shares.toLocaleString()}
-                          </td>
-                          <td className="py-2.5 text-right text-amber-400 font-bold">
-                            {sh.equityPercent}%
-                          </td>
-                          <td className="py-2.5 text-right text-emerald-400">
-                            {company.totalShares > 0 && earningsReports.length > 0 && earningsReports[0].dividendPerShare
-                              ? `${(sh.shares * earningsReports[0].dividendPerShare).toFixed(1)}g`
-                              : `${((sh.shares / (company.totalShares || 1)) * 500).toFixed(1)}g est.`}
+                {data.earningsReports.length === 0 ? (
+                  <p className="px-4 py-6 text-[13px] text-ash">No earnings reported yet.</p>
+                ) : (
+                  <table className="w-full text-[12px]">
+                    <thead>
+                      <tr className="text-ash text-left">
+                        <th scope="col" className="font-normal py-2 pl-4 pr-2">Period</th>
+                        <th scope="col" className="font-normal py-2 px-2 text-right">Net profit</th>
+                        <th scope="col" className="font-normal py-2 px-2 text-right">Dividend</th>
+                        <th scope="col" className="font-normal py-2 px-2 text-right hidden sm:table-cell">Per share</th>
+                        <th scope="col" className="font-normal py-2 pl-2 pr-4 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.earningsReports.map((r) => (
+                        <tr key={r.id} className="border-t border-rule">
+                          <td className="py-2 pl-4 pr-2 text-paper">{r.periodTitle}</td>
+                          <td className="py-2 px-2 text-right text-paper">{fmtGold(r.netProfit)}</td>
+                          <td className="py-2 px-2 text-right text-bullion">{fmtPrice(r.dividendPool)}</td>
+                          <td className="py-2 px-2 text-right text-paper hidden sm:table-cell">{r.dividendPerShare.toFixed(4)}</td>
+                          <td className="py-2 pl-2 pr-4 text-right text-ash whitespace-nowrap">
+                            {r.status === "DISTRIBUTED"
+                              ? `Paid ${fmtUtcDate(r.distributedAt || r.scheduledFor)}`
+                              : r.status === "CANCELLED"
+                              ? "Cancelled"
+                              : `Due ${fmtUtcDate(r.scheduledFor)}`}
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {active === "about" && (
+              <div className="px-4 py-4 flex flex-col gap-4 max-w-2xl">
+                <p className="text-[13px] text-paper leading-relaxed">{c.description}</p>
+                <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                  <Stat label="Founder" value={c.creatorName || "Unknown"} />
+                  <Stat label="Total shares" value={fmtQty(c.totalShares)} />
+                  <Stat label="Public float" value={fmtQty(c.floatShares)} />
+                  <Stat label="IPO price" value={`${fmtPrice(c.ipoPrice)} gold`} />
+                  <Stat label="Listed" value={fmtUtcDate(c.createdAt)} />
+                  <Stat label="Bought back" value={fmtQty(c.sharesBoughtBack)} />
+                </dl>
+              </div>
+            )}
+
+            {active === "founder" && canFound && (
+              <div className="px-4 py-4 flex flex-col gap-4 max-w-2xl">
+                <p className="text-[13px] text-ash leading-relaxed">
+                  Only the founder and the operator see this. Dividends and buybacks are paid from your purse
+                  ({fmtGold(data.user?.cashBalance || 0)} gold).
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setDialog("earnings")} className="h-9 px-4 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold">
+                    Report weekly earnings
+                  </button>
+                  <button type="button" onClick={() => setDialog("buyback")} className="h-9 px-4 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper">
+                    Buy back shares
+                  </button>
+                </div>
+                <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                  <Stat label="Dividends paid" value={`${fmtGold(c.totalDividendsPaid || 0)} gold`} />
+                  <Stat label="Shares bought back" value={fmtQty(c.sharesBoughtBack)} />
+                  <Stat label="Spent on buybacks" value={`${fmtGold(c.buybackGoldSpent)} gold`} />
+                </dl>
               </div>
             )}
           </div>
+        </section>
 
-          {/* Friday Profit Dividend Payout History & Earnings Reports */}
-          <div className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4 text-xs">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                  <Coins className="w-4 h-4 text-amber-400" />
-                  Friday 50% Profit Dividend Distributions
-                </h4>
-                <p className="text-zinc-400 text-[11px]">
-                  Audited net profits & weekly automatic UTC 00:00 payouts directly credited to shareholder wallets
-                </p>
-              </div>
-              <button
-                onClick={() => setIsDividendModalOpen(true)}
-                className="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                + Report Earnings
-              </button>
-            </div>
-
-            {earningsReports.length === 0 ? (
-              <div className="p-4 bg-zinc-950/60 border border-zinc-800 rounded-lg text-center text-zinc-400">
-                <p className="font-mono text-xs mb-1">No earnings distributions posted yet for ${company.ticker}.</p>
-                <p className="text-[11px] text-zinc-400">
-                  Every Friday at 00:00 UTC, 50% of declared corporate net profit is partitioned and distributed to all current shareholders.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {earningsReports.map((report) => (
-                  <div
-                    key={report.id}
-                    className="p-3 bg-zinc-950/80 border border-zinc-800/80 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3 font-mono text-xs"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white font-sans">{report.periodTitle || "Weekly Earnings Cycle"}</span>
-                        <span
-                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold font-sans ${
-                            report.status === "DISTRIBUTED"
-                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                              : "bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse"
-                          }`}
-                        >
-                          {report.status === "DISTRIBUTED" ? "PAID OUT" : "SCHEDULED FRIDAY 00:00 UTC"}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-zinc-400 mt-1 font-sans">
-                        Target Date: {new Date(report.scheduledFor || report.createdAt).toUTCString().slice(0, 22)}
-                        {report.notes && <span className="text-zinc-400"> — {report.notes}</span>}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-right">
-                      <div>
-                        <div className="text-[10px] text-zinc-400 uppercase font-sans">Audited Profit</div>
-                        <div className="font-bold text-zinc-200">{Number(report.netProfit).toFixed(0)}g</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-zinc-400 uppercase font-sans">50% Dividend Pool</div>
-                        <div className="font-bold text-amber-400">{Number(report.dividendPool).toFixed(1)}g</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-zinc-400 uppercase font-sans">Payout / Share</div>
-                        <div className="font-bold text-emerald-400">{Number(report.dividendPerShare).toFixed(4)}g</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column (4 cols): Order Book, Trade Form, Recent Fills */}
-        <div className="lg:col-span-4 flex flex-col gap-4">
-          {/* Trade Placement Form */}
-          <TradeForm
-            company={company}
-            userHolding={userHolding}
-            userCash={userCash}
-            selectedPrice={selectedPrice}
-            marketSchedule={marketSchedule}
-            onTradeSuccess={() => {
-              fetchTerminalData();
-              window.dispatchEvent(new Event("wallet_updated"));
-            }}
-          />
-
-          {/* Live Order Book */}
-          {orderBook && (
-            <OrderBook
-              orderBook={orderBook}
-              ticker={company.ticker}
-              onSelectPrice={(p) => setSelectedPrice(p)}
-            />
-          )}
-
-          {/* Recent Executed Trades */}
-          <RecentTrades trades={recentTrades} />
-        </div>
+        <section aria-label="Trades" className="lg:[grid-area:trades] hidden lg:flex flex-col border-b border-rule">
+          <RecentTrades trades={trades} />
+        </section>
       </div>
+
+      {dialog === "buyback" && (
+        <BuybackDialog company={c} userCash={data.user?.cashBalance || 0} onClose={() => setDialog(null)} onDone={refresh} />
+      )}
+      {dialog === "earnings" && (
+        <EarningsDialog
+          company={c}
+          userCash={data.user?.cashBalance || 0}
+          nextFriday={data.nextFriday}
+          founderShares={founderShares}
+          onClose={() => setDialog(null)}
+          onDone={refresh}
+        />
+      )}
     </main>
   );
 }
 
+function TradeContent({ params }: { params: Promise<{ ticker: string }> }) {
+  const { ticker } = use(params);
+  return <Terminal key={ticker.toUpperCase()} ticker={ticker.toUpperCase()} />;
+}
+
 export default function TradePage(props: { params: Promise<{ ticker: string }> }) {
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
-      <Suspense fallback={
-        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-          <div className="flex items-center gap-3 text-amber-400 font-mono text-sm">
-            <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-            Loading terminal...
-          </div>
-        </div>
-      }>
+      <Suspense fallback={<main className="flex-1" />}>
         <TradeContent params={props.params} />
       </Suspense>
     </div>

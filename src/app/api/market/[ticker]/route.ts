@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCompanyByTicker, getOrderBook, getRecentTrades, getCandles, getUserPortfolio, getUserOrders } from "@/lib/market";
+import { getCompanyByTicker, getOrderBook, getRecentTrades, getUserHolding, getUserOrders } from "@/lib/market";
 import { getCurrentUser } from "@/lib/auth";
 import { seedMarketData } from "@/lib/seed";
 import { getMarketSchedule } from "@/lib/marketHours";
@@ -17,10 +17,10 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Company not found" }, { status: 404 });
     }
 
-    const [orderBook, recentTrades, candles, user, marketSchedule] = await Promise.all([
+    // Chart candles come from /api/market/[ticker]/candles, fetched only when the chart needs them
+    const [orderBook, recentTrades, user, marketSchedule] = await Promise.all([
       getOrderBook(company.id),
-      getRecentTrades(company.id, 25),
-      getCandles(company.id),
+      getRecentTrades(company.id, 30),
       getCurrentUser(),
       getMarketSchedule(),
     ]);
@@ -59,9 +59,10 @@ export async function GET(
     let userOrders: any[] = [];
 
     if (user) {
-      const portfolio = await getUserPortfolio(user.id);
-      userHolding = portfolio.positions.find((p) => p.companyId === company.id) || null;
-      userOrders = await getUserOrders(user.id, company.id);
+      [userHolding, userOrders] = await Promise.all([
+        getUserHolding(user.id, company.id),
+        getUserOrders(user.id, company.id),
+      ]);
     }
 
     return NextResponse.json({
@@ -69,7 +70,8 @@ export async function GET(
       company,
       orderBook,
       recentTrades,
-      candles,
+      lastTradeId: recentTrades[0]?.id || null,
+      serverNow: Date.now(),
       user,
       userHolding,
       userOrders,
