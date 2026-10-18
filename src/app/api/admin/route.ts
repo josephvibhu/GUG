@@ -56,6 +56,10 @@ export async function GET() {
     const earningsReports = await getEarningsReports();
     const nextFriday = getNextFridayUtc();
 
+    const { getLedgerEntries, getTradeInsights } = await import("@/lib/ledger");
+    const ledgerEntries = await getLedgerEntries(60);
+    const tradeInsights = await getTradeInsights();
+
     return NextResponse.json({
       success: true,
       settings: {
@@ -73,6 +77,8 @@ export async function GET() {
       citizens: citizensRes.rows,
       earningsReports,
       nextFriday: nextFriday.toISOString(),
+      ledgerEntries,
+      tradeInsights,
     });
   } catch (error: any) {
     console.error("GET /api/admin error:", error);
@@ -96,7 +102,21 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action } = body;
 
-    // Automated Parlamentum in-game sale event webhook
+    // 1. Direct In-Game Ledger Sync (/trade/ledger)
+    if (action === "webhook_ledger_sync") {
+      const { apiKey, entries, stats } = body;
+      const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
+
+      if (apiKey !== expectedKey) {
+        return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
+      }
+
+      const { syncLedgerData } = await import("@/lib/ledger");
+      const res = await syncLedgerData(entries || [], stats);
+      return NextResponse.json(res, { headers: corsHeaders });
+    }
+
+    // 2. Automated Parlamentum in-game sale event webhook
     if (action === "webhook_credit" || action === "webhook_sale_event") {
       const { apiKey, buyerName, goldAmount, ironUnits, rawNotification } = body;
       const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
@@ -160,6 +180,38 @@ export async function POST(request: Request) {
         matched: false,
         message: `Sale event recorded (${units} Raw Iron · ${gold} gold), but no pending citizen deposit was waiting for this amount.`,
       }, { headers: corsHeaders });
+    }
+
+    if (action === "credit_ledger_entry_manual") {
+      const { entryId, username } = body;
+      const db = getDb();
+      const entryRes = await db.execute({
+        sql: "SELECT * FROM parlamentum_ledger_entries WHERE id = ?",
+        args: [entryId],
+      });
+      if (entryRes.rows.length === 0) {
+        return NextResponse.json({ success: false, message: "Ledger transaction entry not found" }, { status: 404 });
+      }
+      const entry = entryRes.rows[0];
+      const targetUser = username || entry.with_user;
+      if (!targetUser) {
+        return NextResponse.json({ success: false, message: "No citizen username specified for credit." }, { status: 400 });
+      }
+      const { manualCreditCitizen } = await import("@/lib/wallet");
+      const res = await manualCreditCitizen(
+        String(targetUser),
+        Number(entry.total_amount),
+        `Manual Ledger Credit for ${entry.quantity}x ${entry.item_name} (Fill: ${entry.trade_date})`
+      );
+      if (res.success) {
+        await db.execute({
+          sql: "UPDATE parlamentum_ledger_entries SET status = 'AUTO_CREDITED', with_user = ? WHERE id = ?",
+          args: [String(targetUser), entryId],
+        });
+        const { scheduleBlobPersist } = await import("@/lib/db");
+        scheduleBlobPersist();
+      }
+      return NextResponse.json(res);
     }
 
     if (action === "test_blob") {

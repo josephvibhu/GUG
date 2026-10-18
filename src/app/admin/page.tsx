@@ -109,6 +109,12 @@ export default function AdminPage() {
   const [editMotto, setEditMotto] = useState<string>("");
   const [editCrest, setEditCrest] = useState<string>("🏛️");
   const [editStateLoading, setEditStateLoading] = useState<boolean>(false);
+
+  // Parlamentum In-Game Trade Ledger Sync (/trade/ledger)
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
+  const [tradeInsights, setTradeInsights] = useState<any | null>(null);
+  const [ledgerCreditingId, setLedgerCreditingId] = useState<string | null>(null);
+  const [manualCreditUser, setManualCreditUser] = useState<{ [id: string]: string }>({});
   
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -125,6 +131,8 @@ export default function AdminPage() {
         setCompanies(data.companies || []);
         if (data.earningsReports) setEarningsReports(data.earningsReports);
         if (data.nextFriday) setNextFriday(data.nextFriday);
+        if (data.ledgerEntries) setLedgerEntries(data.ledgerEntries);
+        if (data.tradeInsights) setTradeInsights(data.tradeInsights);
         if (data.companies && data.companies.length > 0 && !divCompanyId) {
           setDivCompanyId(data.companies[0].id);
         }
@@ -306,6 +314,39 @@ export default function AdminPage() {
       setFeedback({ type: "error", message: err.message || "Network error" });
     } finally {
       setEditStateLoading(false);
+    }
+  };
+
+  const handleCreditLedgerEntry = async (entryId: string, defaultUsername: string) => {
+    let userToCredit = manualCreditUser[entryId] || defaultUsername;
+    if (!userToCredit) {
+      const promptName = prompt("Enter the citizen username to credit for this in-game fill:", defaultUsername || "");
+      if (!promptName) return;
+      userToCredit = promptName;
+      setManualCreditUser((prev) => ({ ...prev, [entryId]: promptName }));
+    }
+    setLedgerCreditingId(entryId);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "credit_ledger_entry_manual",
+          entryId,
+          username: userToCredit,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+        fetchAdminData();
+      } else {
+        setFeedback({ type: "error", message: data.message || "Failed to credit citizen." });
+      }
+    } catch (e: any) {
+      setFeedback({ type: "error", message: e.message });
+    } finally {
+      setLedgerCreditingId(null);
     }
   };
 
@@ -584,6 +625,217 @@ export default function AdminPage() {
             <span>{feedback.message}</span>
           </div>
         )}
+
+        {/* Section 0: Parlamentum In-Game Trade Ledger & Audit Feed (/trade/ledger) */}
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📜</span>
+                <h2 className="font-bold text-white text-base">
+                  Parlamentum In-Game Trade Ledger Feed
+                </h2>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                  LIVE SYNC ACTIVE
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-1">
+                Mirrored real-time transactions from{" "}
+                <a
+                  href="https://parlamentum.org/trade/ledger"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-amber-400 hover:underline font-mono inline-flex items-center gap-1"
+                >
+                  parlamentum.org/trade/ledger <ExternalLink className="w-3 h-3" />
+                </a>
+                . Citizen buyers in the <code className="text-zinc-300">WITH</code> column are automatically identified and credited!
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <a
+                href="/parlamentum-gug-verifier.user.js"
+                target="_blank"
+                className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold text-xs transition flex items-center gap-1.5"
+                title="Install / Update Tampermonkey script v2.0"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Userscript v2.0
+              </a>
+              <a
+                href="https://parlamentum.org/trade/ledger"
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center gap-1.5"
+              >
+                Open Ledger <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+
+          {/* High-level Insights from Image 1 */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
+            <div className="p-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl">
+              <span className="text-[10px] uppercase font-sans text-zinc-400 block">Total Fills</span>
+              <span className="text-xl font-bold text-white">
+                {tradeInsights?.totalFills || ledgerEntries.length}
+              </span>
+              <span className="text-[10px] text-zinc-500 block font-sans">on both books</span>
+            </div>
+            <div className="p-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl">
+              <span className="text-[10px] uppercase font-sans text-zinc-400 block">Bought</span>
+              <span className="text-xl font-bold text-emerald-400">
+                {tradeInsights?.boughtFills || ledgerEntries.filter((e) => e.side === "BOUGHT").length}
+              </span>
+              <span className="text-[10px] text-zinc-500 block font-sans">fills executed</span>
+            </div>
+            <div className="p-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl">
+              <span className="text-[10px] uppercase font-sans text-zinc-400 block">Sold</span>
+              <span className="text-xl font-bold text-cyan-400">
+                {tradeInsights?.soldFills || ledgerEntries.filter((e) => e.side === "SOLD").length}
+              </span>
+              <span className="text-[10px] text-zinc-500 block font-sans">fills executed</span>
+            </div>
+            <div className="p-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl">
+              <span className="text-[10px] uppercase font-sans text-zinc-400 block">Items Traded</span>
+              <span className="text-xl font-bold text-amber-400">
+                {tradeInsights?.itemsCount || 11}
+              </span>
+              <span className="text-[10px] text-zinc-500 block font-sans">different goods</span>
+            </div>
+          </div>
+
+          {/* Item Breakdown Summary if available */}
+          {tradeInsights?.itemsBreakdown && tradeInsights.itemsBreakdown.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+              {tradeInsights.itemsBreakdown.map((b: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="shrink-0 p-2.5 bg-zinc-950/60 border border-zinc-800 rounded-lg flex items-center gap-2 font-mono text-[11px]"
+                >
+                  <span className="font-sans font-bold text-zinc-200">{b.item}</span>
+                  <span className="text-zinc-500">·</span>
+                  <span className="text-zinc-400">{b.sold} sold</span>
+                  <span
+                    className={`font-bold ${
+                      b.net >= 0 ? "text-emerald-400" : "text-rose-400"
+                    }`}
+                  >
+                    {b.net >= 0 ? "+" : ""}{b.net.toLocaleString()} {b.currency}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* In-Game Transaction Ledger Table matching Image 2 */}
+          <div className="overflow-x-auto border border-zinc-800/80 rounded-xl bg-zinc-950/60 max-h-[380px] overflow-y-auto">
+            <table className="w-full text-left font-mono text-xs">
+              <thead className="sticky top-0 bg-zinc-900 border-b border-zinc-800 text-[10px] uppercase tracking-wider text-zinc-400 font-sans">
+                <tr>
+                  <th className="py-2.5 px-3">Date</th>
+                  <th className="py-2.5 px-3">Side</th>
+                  <th className="py-2.5 px-3">Item</th>
+                  <th className="py-2.5 px-3 text-right">Qty</th>
+                  <th className="py-2.5 px-3 text-right">Price</th>
+                  <th className="py-2.5 px-3 text-right">Total</th>
+                  <th className="py-2.5 px-3 text-right">Tax</th>
+                  <th className="py-2.5 px-3">With Counterparty</th>
+                  <th className="py-2.5 px-3">Exchange Status</th>
+                  <th className="py-2.5 px-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/60 text-[11px]">
+                {ledgerEntries.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-8 text-center text-zinc-500 font-sans">
+                      No ledger transactions synced yet. Open Parlamentum in your browser with userscript v2.0 to auto-populate.
+                    </td>
+                  </tr>
+                ) : (
+                  ledgerEntries.map((row) => {
+                    const isSold = row.side === "SOLD";
+                    const isCredited = row.status === "AUTO_CREDITED" || row.status === "MATCHED_PENDING";
+                    const isRawIron = row.itemName.toLowerCase().includes("raw iron");
+                    return (
+                      <tr key={row.id} className="hover:bg-zinc-800/30 transition">
+                        <td className="py-2.5 px-3 text-zinc-400 whitespace-nowrap">
+                          {row.tradeDate}
+                        </td>
+                        <td className="py-2.5 px-3 font-bold whitespace-nowrap">
+                          {isSold ? (
+                            <span className="text-cyan-400 flex items-center gap-1 font-sans text-[10px]">
+                              ↗ SOLD
+                            </span>
+                          ) : (
+                            <span className="text-amber-400 flex items-center gap-1 font-sans text-[10px]">
+                              ↙ BOUGHT
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 font-bold text-zinc-200 whitespace-nowrap">
+                          {row.itemName}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-zinc-300">
+                          {row.quantity}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-zinc-400">
+                          {row.priceStr || `${row.totalAmount / (row.quantity || 1)} ${row.currency}`}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold text-white">
+                          {row.totalAmount.toFixed(2)} {row.currency}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-zinc-500">
+                          {row.taxAmount ? `${row.taxAmount.toFixed(2)} ${row.currency}` : "—"}
+                        </td>
+                        <td className="py-2.5 px-3 font-sans font-bold text-zinc-300 whitespace-nowrap">
+                          {row.withUser ? (
+                            <span className="text-amber-300">@{row.withUser}</span>
+                          ) : (
+                            <span className="text-zinc-600">—</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          {isCredited ? (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-sans">
+                              ✅ CREDITED
+                            </span>
+                          ) : row.status === "UNREGISTERED_CITIZEN" ? (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 font-sans">
+                              ⚠️ UNREGISTERED
+                            </span>
+                          ) : isRawIron && isSold ? (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30 font-sans">
+                              RAW IRON SALE
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-zinc-500 font-sans">
+                              MARKET FILL
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          {!isCredited && isSold && (
+                            <button
+                              type="button"
+                              onClick={() => handleCreditLedgerEntry(row.id, row.withUser || "")}
+                              disabled={ledgerCreditingId === row.id}
+                              className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-sans font-bold transition cursor-pointer disabled:opacity-50"
+                              title="Credit gold to citizen purse"
+                            >
+                              {ledgerCreditingId === row.id ? "Crediting..." : "Credit Purse"}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         {/* Section 1: Live Pending Deposit Queue & Manual Credit Tool */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

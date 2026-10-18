@@ -52,7 +52,15 @@ interface MarketSchedule {
 function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<UserInfo | null>(null);
+  const [user, setUser] = useState<UserInfo | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("gug_cached_user");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
   const [tickers, setTickers] = useState<CompanyTicker[]>([]);
   const [marketSchedule, setMarketSchedule] = useState<MarketSchedule | null>(null);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
@@ -66,8 +74,10 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
       const data = await res.json();
       if (data.user) {
         setUser(data.user);
+        try { localStorage.setItem("gug_cached_user", JSON.stringify(data.user)); } catch {}
       } else {
         setUser(null);
+        try { localStorage.removeItem("gug_cached_user"); } catch {}
       }
     } catch (e) {
       console.error(e);

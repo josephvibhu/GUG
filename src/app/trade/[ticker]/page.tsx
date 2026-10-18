@@ -21,7 +21,15 @@ function TradeContent({ params }: { params: Promise<{ ticker: string }> }) {
   const [candles, setCandles] = useState<CandleData[]>([]);
   const [userHolding, setUserHolding] = useState<PortfolioPosition | null>(null);
   const [userOrders, setUserOrders] = useState<any[]>([]);
-  const [userCash, setUserCash] = useState<number>(0);
+  const [userCash, setUserCash] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const val = localStorage.getItem("gug_cached_cash");
+        if (val) return parseFloat(val) || 0;
+      } catch {}
+    }
+    return 0;
+  });
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
   const [marketSchedule, setMarketSchedule] = useState<any>(null);
@@ -60,6 +68,7 @@ function TradeContent({ params }: { params: Promise<{ ticker: string }> }) {
         if (data.user) {
           setCurrentUser(data.user);
           setUserCash(data.user.cashBalance);
+          try { localStorage.setItem("gug_cached_cash", data.user.cashBalance.toString()); } catch {}
         }
         if (data.marketSchedule) {
           setMarketSchedule(data.marketSchedule);
