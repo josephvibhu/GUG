@@ -23,7 +23,7 @@ export async function seedMarketData(force = false) {
   const now = new Date().toISOString();
 
   // Create House Operator, Treasury & Demo User
-  // Initial cash balance is 0.0 - player loads money by buying grain in Parlamentum!
+  // Initial cash balance is 0.0 for ALL users including admins - money must be loaded via Parlamentum!
   const users = [
     {
       id: "usr_house",
@@ -31,7 +31,7 @@ export async function seedMarketData(force = false) {
       password_hash: defaultPassword,
       display_name: "Parliament Exchange House",
       parlamentum_name: "Parliament_Exchange",
-      cash_balance: 50000000.0,
+      cash_balance: 0.0,
       avatar: "🏛️",
       is_admin: 1,
     },
@@ -41,7 +41,7 @@ export async function seedMarketData(force = false) {
       password_hash: defaultPassword,
       display_name: "Imperial Exchange Treasury",
       parlamentum_name: "Parliament_Treasury",
-      cash_balance: 100000000.0,
+      cash_balance: 0.0,
       avatar: "🏦",
       is_admin: 1,
     },
@@ -64,6 +64,13 @@ export async function seedMarketData(force = false) {
       args: [u.id, u.username, u.password_hash, u.display_name, u.parlamentum_name, u.cash_balance, u.avatar, u.is_admin, now],
     });
   }
+
+  // Ensure all admin wallets and exchange operator accounts are emptied (0.0 gold)
+  await db.execute(`
+    UPDATE users 
+    SET cash_balance = 0.0, locked_cash = 0.0 
+    WHERE is_admin = 1 OR id IN ('usr_house', 'usr_treasury')
+  `);
 
   // Check if companies exist
   const companyCountRes = await db.execute("SELECT COUNT(*) as count FROM companies");
