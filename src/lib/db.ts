@@ -71,6 +71,8 @@ export async function syncDbFromBlob(force = false): Promise<void> {
           clientInstance = null;
         }
         fs.writeFileSync(dbPath, buf);
+        try { if (fs.existsSync(dbPath + "-wal")) fs.unlinkSync(dbPath + "-wal"); } catch {}
+        try { if (fs.existsSync(dbPath + "-shm")) fs.unlinkSync(dbPath + "-shm"); } catch {}
         lastBlobSyncedAt = remoteTime;
       }
     }
@@ -143,6 +145,8 @@ export function getDb(): Client {
       const rawClient = createClient({
         url: `file:${dbPath}`,
       });
+
+      rawClient.execute("PRAGMA journal_mode = DELETE;").catch(() => {});
 
       const originalExecute = rawClient.execute.bind(rawClient);
       rawClient.execute = async function (stmt: any) {
