@@ -2,522 +2,260 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
-import { 
-  TrendingUp, 
-  Coins, 
-  Briefcase, 
-  Building2, 
-  PlusCircle, 
-  Zap, 
-  ChevronDown, 
-  RefreshCw,
-  ArrowDownLeft,
-  ArrowUpRight,
-  ShieldAlert,
+import { useEffect, useRef, useState, Suspense } from "react";
+import {
+  ChartCandlestick,
+  ChartNoAxesColumn,
+  Briefcase,
+  CirclePlus,
+  ShieldCheck,
+  ChevronDown,
   LogIn,
   LogOut,
-  User as UserIcon
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Bot,
 } from "lucide-react";
 import WalletModal from "./WalletModal";
+import { FloorClock } from "./FloorClock";
+import { useMarketFeed, refreshMarketFeed } from "@/hooks/useMarketFeed";
+import { fmtGold } from "@/lib/format";
 
-interface UserInfo {
-  id: string;
-  username: string;
-  displayName: string;
-  cashBalance: number;
-  lockedCash: number;
-  avatar: string;
-  isAdmin?: boolean;
-  accountType?: "CITIZEN" | "STATE";
-  stateRealmName?: string;
-  stateCrest?: string;
-}
-
-interface CompanyTicker {
-  ticker: string;
-  currentPrice: number;
-  change24h: number;
-}
-
-interface MarketSchedule {
-  isOpen: boolean;
-  statusText: string;
-  openTimeStr: string;
-  closeTimeStr: string;
-  timeRemainingFormatted: string;
-  currentIST: string;
+/** The coin mark used next to the wordmark and the purse */
+export function CoinMark({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" className={className} aria-hidden>
+      <circle cx="10" cy="10" r="9" fill="var(--color-bullion)" />
+      <circle cx="10" cy="10" r="6.2" fill="none" stroke="#131722" strokeOpacity="0.45" strokeWidth="1.2" />
+    </svg>
+  );
 }
 
 function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<UserInfo | null>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem("gug_cached_user");
-        if (cached) return JSON.parse(cached);
-      } catch {}
-    }
-    return null;
-  });
-  const [tickers, setTickers] = useState<CompanyTicker[]>([]);
-  const [marketSchedule, setMarketSchedule] = useState<MarketSchedule | null>(null);
+  const { user, schedule, clockOffset, companies } = useMarketFeed();
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [walletTab, setWalletTab] = useState<"deposit" | "withdraw" | "history">("deposit");
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [pulseLoading, setPulseLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [pulseNote, setPulseNote] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const fetchUserData = async () => {
-    try {
-      const res = await fetch("/api/auth", { cache: "no-store" });
-      const data = await res.json();
-      if (data.user) {
-        setUser(data.user);
-        try { localStorage.setItem("gug_cached_user", JSON.stringify(data.user)); } catch {}
-      } else {
-        setUser(null);
-        try { localStorage.removeItem("gug_cached_user"); } catch {}
-      }
-    } catch (e) {
-      console.error(e);
-      setUser(null);
-    }
-  };
-
-  const fetchTickers = async () => {
-    try {
-      const res = await fetch("/api/market", { cache: "no-store" });
-      const data = await res.json();
-      if (data.companies) {
-        setTickers(
-          data.companies.map((c: any) => ({
-            ticker: c.ticker,
-            currentPrice: c.currentPrice,
-            change24h: c.change24h,
-          }))
-        );
-      }
-      if (data.marketSchedule) {
-        setMarketSchedule(data.marketSchedule);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
+  // Close the account menu on outside click or Escape
   useEffect(() => {
-    fetchUserData();
-    fetchTickers();
-
-    const handleSync = () => {
-      fetchUserData();
-      fetchTickers();
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     };
-
-    window.addEventListener("wallet_updated", handleSync);
-    window.addEventListener("focus", handleSync);
-
-    const interval = setInterval(() => {
-      fetchTickers();
-      fetchUserData();
-    }, 2500);
-
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
     return () => {
-      clearInterval(interval);
-      window.removeEventListener("wallet_updated", handleSync);
-      window.removeEventListener("focus", handleSync);
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
     };
-  }, []);
+  }, [menuOpen]);
+
+  const openWallet = (tab: "deposit" | "withdraw") => {
+    setWalletTab(tab);
+    setIsWalletOpen(true);
+    setMenuOpen(false);
+  };
 
   const handleLogout = async () => {
+    setMenuOpen(false);
     try {
       await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "logout" }),
       });
-      setUser(null);
-      setIsUserMenuOpen(false);
+    } finally {
+      await refreshMarketFeed();
       router.push("/login");
       router.refresh();
-    } catch (e) {
-      console.error(e);
     }
   };
 
+  // Operator tool: asks the bot account to place a round of orders
   const handlePulse = async () => {
-    setPulseLoading(true);
+    setMenuOpen(false);
     try {
       const res = await fetch("/api/market/pulse", { method: "POST" });
       const data = await res.json();
-      if (data.success) {
-        fetchTickers();
-        fetchUserData();
-        if (onUserRefresh) onUserRefresh();
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setPulseLoading(false);
+      setPulseNote(data.success ? `Bot round sent (${data.actions?.length || 0} orders)` : data.message || "Bot round failed");
+      window.dispatchEvent(new Event("wallet_updated"));
+    } catch {
+      setPulseNote("Bot round failed");
     }
+    setTimeout(() => setPulseNote(null), 4000);
   };
 
-  const terminalUrl = tickers.length > 0 ? `/trade/${tickers[0].ticker}` : `/trade`;
+  const tradeHref = pathname.startsWith("/trade/") ? pathname : companies.length > 0 ? `/trade/${companies[0].ticker}` : "/trade";
+  const links = [
+    { href: "/", label: "Markets", icon: ChartNoAxesColumn, active: pathname === "/" },
+    { href: tradeHref, label: "Trade", icon: ChartCandlestick, active: pathname.startsWith("/trade") },
+    { href: "/portfolio", label: "Portfolio", icon: Briefcase, active: pathname === "/portfolio" },
+    { href: "/ipo", label: "List a company", short: "List", icon: CirclePlus, active: pathname === "/ipo" },
+  ];
+  const name = user ? (user.accountType === "STATE" ? user.stateRealmName || user.displayName : user.displayName) : "";
 
   return (
-    <header className="border-b border-zinc-800 bg-zinc-950 text-zinc-100 sticky top-0 z-50">
-      {/* Ticker Tape */}
-      <div className="bg-zinc-900/80 border-b border-zinc-800/80 px-4 py-1.5 text-xs overflow-x-auto scrollbar-none flex items-center gap-6">
-        <span className="flex items-center gap-1.5 font-semibold text-amber-400 shrink-0 uppercase tracking-wider text-[11px]">
-          <Zap className="w-3.5 h-3.5" /> Grow Ur Gold · Parlamentum
-        </span>
-
-        {marketSchedule && (
-          <div className="flex items-center gap-2 pl-3 border-l border-zinc-800 text-[11px] font-mono shrink-0">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                marketSchedule.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
-              }`}
-            />
-            <span
-              className={`font-bold ${
-                marketSchedule.isOpen ? "text-emerald-400" : "text-rose-400"
-              }`}
-            >
-              {marketSchedule.isOpen ? "FLOOR OPEN" : "FLOOR CLOSED"}
-            </span>
-            <span className="text-zinc-400 text-[10px] hidden md:inline">
-              ({marketSchedule.statusText})
-            </span>
-          </div>
-        )}
-        <div className="flex items-center gap-6">
-          {tickers.length === 0 ? (
-            <span className="text-zinc-400 font-sans text-[11px] italic">
-              {marketSchedule?.isOpen ? "Floor Open" : "Floor Closed"} · 0 public charters listed · Apply for charter with{" "}
-              <Link href="/ipo" className="text-amber-400 underline font-semibold not-italic">
-                Launch IPO
-              </Link>
-            </span>
-          ) : (
-            tickers.map((t) => (
-              <Link
-                key={t.ticker}
-                href={`/trade/${t.ticker}`}
-                className="flex items-center gap-2 hover:bg-zinc-800 px-2 py-0.5 rounded transition font-mono whitespace-nowrap"
-              >
-                <span className="font-bold text-zinc-200">${t.ticker}</span>
-                <span>{t.currentPrice.toFixed(2)} gold</span>
-                <span
-                  className={`font-semibold ${
-                    t.change24h >= 0 ? "text-emerald-400" : "text-rose-400"
-                  }`}
-                >
-                  {t.change24h >= 0 ? "+" : ""}
-                  {t.change24h.toFixed(2)}%
-                </span>
-              </Link>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Main Navbar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        {/* Brand */}
-        <div className="flex items-center gap-4 sm:gap-8 shrink-0">
-          <Link href="/" className="flex items-center gap-2.5 group shrink-0 whitespace-nowrap">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:border-amber-400 transition shrink-0">
-              🏛️
-            </div>
-            <div className="flex flex-col shrink-0">
-              <div className="font-bold tracking-tight text-base sm:text-lg flex items-center gap-2 whitespace-nowrap leading-none">
-                <span className="whitespace-nowrap font-black">GROW UR GOLD</span>
-                <span className="text-[10px] bg-amber-500/15 text-amber-300 font-mono font-bold px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0 uppercase tracking-wide">
-                  PARLAMENTUM
-                </span>
-              </div>
-              <div className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1 whitespace-nowrap">
-                Official Stock Exchange
-              </div>
-            </div>
+    <>
+      <header className="sticky top-0 z-40 h-12 border-b border-rule bg-floor">
+        <div className="h-full px-3 sm:px-4 flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="Grow Ur Gold, markets">
+            <CoinMark />
+            <span className="condensed text-[17px] font-extrabold tracking-tight text-zinc-50 leading-none">Grow Ur Gold</span>
           </Link>
 
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 text-sm font-medium">
-            <Link
-              href="/"
-              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                pathname === "/"
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
-            >
-              <Building2 className="w-4 h-4 text-amber-400" />
-              Markets
-            </Link>
-            <Link
-              href={terminalUrl}
-              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                pathname.startsWith("/trade")
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
-            >
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-              Terminal
-            </Link>
-            <Link
-              href="/portfolio"
-              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                pathname === "/portfolio"
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
-            >
-              <Briefcase className="w-4 h-4 text-blue-400" />
-              Portfolio
-            </Link>
-            <Link
-              href="/ipo"
-              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                pathname === "/ipo"
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
-            >
-              <PlusCircle className="w-4 h-4 text-purple-400" />
-              Launch IPO
-            </Link>
+          <nav className="hidden md:flex items-stretch h-full ml-2" aria-label="Main">
+            {links.map((l) => (
+              <Link
+                key={l.label}
+                href={l.href}
+                aria-current={l.active ? "page" : undefined}
+                className={`px-3 flex items-center text-[13px] border-b-2 transition-colors ${
+                  l.active ? "text-zinc-50 border-zinc-50" : "text-ash border-transparent hover:text-paper"
+                }`}
+              >
+                {l.label}
+              </Link>
+            ))}
             {user?.isAdmin && (
               <Link
                 href="/admin"
-                className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                  pathname === "/admin"
-                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                    : "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                aria-current={pathname === "/admin" ? "page" : undefined}
+                className={`px-3 flex items-center gap-1.5 text-[13px] border-b-2 transition-colors ${
+                  pathname === "/admin" ? "text-zinc-50 border-zinc-50" : "text-ash border-transparent hover:text-paper"
                 }`}
               >
-                <ShieldAlert className="w-4 h-4 text-amber-400" />
-                Operator Panel
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Operator
               </Link>
             )}
           </nav>
-        </div>
 
-        {/* Right Section: Gold Purse & Citizen Login/Menu */}
-        <div className="flex items-center gap-3">
-          {/* Bot pulse button if stocks exist */}
-          {tickers.length > 0 && (
-            <button
-              onClick={handlePulse}
-              disabled={pulseLoading}
-              title="Simulate Market Trading Pulse"
-              className="hidden lg:flex items-center gap-1.5 text-xs bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/60 px-2.5 py-1.5 rounded-md text-zinc-300 font-medium transition cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${pulseLoading ? "animate-spin" : ""}`} />
-              <span>Bot Pulse</span>
-            </button>
-          )}
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <FloorClock schedule={schedule} clockOffset={clockOffset} />
 
-          {/* Logged-In User Purse Button */}
-          {user ? (
-            <div
-              onClick={() => {
-                setWalletTab("deposit");
-                setIsWalletOpen(true);
-              }}
-              title="Open Parlamentum Raw Iron (5g) Purse"
-              className="bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700 rounded-xl px-3 py-1.5 flex items-center gap-2.5 cursor-pointer transition select-none group"
-            >
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-sm group-hover:scale-105 transition">
-                <Coins className="w-4 h-4" />
-              </div>
-              <div className="flex flex-col text-right">
-                <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">
-                  Purse Gold
-                </span>
-                <span className="font-mono text-sm font-bold text-emerald-400">
-                  {user.cashBalance.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span className="text-xs font-sans text-zinc-400">gold</span>
-                </span>
-              </div>
-              <div className="flex flex-col gap-0.5 ml-1 border-l border-zinc-800 pl-2">
+            {user ? (
+              <>
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setWalletTab("deposit");
-                    setIsWalletOpen(true);
-                  }}
-                  title="Deposit (Raw Iron @ 5g)"
-                  className="p-1 hover:bg-emerald-500/20 text-emerald-400 rounded transition cursor-pointer"
+                  onClick={() => openWallet("deposit")}
+                  title="Your purse: deposit or withdraw gold"
+                  className="h-8 px-2.5 rounded-[4px] border border-rule hover:border-zinc-600 flex items-center gap-1.5 transition-colors"
                 >
-                  <ArrowDownLeft className="w-3.5 h-3.5" />
+                  <CoinMark className="h-3.5 w-3.5" />
+                  <span className="text-[13px] font-semibold text-bullion">{fmtGold(user.cashBalance)}</span>
+                  <span className="text-[11px] text-ash hidden sm:inline">gold</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setWalletTab("withdraw");
-                    setIsWalletOpen(true);
-                  }}
-                  title="Withdraw (Tax Negated)"
-                  className="p-1 hover:bg-amber-500/20 text-amber-400 rounded transition cursor-pointer"
-                >
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ) : null}
 
-          {/* Citizen Menu or Login Button */}
-          {user ? (
-            <div className="relative">
-              <button
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition cursor-pointer border ${
-                  user.accountType === "STATE"
-                    ? "bg-purple-950/40 border-purple-500/50 hover:border-purple-400 text-purple-200"
-                    : "bg-zinc-900 border-zinc-800 hover:border-zinc-700 text-zinc-200"
-                }`}
-              >
-                <span className="text-base">{user.accountType === "STATE" ? (user.stateCrest || "🏛️") : (user.avatar || "👤")}</span>
-                <span className="font-medium hidden sm:inline max-w-[130px] truncate">
-                  {user.accountType === "STATE" ? (user.stateRealmName || user.displayName) : user.displayName}
-                </span>
-                {user.accountType === "STATE" && (
-                  <span className="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-1 py-0.2 rounded font-mono font-bold hidden md:inline">
-                    STATE
-                  </span>
-                )}
-                <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-              </button>
+                <div className="relative" ref={menuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen((o) => !o)}
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpen}
+                    className="h-8 pl-1.5 pr-2 rounded-[4px] hover:bg-pane flex items-center gap-1.5 text-[13px] text-paper"
+                  >
+                    <span className="h-6 w-6 rounded-full bg-pane border border-rule flex items-center justify-center text-[13px] leading-none">
+                      {user.accountType === "STATE" ? user.stateCrest || "🏛️" : name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="hidden lg:inline max-w-[140px] truncate">{name}</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-ash" />
+                  </button>
 
-              {isUserMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="px-3.5 py-2.5 border-b border-zinc-800 text-xs">
-                    <div className="text-[10px] uppercase font-semibold flex items-center justify-between">
-                      <span className={user.accountType === "STATE" ? "text-purple-400 font-bold flex items-center gap-1" : "text-zinc-400"}>
-                        {user.accountType === "STATE" ? "👑 Sovereign State Treasury" : "Active Citizen"}
-                      </span>
-                      {user.accountType === "STATE" && (
-                        <span className="text-[9px] font-mono text-purple-300 bg-purple-950 px-1 py-0.5 rounded border border-purple-500/40">
-                          {user.stateCrest || "🏛️"} State
-                        </span>
-                      )}
-                    </div>
-                    <div className="font-bold text-white text-sm truncate mt-0.5 flex items-center gap-1.5">
-                      <span>{user.accountType === "STATE" ? (user.stateRealmName || user.displayName) : user.displayName}</span>
-                      {user.isAdmin && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded">
-                          Operator
-                        </span>
-                      )}
-                    </div>
-                    <div className="font-mono text-[11px] text-zinc-400">
-                      {user.accountType === "STATE" ? `Delegate / Handle: @${user.username}` : `In-Game: ${user.username}`}
-                    </div>
-                    <div className="mt-1.5 font-mono text-emerald-400 font-bold text-xs bg-zinc-950 p-1.5 rounded border border-zinc-800 flex justify-between">
-                      <span className="text-zinc-400 font-sans font-normal">Purse:</span>
-                      <span>{user.cashBalance.toLocaleString()} gold</span>
-                    </div>
-                  </div>
-
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        setWalletTab("deposit");
-                        setIsWalletOpen(true);
-                        setIsUserMenuOpen(false);
-                      }}
-                      className="w-full text-left px-3.5 py-2 text-xs hover:bg-zinc-800 flex items-center gap-2 text-zinc-200 cursor-pointer"
-                    >
-                      <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-400" />
-                      Deposit Gold (Raw Iron @ 5g)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setWalletTab("withdraw");
-                        setIsWalletOpen(true);
-                        setIsUserMenuOpen(false);
-                      }}
-                      className="w-full text-left px-3.5 py-2 text-xs hover:bg-zinc-800 flex items-center gap-2 text-zinc-200 cursor-pointer"
-                    >
-                      <ArrowUpRight className="w-3.5 h-3.5 text-amber-400" />
-                      Withdraw Gold (Tax Negated)
-                    </button>
-                    <Link
-                      href="/portfolio"
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className="w-full text-left px-3.5 py-2 text-xs hover:bg-zinc-800 flex items-center gap-2 text-zinc-200 cursor-pointer"
-                    >
-                      <Briefcase className="w-3.5 h-3.5 text-blue-400" />
-                      Share Portfolio
-                    </Link>
-                    {user.isAdmin && (
-                      <Link
-                        href="/admin"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="w-full text-left px-3.5 py-2 text-xs hover:bg-zinc-800 flex items-center gap-2 text-amber-300 font-semibold cursor-pointer"
-                      >
-                        <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                        Operator Control Panel
+                  {menuOpen && (
+                    <div role="menu" className="absolute right-0 mt-1.5 w-60 rounded-[4px] border border-rule bg-pane shadow-[0_8px_24px_rgba(0,0,0,0.45)] py-1 text-[13px]">
+                      <div className="px-3 py-2 border-b border-rule">
+                        <div className="text-zinc-50 font-semibold truncate">{name}</div>
+                        <div className="text-[12px] text-ash truncate">
+                          {user.accountType === "STATE" ? `State account, delegate ${user.username}` : `In game as ${user.parlamentumName || user.username}`}
+                        </div>
+                      </div>
+                      <button role="menuitem" onClick={() => openWallet("deposit")} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
+                        <ArrowDownToLine className="h-4 w-4 text-ash" /> Deposit gold
+                      </button>
+                      <button role="menuitem" onClick={() => openWallet("withdraw")} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
+                        <ArrowUpFromLine className="h-4 w-4 text-ash" /> Withdraw gold
+                      </button>
+                      <Link role="menuitem" href="/portfolio" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
+                        <Briefcase className="h-4 w-4 text-ash" /> Portfolio
                       </Link>
-                    )}
-                  </div>
-
-                  <div className="border-t border-zinc-800 pt-1">
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left px-3.5 py-2 text-xs hover:bg-rose-950/40 text-rose-400 flex items-center gap-2 cursor-pointer transition"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      Log Out Citizen
-                    </button>
-                  </div>
+                      {user.isAdmin && (
+                        <>
+                          <Link role="menuitem" href="/admin" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
+                            <ShieldCheck className="h-4 w-4 text-ash" /> Operator panel
+                          </Link>
+                          <button role="menuitem" onClick={handlePulse} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
+                            <Bot className="h-4 w-4 text-ash" /> Run a bot trading round
+                          </button>
+                        </>
+                      )}
+                      <div className="border-t border-rule mt-1 pt-1">
+                        <button role="menuitem" onClick={handleLogout} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
+                          <LogOut className="h-4 w-4 text-ash" /> Log out
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
+              </>
+            ) : (
               <Link
                 href="/login"
-                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-black px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-lg shadow-amber-500/10 cursor-pointer"
+                className="h-8 px-3 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold flex items-center gap-1.5 transition-colors"
               >
-                <LogIn className="w-3.5 h-3.5" />
-                Log In / Register
+                <LogIn className="h-4 w-4" />
+                Log in
               </Link>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+        {pulseNote && (
+          <div role="status" className="absolute right-3 top-full mt-2 rounded-[4px] border border-rule bg-pane px-3 py-2 text-[12px] text-paper">
+            {pulseNote}
+          </div>
+        )}
+      </header>
 
-      {/* Parlamentum Wallet Modal */}
-      <WalletModal
-        isOpen={isWalletOpen}
-        initialTab={walletTab}
-        onClose={() => setIsWalletOpen(false)}
-        onBalanceUpdated={() => {
-          fetchUserData();
-          if (onUserRefresh) onUserRefresh();
-        }}
-      />
-    </header>
+      {/* Phones: the main sections as a bottom tab bar (the header has no room for them) */}
+      <nav className="mobile-tabbar md:hidden fixed bottom-0 inset-x-0 z-40 h-14 border-t border-rule bg-floor grid grid-cols-4" aria-label="Main">
+        {links.map((l) => (
+          <Link
+            key={l.label}
+            href={l.href}
+            aria-current={l.active ? "page" : undefined}
+            className={`flex flex-col items-center justify-center gap-0.5 text-[11px] ${l.active ? "text-zinc-50" : "text-ash"}`}
+          >
+            <l.icon className="h-5 w-5" />
+            {l.short || l.label}
+          </Link>
+        ))}
+      </nav>
+
+      {/* Mounted per opening so "Withdraw gold" really opens the withdraw tab (the tab used to stick) */}
+      {isWalletOpen && (
+        <WalletModal
+          key={walletTab}
+          isOpen
+          initialTab={walletTab}
+          onClose={() => setIsWalletOpen(false)}
+          onBalanceUpdated={() => {
+            refreshMarketFeed();
+            if (onUserRefresh) onUserRefresh();
+          }}
+        />
+      )}
+    </>
   );
 }
 
 export default function Navbar({ onUserRefresh }: { onUserRefresh?: () => void }) {
   return (
-    <Suspense
-      fallback={
-        <header className="border-b border-zinc-800 bg-zinc-950 text-zinc-100 sticky top-0 z-50 h-24 flex items-center px-6">
-          <div className="flex items-center gap-2 text-xs font-mono text-amber-400">
-            <span className="animate-pulse">Loading exchange ticker tape...</span>
-          </div>
-        </header>
-      }
-    >
+    <Suspense fallback={<header className="sticky top-0 z-40 h-12 border-b border-rule bg-floor" />}>
       <NavbarInner onUserRefresh={onUserRefresh} />
     </Suspense>
   );
