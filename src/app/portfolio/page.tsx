@@ -37,7 +37,7 @@ export default function PortfolioPage() {
 
   const fetchPortfolio = async () => {
     try {
-      const res = await fetch("/api/portfolio");
+      const res = await fetch("/api/portfolio", { cache: "no-store" });
       const json = await res.json();
       if (json.success) {
         setData(json.portfolio);

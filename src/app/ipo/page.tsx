@@ -68,7 +68,7 @@ export default function IpoPage() {
 
   const fetchApplications = async () => {
     try {
-      const res = await fetch("/api/ipo");
+      const res = await fetch("/api/ipo", { cache: "no-store" });
       const data = await res.json();
       if (data.success && data.applications) {
         setApplications(data.applications);
@@ -81,7 +81,7 @@ export default function IpoPage() {
   useEffect(() => {
     fetchApplications();
     // Pre-fill user's character name
-    fetch("/api/auth").then(r => r.json()).then(data => {
+    fetch("/api/auth", { cache: "no-store" }).then(r => r.json()).then(data => {
       if (data.user?.parlamentumName || data.user?.username) {
         setParlamentumName(data.user.parlamentumName || data.user.username);
       }

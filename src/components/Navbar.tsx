@@ -59,7 +59,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
 
   const fetchUserData = async () => {
     try {
-      const res = await fetch("/api/auth");
+      const res = await fetch("/api/auth", { cache: "no-store" });
       const data = await res.json();
       if (data.user) {
         setUser(data.user);
@@ -74,7 +74,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
 
   const fetchTickers = async () => {
     try {
-      const res = await fetch("/api/market");
+      const res = await fetch("/api/market", { cache: "no-store" });
       const data = await res.json();
       if (data.companies) {
         setTickers(
@@ -136,7 +136,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
     }
   };
 
-  const terminalUrl = tickers.length > 0 ? `/trade/${tickers[0].ticker}` : `/ipo`;
+  const terminalUrl = tickers.length > 0 ? `/trade/${tickers[0].ticker}` : `/trade`;
 
   return (
     <header className="border-b border-zinc-800 bg-zinc-950 text-zinc-100 sticky top-0 z-50">

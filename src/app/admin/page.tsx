@@ -81,7 +81,7 @@ export default function AdminPage() {
 
   const fetchAdminData = async () => {
     try {
-      const res = await fetch("/api/admin");
+      const res = await fetch("/api/admin", { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setIsAdmin(true);

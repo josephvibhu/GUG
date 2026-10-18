@@ -25,7 +25,7 @@ export default function HomePage() {
 
   const fetchMarkets = async () => {
     try {
-      const res = await fetch("/api/market");
+      const res = await fetch("/api/market", { cache: "no-store" });
       const data = await res.json();
       if (data.companies) {
         setCompanies(data.companies);

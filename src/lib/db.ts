@@ -1,5 +1,6 @@
 import { createClient, Client } from "@libsql/client";
 import path from "path";
+import fs from "fs";
 
 let clientInstance: Client | null = null;
 
@@ -15,8 +16,17 @@ export function getDb(): Client {
       });
     } else if (process.env.VERCEL) {
       // In Vercel serverless functions, /tmp is the only writable directory
+      const tmpDbPath = "/tmp/parlamentum_market.db";
+      const repoDbPath = path.resolve(process.cwd(), "parlamentum_market.db");
+      if (!fs.existsSync(tmpDbPath) && fs.existsSync(repoDbPath)) {
+        try {
+          fs.copyFileSync(repoDbPath, tmpDbPath);
+        } catch (e) {
+          console.warn("Failed to copy bundled database to /tmp:", e);
+        }
+      }
       clientInstance = createClient({
-        url: `file:/tmp/parlamentum_market.db`,
+        url: `file:${tmpDbPath}`,
       });
     } else {
       const dbPath = path.resolve(process.cwd(), "parlamentum_market.db");

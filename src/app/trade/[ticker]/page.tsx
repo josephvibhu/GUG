@@ -35,7 +35,7 @@ function TradeContent({ params }: { params: Promise<{ ticker: string }> }) {
 
   const fetchTerminalData = async () => {
     try {
-      const res = await fetch(`/api/market/${ticker}`);
+      const res = await fetch(`/api/market/${ticker}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setCompany(data.company);
