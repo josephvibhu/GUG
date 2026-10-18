@@ -175,16 +175,29 @@ export async function POST(request: Request) {
         args: [passHash, now]
       });
 
-      // 2. Reassign companies, announcements, orders to usr_josepharora
+      // 2. Ensure CardinalSanjay exists with exact 5 gold and 5 shares
+      const sanjayRes = await db.execute("SELECT id FROM users WHERE LOWER(username) = 'cardinalsanjay'");
+      const sanjayId = sanjayRes.rows.length > 0 ? String(sanjayRes.rows[0].id) : 'usr_2eb75326';
+      await db.execute({
+        sql: `UPDATE users SET cash_balance = 5.0, locked_cash = 0.0 WHERE id = ?`,
+        args: [sanjayId]
+      });
+
+      // 3. Reassign companies, announcements, orders to usr_josepharora
       await db.execute(`UPDATE companies SET creator_id = 'usr_josepharora';`);
       await db.execute(`UPDATE announcements SET author_id = 'usr_josepharora';`);
       await db.execute(`UPDATE orders SET user_id = 'usr_josepharora' WHERE user_id IN ('usr_house', 'usr_treasury');`);
 
-      // 3. Recreate portfolio for JosephArora
+      // 4. Recreate portfolios
       await db.execute(`DELETE FROM portfolios WHERE user_id IN ('usr_house', 'usr_treasury');`);
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
+              VALUES ('port_cardinalsanjay_GUG', ?, 'cmp_gug_001', 5, 0, 3.0)`,
+        args: [sanjayId]
+      });
       await db.execute(`
         INSERT OR REPLACE INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
-        VALUES ('port_usr_josepharora_GUG', 'usr_josepharora', 'cmp_gug_001', 10000, 1000, 3.0);
+        VALUES ('port_usr_josepharora_GUG', 'usr_josepharora', 'cmp_gug_001', 9995, 1000, 3.0);
       `);
 
       // 4. Delete all other users and their data except CardinalSanjay and JosephArora
