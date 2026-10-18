@@ -5,7 +5,6 @@ import Navbar from "@/components/Navbar";
 import Link from "next/link";
 import { 
   Building2, 
-  Sparkles, 
   Coins, 
   ShieldCheck, 
   ArrowRight, 
@@ -161,21 +160,18 @@ export default function IpoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100 flex flex-col font-sans selection:bg-amber-500 selection:text-black">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
 
       <main className="max-w-6xl w-full mx-auto p-4 sm:p-6 md:p-8 flex flex-col gap-8">
         {/* Header */}
         <div className="flex flex-col gap-2 border-b border-zinc-800 pb-6">
-          <div className="flex items-center gap-2 text-xs font-semibold text-purple-400 uppercase tracking-wider">
-            <Sparkles className="w-4 h-4" /> Operator-Vetted Public Listing
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Apply for a Parliamentary IPO Charter
+          <h1 className="condensed text-[28px] leading-none font-extrabold text-zinc-50 tracking-tight">
+            List your company
           </h1>
-          <p className="text-zinc-400 text-sm max-w-2xl leading-relaxed">
-            Companies cannot list independently without vetting. Submit your business plan, in-game backing assets, 
-            and proposed terms. The <strong>Exchange Operator</strong> will review, negotiate pricing, and approve your public float.
+          <p className="text-ash text-sm max-w-2xl leading-relaxed">
+            Tell the operator what backs your company in the game and propose the shares, price and public float.
+            They review it, may negotiate the price, and open the first shares for sale when it&apos;s approved.
           </p>
         </div>
 
@@ -456,7 +452,7 @@ export default function IpoPage() {
 
                 <div className="p-2 bg-zinc-900/60 rounded-lg border border-zinc-800 text-[11px] font-mono flex items-center justify-between">
                   <span className="text-zinc-400 font-sans">Founder Retains:</span>
-                  <strong className="text-purple-300 font-bold">{founderPercent.toFixed(2)}% ({founderShares.toLocaleString()} sh.)</strong>
+                  <strong className="text-paper font-bold">{founderPercent.toFixed(2)}% ({founderShares.toLocaleString()} sh.)</strong>
                 </div>
               </div>
 
@@ -501,12 +497,12 @@ export default function IpoPage() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm tracking-wide transition shadow-lg shadow-purple-600/20 cursor-pointer flex items-center justify-center gap-2 ${
+              className={`w-full py-3 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor font-semibold text-sm transition cursor-pointer flex items-center justify-center gap-2 ${
                 loading ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
               <Building2 className="w-4 h-4" />
-              {loading ? "Submitting Application..." : "Submit IPO Charter Request for Operator Review"}
+              {loading ? "Sending application…" : "Send application to the operator"}
             </button>
           </form>
 
@@ -514,7 +510,7 @@ export default function IpoPage() {
           <div className="lg:col-span-5 bg-zinc-900/40 border border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col gap-4">
             <h3 className="font-bold text-white text-sm flex items-center gap-2 border-b border-zinc-800 pb-3">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              IPO Charter Pro-Forma Summary
+              Listing preview
             </h3>
 
             <div className="flex items-center gap-3 p-3 bg-zinc-950 rounded-xl border border-zinc-800">
@@ -544,7 +540,7 @@ export default function IpoPage() {
 
               <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
                 <span className="text-zinc-400 font-sans">Founder Retained Stake:</span>
-                <span className="font-bold text-purple-300">{founderPercent.toFixed(2)}% ({founderShares.toLocaleString()} shares)</span>
+                <span className="font-bold text-paper">{founderPercent.toFixed(2)}% ({founderShares.toLocaleString()} shares)</span>
               </div>
 
               <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">

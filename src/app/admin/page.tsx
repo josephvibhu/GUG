@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Navbar from "@/components/Navbar";
+import { usePoll } from "@/hooks/usePoll";
 import Link from "next/link";
 import { 
   Shield, 
@@ -380,11 +381,10 @@ export default function AdminPage() {
     }
   };
 
-  useEffect(() => {
-    fetchAdminData();
-    const interval = setInterval(fetchAdminData, 6000);
-    return () => clearInterval(interval);
-  }, []);
+  // Every user, portfolio and ledger entry comes back on each load: every 15 s, paused in hidden tabs (was 6 s, always)
+  usePoll(async () => {
+    await fetchAdminData();
+  }, 15000);
 
   const handleApproveDeposit = async (txId: string) => {
     // Optimistically remove immediately so the card never lingers or flickers

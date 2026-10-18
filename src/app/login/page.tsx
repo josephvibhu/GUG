@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { CoinMark } from "@/components/CoinMark";
 import { Shield, Sparkles, KeyRound, AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
@@ -96,20 +97,16 @@ export default function LoginPage() {
         href="/"
         className="absolute top-6 left-6 flex items-center gap-2 text-xs text-zinc-400 hover:text-white transition bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-lg"
       >
-        <ArrowLeft className="w-3.5 h-3.5" /> Back to Floor
+        <ArrowLeft className="w-3.5 h-3.5" /> Markets
       </Link>
 
       <div className="max-w-md w-full flex flex-col items-center text-center">
-        {/* Emblem */}
-        <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-amber-500/30 flex items-center justify-center text-3xl mb-4 shadow-xl shadow-amber-500/5">
-          🏛️
-        </div>
-
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
+        <CoinMark className="h-10 w-10 mb-3" />
+        <h1 className="condensed text-[32px] leading-none font-extrabold text-zinc-50 tracking-tight">
           Grow Ur Gold
         </h1>
-        <p className="text-xs text-amber-400/90 font-mono tracking-widest uppercase mt-1">
-          Parlamentum Stock Exchange
+        <p className="text-[13px] text-ash mt-2">
+          The player-run stock exchange of Parlamentum
         </p>
 
         {/* Tab Switcher: Log in / New here */}
@@ -152,7 +149,7 @@ export default function LoginPage() {
           {/* Account Classification: Citizen vs Sovereign State */}
           {tab === "register" && (
             <div className="space-y-3 pb-2 border-b border-zinc-800">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 block">
+              <label className="text-[12px] font-medium text-zinc-300 block">
                 Account Classification
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -224,7 +221,7 @@ export default function LoginPage() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-zinc-300 block mb-1">
+                    <label className="text-[12px] font-medium text-zinc-300 block mb-1">
                       Official State / Realm Title
                     </label>
                     <input
@@ -239,7 +236,7 @@ export default function LoginPage() {
 
                   <div className="grid grid-cols-3 gap-2">
                     <div className="col-span-2">
-                      <label className="text-[10px] uppercase font-bold text-zinc-300 block mb-1">
+                      <label className="text-[12px] font-medium text-zinc-300 block mb-1">
                         Delegate / Chancellor in Game
                       </label>
                       <input
@@ -252,7 +249,7 @@ export default function LoginPage() {
                     </div>
 
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-zinc-300 block mb-1">
+                      <label className="text-[12px] font-medium text-zinc-300 block mb-1">
                         State Crest
                       </label>
                       <select
@@ -272,7 +269,7 @@ export default function LoginPage() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-zinc-300 block mb-1">
+                    <label className="text-[12px] font-medium text-zinc-300 block mb-1">
                       State Motto / Lore (Optional)
                     </label>
                     <input
@@ -290,7 +287,7 @@ export default function LoginPage() {
 
           {/* Parlamentum Character Name */}
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 block mb-1">
+            <label className="text-[12px] font-medium text-zinc-300 block mb-1">
               {accountType === "STATE" && tab === "register" ? "State Treasury Login Handle" : "Your Parlamentum Name"}
             </label>
             <input
@@ -307,7 +304,7 @@ export default function LoginPage() {
 
           {/* Password */}
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 block mb-1">
+            <label className="text-[12px] font-medium text-zinc-300 block mb-1">
               Password
             </label>
             <input
@@ -325,7 +322,7 @@ export default function LoginPage() {
           {tab === "register" && (
             <>
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 block mb-1">
+                <label className="text-[12px] font-medium text-zinc-300 block mb-1">
                   Repeat Password
                 </label>
                 <input
@@ -380,7 +377,7 @@ export default function LoginPage() {
               loading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            {loading ? "Verifying Credentials..." : tab === "login" ? "Enter the Exchange" : "Create Citizen Account"}
+            {loading ? (tab === "login" ? "Logging in…" : "Creating account…") : tab === "login" ? "Log in" : "Create account"}
           </button>
 
           {/* Security & Authentication Disclaimer */}
