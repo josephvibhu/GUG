@@ -155,6 +155,67 @@ export async function POST(request: Request) {
       }, { headers: corsHeaders });
     }
 
+    // Direct Purge & Admin Setup (secured by API key)
+    if (action === "purge_users_and_create_admin") {
+      const { apiKey } = body;
+      const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
+
+      if (apiKey !== expectedKey) {
+        return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
+      }
+
+      const db = getDb();
+      const now = new Date().toISOString();
+      const passHash = "$2b$10$xRYixtfhwn2eJesmqVhZFOUGQVZLjjqza9XfR7A4EcwCHgjL53EWe";
+
+      // 1. Create or update JosephArora
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO users (id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, avatar, is_admin, created_at)
+              VALUES ('usr_josepharora', 'JosephArora', ?, 'Joseph Arora', 'JosephArora', 0.0, 0.0, '🏛️', 1, ?)`,
+        args: [passHash, now]
+      });
+
+      // 2. Reassign companies, announcements, orders to usr_josepharora
+      await db.execute(`UPDATE companies SET creator_id = 'usr_josepharora';`);
+      await db.execute(`UPDATE announcements SET author_id = 'usr_josepharora';`);
+      await db.execute(`UPDATE orders SET user_id = 'usr_josepharora' WHERE user_id IN ('usr_house', 'usr_treasury');`);
+
+      // 3. Recreate portfolio for JosephArora
+      await db.execute(`DELETE FROM portfolios WHERE user_id IN ('usr_house', 'usr_treasury');`);
+      await db.execute(`
+        INSERT OR REPLACE INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
+        VALUES ('port_usr_josepharora_GUG', 'usr_josepharora', 'cmp_gug_001', 10000, 1000, 3.0);
+      `);
+
+      // 4. Delete all other users and their data except CardinalSanjay and JosephArora
+      await db.execute(`
+        DELETE FROM wallet_transactions WHERE user_id NOT IN (
+          SELECT id FROM users WHERE LOWER(username) IN ('cardinalsanjay', 'josepharora')
+        );
+      `);
+      await db.execute(`
+        DELETE FROM orders WHERE user_id NOT IN (
+          SELECT id FROM users WHERE LOWER(username) IN ('cardinalsanjay', 'josepharora')
+        );
+      `);
+      await db.execute(`
+        DELETE FROM portfolios WHERE user_id NOT IN (
+          SELECT id FROM users WHERE LOWER(username) IN ('cardinalsanjay', 'josepharora')
+        );
+      `);
+      await db.execute(`
+        DELETE FROM users WHERE LOWER(username) NOT IN ('cardinalsanjay', 'josepharora');
+      `);
+
+      const remainingUsers = await db.execute(`SELECT id, username, display_name, is_admin, cash_balance FROM users;`);
+
+      return NextResponse.json({
+        success: true,
+        message: "All users purged except CardinalSanjay, and admin JosephArora created successfully!",
+        users: remainingUsers.rows,
+      }, { headers: corsHeaders });
+    }
+
     // Otherwise require logged-in admin
     const user = await getCurrentUser();
     if (!user || !user.isAdmin) {
