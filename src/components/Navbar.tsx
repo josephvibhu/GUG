@@ -213,19 +213,19 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* Brand */}
-        <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:border-amber-400 transition">
+        <div className="flex items-center gap-4 sm:gap-8 shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 group shrink-0 whitespace-nowrap">
+            <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:border-amber-400 transition shrink-0">
               🏛️
             </div>
-            <div>
-              <div className="font-bold tracking-tight text-base sm:text-lg flex items-center gap-2">
-                <span>GROW UR GOLD</span>
-                <span className="text-xs bg-amber-500/20 text-amber-300 font-mono px-1.5 py-0.5 rounded border border-amber-500/30">
+            <div className="flex flex-col shrink-0">
+              <div className="font-bold tracking-tight text-base sm:text-lg flex items-center gap-2 whitespace-nowrap leading-none">
+                <span className="whitespace-nowrap font-black">GROW UR GOLD</span>
+                <span className="text-[10px] bg-amber-500/15 text-amber-300 font-mono font-bold px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0 uppercase tracking-wide">
                   PARLAMENTUM
                 </span>
               </div>
-              <div className="text-[10px] text-zinc-400 uppercase tracking-widest -mt-0.5">
+              <div className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1 whitespace-nowrap">
                 Official Stock Exchange
               </div>
             </div>
