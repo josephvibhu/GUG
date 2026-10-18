@@ -13,7 +13,8 @@ import {
   AlertCircle,
   Clock,
   FileText,
-  User
+  User,
+  Percent
 } from "lucide-react";
 
 interface UserApplication {
@@ -39,7 +40,7 @@ export default function IpoPage() {
   const [sector, setSector] = useState("Industry & Metallurgy");
   const [totalShares, setTotalShares] = useState("10000");
   const [ipoPrice, setIpoPrice] = useState("10.00");
-  const [founderPercent, setFounderPercent] = useState(50);
+  const [floatPercent, setFloatPercent] = useState<number>(20);
   const [logoEmoji, setLogoEmoji] = useState("🏛️");
 
   const [applications, setApplications] = useState<UserApplication[]>([]);
@@ -50,8 +51,10 @@ export default function IpoPage() {
   const numTotalShares = parseInt(totalShares, 10) || 0;
   const numIpoPrice = parseFloat(ipoPrice) || 0;
   const initialMarketCap = numTotalShares * numIpoPrice;
-  const founderShares = Math.floor(numTotalShares * (founderPercent / 100));
-  const publicFloat = numTotalShares - founderShares;
+  const founderPercent = parseFloat((100 - floatPercent).toFixed(2));
+  const rawFounderShares = Math.floor(numTotalShares * (founderPercent / 100));
+  const publicFloat = Math.max(1, numTotalShares - rawFounderShares);
+  const founderShares = numTotalShares - publicFloat;
   const publicFloatVal = publicFloat * numIpoPrice;
 
   const emojiList = ["🏛️", "⚙️", "⚒️", "🗡️", "💎", "🌾", "🚢", "🚂", "🛡️", "⚗️", "👑"];
@@ -134,6 +137,7 @@ export default function IpoPage() {
           proposedTotalShares: numTotalShares,
           proposedIpoPrice: numIpoPrice,
           proposedFounderRetainPercent: founderPercent,
+          proposedFloatPercent: floatPercent,
           logoUrl: logoEmoji,
         }),
       });
@@ -213,7 +217,11 @@ export default function IpoPage() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-zinc-800/80 font-mono text-[11px]">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-zinc-800/80 font-mono text-[11px]">
+                      <div>
+                        <span className="text-zinc-500 block text-[10px] font-sans">Public Float</span>
+                        <span className="text-amber-400 font-bold">{(100 - Number(app.proposedFounderRetainPercent)).toFixed(2)}%</span>
+                      </div>
                       <div>
                         <span className="text-zinc-500 block text-[10px] font-sans">Proposed Price</span>
                         <span className="text-zinc-300">{app.proposedIpoPrice.toFixed(2)} gold</span>
@@ -403,29 +411,90 @@ export default function IpoPage() {
               </div>
             </div>
 
-            {/* Founder Equity Retained Slider */}
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="text-xs font-semibold text-zinc-300">
-                  Founder Retained Equity Stake
-                </label>
-                <span className="font-mono text-xs font-bold text-amber-400">
-                  {founderPercent}% ({founderShares.toLocaleString()} shares)
-                </span>
+            {/* Public Float (% Putting Out) & Founder Equity Controls */}
+            <div className="p-4 bg-zinc-950/60 rounded-xl border border-zinc-800 space-y-3">
+              <div className="flex justify-between items-center">
+                <div>
+                  <label className="text-xs font-bold text-amber-400 block">
+                    Public Float % (Percentage Putting Out to Bourse)
+                  </label>
+                  <span className="text-[10px] text-zinc-400">
+                    Supports micro-floats down to 0.10% (Founder keeps 99.90%)
+                  </span>
+                </div>
+                <div className="text-right font-mono">
+                  <span className="text-xs font-bold text-amber-400">
+                    {floatPercent.toFixed(2)}% Float
+                  </span>
+                  <span className="text-[10px] text-zinc-400 block">
+                    ({publicFloat.toLocaleString()} shares)
+                  </span>
+                </div>
               </div>
+
+              {/* Number input and slider for exact decimal float control */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                <div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.10"
+                      max="99.90"
+                      value={floatPercent}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val)) {
+                          setFloatPercent(Math.min(99.9, Math.max(0.1, Math.round(val * 100) / 100)));
+                        }
+                      }}
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg pl-3 pr-8 py-2 font-mono text-amber-400 font-bold text-sm focus:outline-none focus:border-amber-400"
+                    />
+                    <Percent className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3" />
+                  </div>
+                </div>
+
+                <div className="p-2 bg-zinc-900/60 rounded-lg border border-zinc-800 text-[11px] font-mono flex items-center justify-between">
+                  <span className="text-zinc-400 font-sans">Founder Retains:</span>
+                  <strong className="text-purple-300 font-bold">{founderPercent.toFixed(2)}% ({founderShares.toLocaleString()} sh.)</strong>
+                </div>
+              </div>
+
+              {/* Slider for smooth dragging */}
               <input
                 type="range"
-                min="10"
-                max="90"
-                step="5"
-                value={founderPercent}
-                onChange={(e) => setFounderPercent(parseInt(e.target.value, 10))}
+                min="0.10"
+                max="99.90"
+                step="0.10"
+                value={floatPercent}
+                onChange={(e) => setFloatPercent(parseFloat(e.target.value))}
                 className="w-full accent-amber-500 cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-zinc-400 mt-1 font-mono">
-                <span>10% (High Public Float)</span>
-                <span>Public Float: {100 - founderPercent}% ({publicFloat.toLocaleString()} shares)</span>
-                <span>90% (Strict Founder Control)</span>
+
+              {/* Micro-Float Presets */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[10px] text-zinc-500 mr-1">Presets:</span>
+                {[
+                  { label: "0.10% (Micro)", val: 0.10 },
+                  { label: "1.00%", val: 1.00 },
+                  { label: "5.00%", val: 5.00 },
+                  { label: "10.00%", val: 10.00 },
+                  { label: "25.00%", val: 25.00 },
+                  { label: "50.00%", val: 50.00 },
+                ].map((pill) => (
+                  <button
+                    key={pill.val}
+                    type="button"
+                    onClick={() => setFloatPercent(pill.val)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-mono transition cursor-pointer border ${
+                      floatPercent === pill.val
+                        ? "bg-amber-500 text-black font-bold border-amber-400"
+                        : "bg-zinc-800 text-zinc-300 hover:text-white border-zinc-700"
+                    }`}
+                  >
+                    {pill.label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -465,17 +534,22 @@ export default function IpoPage() {
             <div className="space-y-2.5 font-mono text-xs">
               <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
                 <span className="text-zinc-400 font-sans">Initial Valuation (Market Cap):</span>
-                <span className="font-bold text-emerald-400">{initialMarketCap.toLocaleString()} gold</span>
+                <span className="font-bold text-emerald-400">{initialMarketCap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold</span>
               </div>
 
               <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
-                <span className="text-zinc-400 font-sans">Public Offering Size (Float):</span>
-                <span className="font-bold text-white">{publicFloat.toLocaleString()} shares</span>
+                <span className="text-zinc-400 font-sans">Public Float (% Putting Out):</span>
+                <span className="font-bold text-amber-400">{floatPercent.toFixed(2)}% ({publicFloat.toLocaleString()} shares)</span>
+              </div>
+
+              <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
+                <span className="text-zinc-400 font-sans">Founder Retained Stake:</span>
+                <span className="font-bold text-purple-300">{founderPercent.toFixed(2)}% ({founderShares.toLocaleString()} shares)</span>
               </div>
 
               <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
                 <span className="text-zinc-400 font-sans">Capital To Be Raised:</span>
-                <span className="font-bold text-amber-300">{publicFloatVal.toLocaleString()} gold</span>
+                <span className="font-bold text-amber-300">{publicFloatVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold</span>
               </div>
 
               <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">

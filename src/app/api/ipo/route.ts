@@ -41,6 +41,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "All IPO charter request fields are required" }, { status: 400 });
     }
 
+    let retainPercent = 50;
+    if (proposedFounderRetainPercent !== undefined && !isNaN(Number(proposedFounderRetainPercent))) {
+      retainPercent = Number(proposedFounderRetainPercent);
+    } else if (body.proposedFloatPercent !== undefined && !isNaN(Number(body.proposedFloatPercent))) {
+      retainPercent = 100 - Number(body.proposedFloatPercent);
+    }
+
     const res = await submitIPOApplication({
       userId: user.id,
       parlamentumName: (parlamentumName || user.parlamentumName || user.username).trim(),
@@ -50,7 +57,7 @@ export async function POST(request: Request) {
       sector,
       proposedTotalShares: Number(proposedTotalShares),
       proposedIpoPrice: Number(proposedIpoPrice),
-      proposedFounderRetainPercent: Number(proposedFounderRetainPercent) || 50,
+      proposedFounderRetainPercent: retainPercent,
       logoUrl: logoUrl || "🏛️",
     });
 

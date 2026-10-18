@@ -330,12 +330,21 @@ export async function POST(request: Request) {
     }
 
     if (action === "approve_ipo") {
-      const { appId, negotiatedPrice, negotiatedShares, operatorNotes } = body;
+      const { appId, negotiatedPrice, negotiatedShares, negotiatedFounderRetainPercent, negotiatedFloatPercent, operatorNotes } = body;
       const { approveAndListIPO } = await import("@/lib/market");
+
+      let retainPercent: number | undefined = undefined;
+      if (negotiatedFounderRetainPercent !== undefined && !isNaN(Number(negotiatedFounderRetainPercent))) {
+        retainPercent = Number(negotiatedFounderRetainPercent);
+      } else if (negotiatedFloatPercent !== undefined && !isNaN(Number(negotiatedFloatPercent))) {
+        retainPercent = 100 - Number(negotiatedFloatPercent);
+      }
+
       const res = await approveAndListIPO(
         appId, 
         negotiatedPrice !== undefined ? Number(negotiatedPrice) : undefined, 
         negotiatedShares !== undefined ? Number(negotiatedShares) : undefined, 
+        retainPercent,
         operatorNotes
       );
       return NextResponse.json(res);

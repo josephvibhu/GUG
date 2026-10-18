@@ -395,10 +395,11 @@ export async function createCompanyIPO(params: {
 
   const totalShares = Math.max(1000, Math.floor(params.totalShares));
   const ipoPrice = Math.max(0.1, Math.round(params.ipoPrice * 100) / 100);
-  const founderPercent = Math.min(90, Math.max(10, params.founderRetainPercent));
+  const founderPercent = Math.min(99.9, Math.max(0.1, Math.round(params.founderRetainPercent * 100) / 100));
   
-  const founderShares = Math.floor(totalShares * (founderPercent / 100));
-  const floatShares = totalShares - founderShares;
+  const rawFounderShares = Math.floor(totalShares * (founderPercent / 100));
+  const floatShares = Math.max(1, totalShares - rawFounderShares);
+  const founderShares = totalShares - floatShares;
 
   const companyId = `cmp_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
@@ -545,7 +546,7 @@ export async function submitIPOApplication(params: {
       params.sector.trim(),
       Math.max(1000, Math.floor(params.proposedTotalShares)),
       Math.max(0.1, Math.round(params.proposedIpoPrice * 100) / 100),
-      Math.min(90, Math.max(10, params.proposedFounderRetainPercent)),
+      Math.min(99.9, Math.max(0.1, Math.round(params.proposedFounderRetainPercent * 100) / 100)),
       params.logoUrl || "🏛️",
       now,
     ],
@@ -620,6 +621,7 @@ export async function approveAndListIPO(
   appId: string, 
   negotiatedPrice?: number, 
   negotiatedShares?: number,
+  negotiatedFounderRetainPercent?: number,
   operatorNotes?: string
 ): Promise<{ success: boolean; message: string; company?: Company }> {
   await initDb();
@@ -637,6 +639,9 @@ export async function approveAndListIPO(
   const app = appRes.rows[0];
   const finalPrice = negotiatedPrice !== undefined && negotiatedPrice > 0 ? negotiatedPrice : Number(app.proposed_ipo_price);
   const finalShares = negotiatedShares !== undefined && negotiatedShares >= 1000 ? negotiatedShares : Number(app.proposed_total_shares);
+  const finalFounderRetain = (negotiatedFounderRetainPercent !== undefined && negotiatedFounderRetainPercent >= 0.1 && negotiatedFounderRetainPercent <= 99.9)
+    ? Math.round(negotiatedFounderRetainPercent * 100) / 100
+    : Number(app.proposed_founder_retain_percent);
 
   // Officially list the company on the floor
   const listRes = await createCompanyIPO({
@@ -647,7 +652,7 @@ export async function approveAndListIPO(
     sector: String(app.sector),
     totalShares: finalShares,
     ipoPrice: finalPrice,
-    founderRetainPercent: Number(app.proposed_founder_retain_percent),
+    founderRetainPercent: finalFounderRetain,
     logoUrl: String(app.logo_url || "🏛️"),
   });
 

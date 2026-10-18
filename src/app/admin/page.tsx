@@ -72,7 +72,7 @@ export default function AdminPage() {
 
   // Pending IPO Applications
   const [ipoApplications, setIpoApplications] = useState<any[]>([]);
-  const [negotiatingApp, setNegotiatingApp] = useState<{ [id: string]: { price: string; shares: string; notes: string } }>({});
+  const [negotiatingApp, setNegotiatingApp] = useState<{ [id: string]: { price: string; shares: string; floatPercent: string; notes: string } }>({});
 
   // Manual loader form
   const [targetCitizen, setTargetCitizen] = useState<string>("");
@@ -275,6 +275,7 @@ export default function AdminPage() {
           appId,
           negotiatedPrice: form.price ? parseFloat(form.price) : undefined,
           negotiatedShares: form.shares ? parseInt(form.shares, 10) : undefined,
+          negotiatedFloatPercent: form.floatPercent ? parseFloat(form.floatPercent) : undefined,
           operatorNotes: form.notes,
         }),
       });
@@ -817,9 +818,19 @@ export default function AdminPage() {
           ) : (
             <div className="space-y-4">
               {ipoApplications.map((app) => {
+                const proposedShares = Number(app.proposedTotalShares);
+                const proposedPrice = Number(app.proposedIpoPrice);
+                const proposedFounderPct = Number(app.proposedFounderRetainPercent);
+                const proposedFloat = parseFloat((100 - proposedFounderPct).toFixed(2));
+                const proposedFloatShares = Math.max(1, Math.round(proposedShares * (proposedFloat / 100)));
+                const proposedFounderShares = proposedShares - proposedFloatShares;
+                const proposedFloatCap = proposedFloatShares * proposedPrice;
+                const proposedTotalValuation = proposedShares * proposedPrice;
+
                 const formState = negotiatingApp[app.id] || {
                   price: String(app.proposedIpoPrice),
                   shares: String(app.proposedTotalShares),
+                  floatPercent: String(proposedFloat),
                   notes: "",
                 };
 
@@ -827,12 +838,23 @@ export default function AdminPage() {
                   setNegotiatingApp(prev => ({
                     ...prev,
                     [app.id]: {
-                      price: key === "price" ? val : formState.price,
-                      shares: key === "shares" ? val : formState.shares,
-                      notes: key === "notes" ? val : formState.notes,
+                      price: key === "price" ? val : (formState.price ?? String(app.proposedIpoPrice)),
+                      shares: key === "shares" ? val : (formState.shares ?? String(app.proposedTotalShares)),
+                      floatPercent: key === "floatPercent" ? val : (formState.floatPercent ?? String(proposedFloat)),
+                      notes: key === "notes" ? val : (formState.notes ?? ""),
                     }
                   }));
                 };
+
+                // Live calculated values based on operator's inputs
+                const parsedShares = parseInt(formState.shares, 10) || proposedShares;
+                const parsedPrice = parseFloat(formState.price) || proposedPrice;
+                const parsedFloat = Math.min(99.9, Math.max(0.1, parseFloat(formState.floatPercent) || proposedFloat));
+                const parsedFounderPct = parseFloat((100 - parsedFloat).toFixed(2));
+                const negotiatedFloatShares = Math.max(1, Math.round(parsedShares * (parsedFloat / 100)));
+                const negotiatedFounderShares = parsedShares - negotiatedFloatShares;
+                const negotiatedFloatCap = negotiatedFloatShares * parsedPrice;
+                const negotiatedTotalValuation = parsedShares * parsedPrice;
 
                 return (
                   <div key={app.id} className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex flex-col gap-4 text-xs">
@@ -864,50 +886,195 @@ export default function AdminPage() {
                       {app.description}
                     </div>
 
-                    {/* Terms & Negotiation Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-zinc-900/40 p-3 rounded-lg border border-zinc-800/80">
-                      <div>
-                        <label className="text-[10px] uppercase font-bold text-zinc-400 block mb-1">
-                          Negotiated IPO Price (Gold / Share)
-                        </label>
-                        <div className="flex items-center gap-2">
+                    {/* Applicant's Proposed Equity & Valuation Breakdown */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                        <span className="text-[10px] uppercase font-bold text-amber-300 block">
+                          🪙 Public Float (% Putting Out)
+                        </span>
+                        <div className="font-mono text-base font-extrabold text-amber-400 mt-0.5">
+                          {proposedFloat.toFixed(2)}%
+                        </div>
+                        <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                          {proposedFloatShares.toLocaleString()} shares to list
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 bg-purple-500/10 border border-purple-500/30 rounded-xl">
+                        <span className="text-[10px] uppercase font-bold text-purple-300 block">
+                          🏛️ Founder Retained Stake
+                        </span>
+                        <div className="font-mono text-base font-extrabold text-purple-300 mt-0.5">
+                          {proposedFounderPct.toFixed(2)}%
+                        </div>
+                        <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                          {proposedFounderShares.toLocaleString()} shares kept
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                        <span className="text-[10px] uppercase font-bold text-emerald-300 block">
+                          💰 Float Capital Raised
+                        </span>
+                        <div className="font-mono text-base font-extrabold text-emerald-400 mt-0.5">
+                          {proposedFloatCap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                        </div>
+                        <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                          at {proposedPrice.toFixed(2)}g / share
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl">
+                        <span className="text-[10px] uppercase font-bold text-zinc-400 block">
+                          📊 Total Valuation
+                        </span>
+                        <div className="font-mono text-base font-extrabold text-white mt-0.5">
+                          {proposedTotalValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                        </div>
+                        <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                          {proposedShares.toLocaleString()} total shares
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sovereign Negotiation & Float Adjuster */}
+                    <div className="p-3 bg-zinc-900/40 rounded-xl border border-zinc-800/80 space-y-3">
+                      <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                        <span className="font-bold text-zinc-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                          ⚖️ Sovereign Negotiation & Micro-Float Adjuster
+                        </span>
+                        <span className="text-[10px] text-zinc-400">
+                          Supports micro-floats down to 0.10%
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {/* Public Float % Input with Micro-Float capability down to 0.10% */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] uppercase font-bold text-amber-400">
+                              Public Float % (Putting Out)
+                            </label>
+                            <span className="font-mono text-[10px] text-zinc-400">
+                              Prop: {proposedFloat.toFixed(2)}%
+                            </span>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0.10"
+                              max="99.90"
+                              value={formState.floatPercent}
+                              onChange={(e) => updateForm("floatPercent", e.target.value)}
+                              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-2.5 pr-8 py-1.5 font-mono text-amber-400 font-bold text-xs focus:outline-none focus:border-amber-400"
+                            />
+                            <Percent className="w-3.5 h-3.5 text-zinc-500 absolute right-2.5 top-2" />
+                          </div>
+
+                          {/* Quick Float Preset Pills including micro-float 0.10% */}
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {[
+                              { label: "0.10%", val: "0.10", tip: "0.10% Micro-Float" },
+                              { label: "1%", val: "1.00", tip: "1% Float" },
+                              { label: "5%", val: "5.00", tip: "5% Float" },
+                              { label: "10%", val: "10.00", tip: "10% Standard Float" },
+                              { label: "25%", val: "25.00", tip: "25% Quarter Float" },
+                              { label: "50%", val: "50.00", tip: "50% Half Float" },
+                            ].map((pill) => (
+                              <button
+                                key={pill.val}
+                                type="button"
+                                onClick={() => updateForm("floatPercent", pill.val)}
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition cursor-pointer border ${
+                                  formState.floatPercent === pill.val
+                                    ? "bg-amber-500 text-black font-bold border-amber-400"
+                                    : "bg-zinc-800 text-zinc-400 hover:text-white border-zinc-700"
+                                }`}
+                                title={pill.tip}
+                              >
+                                {pill.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Negotiated IPO Price */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] uppercase font-bold text-emerald-400">
+                              IPO Price (Gold / Share)
+                            </label>
+                            <span className="font-mono text-[10px] text-zinc-400">
+                              Prop: {app.proposedIpoPrice}g
+                            </span>
+                          </div>
                           <input
                             type="number"
-                            step="0.5"
+                            step="0.1"
+                            min="0.1"
                             value={formState.price}
                             onChange={(e) => updateForm("price", e.target.value)}
                             className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 font-mono text-emerald-400 font-bold text-xs focus:outline-none focus:border-amber-400"
                           />
-                          <span className="text-[10px] text-zinc-400 shrink-0">(Proposed: {app.proposedIpoPrice}g)</span>
+                          <span className="text-[10px] text-zinc-400 mt-1.5 block">
+                            Valuation: {negotiatedTotalValuation.toLocaleString()}g
+                          </span>
                         </div>
-                      </div>
 
-                      <div>
-                        <label className="text-[10px] uppercase font-bold text-zinc-400 block mb-1">
-                          Negotiated Total Shares
-                        </label>
-                        <div className="flex items-center gap-2">
+                        {/* Negotiated Total Shares */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] uppercase font-bold text-zinc-300">
+                              Total Shares
+                            </label>
+                            <span className="font-mono text-[10px] text-zinc-400">
+                              Prop: {app.proposedTotalShares.toLocaleString()}
+                            </span>
+                          </div>
                           <input
                             type="number"
                             step="1000"
+                            min="1000"
                             value={formState.shares}
                             onChange={(e) => updateForm("shares", e.target.value)}
                             className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 font-mono text-white text-xs focus:outline-none focus:border-amber-400"
                           />
+                          <span className="text-[10px] text-zinc-400 mt-1.5 block font-mono">
+                            Founder retains {negotiatedFounderShares.toLocaleString()} sh.
+                          </span>
+                        </div>
+
+                        {/* Listing Terms / Notes */}
+                        <div>
+                          <label className="text-[10px] uppercase font-bold text-zinc-400 block mb-1">
+                            Listing Terms / Note to Founder
+                          </label>
+                          <input
+                            type="text"
+                            value={formState.notes}
+                            onChange={(e) => updateForm("notes", e.target.value)}
+                            placeholder="e.g. Terms agreed via Discord"
+                            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-400"
+                          />
+                          <span className="text-[10px] text-zinc-400 mt-1.5 block">
+                            Visible on company floor dossier
+                          </span>
                         </div>
                       </div>
 
-                      <div>
-                        <label className="text-[10px] uppercase font-bold text-zinc-400 block mb-1">
-                          Listing Terms / Note to Founder
-                        </label>
-                        <input
-                          type="text"
-                          value={formState.notes}
-                          onChange={(e) => updateForm("notes", e.target.value)}
-                          placeholder="e.g. Terms agreed via Discord"
-                          className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-400"
-                        />
+                      {/* Live Listing Execution Breakdown */}
+                      <div className="p-2.5 bg-zinc-950 rounded-lg border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <span className="text-zinc-400">Opening Bourse Float:</span>
+                          <strong className="text-amber-400 font-mono">{negotiatedFloatShares.toLocaleString()} shares ({parsedFloat.toFixed(2)}%)</strong>
+                          <span className="text-zinc-600">·</span>
+                          <span className="text-zinc-400">Founder Retains:</span>
+                          <strong className="text-purple-300 font-mono">{negotiatedFounderShares.toLocaleString()} shares ({parsedFounderPct.toFixed(2)}%)</strong>
+                          <span className="text-zinc-600">·</span>
+                          <span className="text-zinc-400">Float Capital Raised:</span>
+                          <strong className="text-emerald-400 font-mono">{negotiatedFloatCap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold</strong>
+                        </div>
                       </div>
                     </div>
 
@@ -924,9 +1091,9 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => handleApproveIPO(app.id)}
-                        className="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition shadow-lg shadow-emerald-500/20 cursor-pointer"
+                        className="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition shadow-lg shadow-emerald-500/20 cursor-pointer flex items-center gap-1.5"
                       >
-                        Approve & Open ${app.ticker} Float on Bourse
+                        <span>Approve & Open ${app.ticker} Float ({parsedFloat.toFixed(2)}%) on Bourse</span>
                       </button>
                     </div>
                   </div>
@@ -961,6 +1128,7 @@ export default function AdminPage() {
                   type="number"
                   min="0"
                   max="40"
+                  step="0.01"
                   value={taxRate}
                   onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-3 pr-8 py-2 font-mono text-white text-sm focus:outline-none focus:border-amber-400"
@@ -968,7 +1136,7 @@ export default function AdminPage() {
                 <Percent className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3" />
               </div>
               <span className="text-[10px] text-zinc-400 mt-1 block">
-                Tax negated on withdrawals so players receive their exact net gold!
+                Tax negated on withdrawals so players receive their exact net gold! Supports decimals down to 0.01%.
               </span>
             </div>
 
@@ -981,7 +1149,7 @@ export default function AdminPage() {
                   type="number"
                   min="0"
                   max="10"
-                  step="0.1"
+                  step="0.01"
                   value={tradeFee}
                   onChange={(e) => setTradeFee(parseFloat(e.target.value) || 0)}
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-3 pr-8 py-2 font-mono text-emerald-400 font-bold text-sm focus:outline-none focus:border-amber-400"
@@ -989,7 +1157,7 @@ export default function AdminPage() {
                 <Percent className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3" />
               </div>
               <span className="text-[10px] text-zinc-400 mt-1 block">
-                Standard House cut across share matches (e.g. 0.5%).
+                Standard House cut across share matches (e.g. 0.5% or 0.10%).
               </span>
             </div>
 
