@@ -144,13 +144,13 @@ export async function loginUser(
   });
 
   if (res.rows.length === 0) {
-    return { success: false, message: "Invalid citizen name or password." };
+    return { success: false, message: `Citizen "${cleanUser}" not found in exchange records.` };
   }
 
   const u = res.rows[0];
   const valid = await bcrypt.compare(password, String(u.password_hash));
   if (!valid) {
-    return { success: false, message: "Invalid citizen name or password." };
+    return { success: false, message: `Incorrect password for citizen "${cleanUser}".` };
   }
 
   try {
