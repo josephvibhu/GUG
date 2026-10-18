@@ -8,6 +8,7 @@
 // @match        *://*.parlamentum.org/*
 // @grant        GM_xmlhttpRequest
 // @grant        unsafeWindow
+// @grant        window.onurlchange
 // @connect      growurgold.vercel.app
 // @connect      grow-ur-gold.vercel.app
 // @run-at       document-end
@@ -257,6 +258,13 @@
 
     // If still UNKNOWN after probe, allow manual click to watch
     updateWidget(`🟡 GUG Verifier: Ready (Click to Sync)`, "#1e293b", "#eab308", "#fef08a");
+  }
+
+  // Handle Single Page Application navigation
+  if (window.onurlchange === null) {
+    window.addEventListener('urlchange', () => {
+      setTimeout(init, 300);
+    });
   }
 
   // Run initialization after 500ms
