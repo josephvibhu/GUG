@@ -2,10 +2,10 @@
 
 import { use, useCallback, useRef, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import TVChart from "@/components/TVChart";
 import OrderBook from "@/components/OrderBook";
 import TradeForm from "@/components/TradeForm";
 import RecentTrades from "@/components/RecentTrades";
@@ -15,6 +15,13 @@ import { Company, OrderBookData, TradeItem, PortfolioPosition } from "@/lib/mark
 import { usePoll, stableBody } from "@/hooks/usePoll";
 import { useMarketFeed, type FeedUser } from "@/hooks/useMarketFeed";
 import { fmtPrice, fmtPct, fmtSigned, fmtCompact, fmtQty, fmtGold, fmtUtcDate, moveColor } from "@/lib/format";
+
+// The chart library is the heaviest part of the page (~60 KB gzipped): load it alongside the data
+// instead of before anything can render
+const TVChart = dynamic(() => import("@/components/TVChart"), {
+  ssr: false,
+  loading: () => <div className="h-full flex items-center justify-center text-sm text-ash">Loading chart…</div>,
+});
 
 interface Holder {
   userId: string;
