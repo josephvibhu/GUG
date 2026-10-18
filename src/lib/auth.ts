@@ -12,6 +12,7 @@ export interface UserSession {
   lockedCash: number;
   avatar: string;
   isAdmin: boolean;
+  isFrozen: boolean;
 }
 
 export const COOKIE_NAME = "parlamentum_session_id";
@@ -53,6 +54,7 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     lockedCash: Number(u.locked_cash),
     avatar: String(u.avatar || "👤"),
     isAdmin: Number(u.is_admin) === 1,
+    isFrozen: Number(u.is_frozen || 0) === 1,
   };
 }
 
@@ -117,6 +119,7 @@ export async function registerUser(
       lockedCash: 0.0,
       avatar,
       isAdmin: isAdmin === 1,
+      isFrozen: false,
     },
   };
 }
@@ -166,6 +169,7 @@ export async function loginUser(
       lockedCash: Number(u.locked_cash),
       avatar: String(u.avatar || "👤"),
       isAdmin: Number(u.is_admin) === 1,
+      isFrozen: Number(u.is_frozen || 0) === 1,
     },
   };
 }

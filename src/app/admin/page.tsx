@@ -30,6 +30,7 @@ interface Citizen {
   cash_balance: number;
   locked_cash: number;
   is_admin: number;
+  is_frozen?: number;
   created_at: string;
 }
 
@@ -50,6 +51,7 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [citizens, setCitizens] = useState<Citizen[]>([]);
   const [pendingDeposits, setPendingDeposits] = useState<PendingDeposit[]>([]);
+  const [companies, setCompanies] = useState<any[]>([]);
   
   // Settings
   const [taxRate, setTaxRate] = useState<number>(10);
@@ -57,6 +59,7 @@ export default function AdminPage() {
   const [autoApprove, setAutoApprove] = useState<boolean>(true);
   const [apiKey, setApiKey] = useState<string>("");
   const [tradeFee, setTradeFee] = useState<number>(0.5);
+  const [listingFee, setListingFee] = useState<number>(200);
 
   // Market Trading Hours (UTC)
   const [openTime, setOpenTime] = useState<string>("15:30");
@@ -85,12 +88,14 @@ export default function AdminPage() {
         setCitizens(data.citizens || []);
         setPendingDeposits(data.pendingDeposits || []);
         setIpoApplications(data.ipoApplications || []);
+        setCompanies(data.companies || []);
         if (data.settings) {
           setTaxRate(data.settings.taxRate);
           setHouseName(data.settings.houseName);
           setApiKey(data.settings.apiKey);
           setAutoApprove(data.settings.autoApprove);
           if (data.settings.tradeFee !== undefined) setTradeFee(data.settings.tradeFee);
+          if (data.settings.listingFee !== undefined) setListingFee(data.settings.listingFee);
         }
         if (data.marketSchedule) {
           setMarketSchedule(data.marketSchedule);
@@ -106,6 +111,44 @@ export default function AdminPage() {
       setIsAdmin(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFreezeUser = async (userId: string, freeze: boolean) => {
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: freeze ? "freeze_user" : "unfreeze_user", userId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+        fetchAdminData();
+      } else {
+        setFeedback({ type: "error", message: data.message });
+      }
+    } catch (e: any) {
+      setFeedback({ type: "error", message: e.message });
+    }
+  };
+
+  const handleSetCompanyStatus = async (companyId: string, status: "ACTIVE" | "HALTED" | "DEFAULTED") => {
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_company_status", companyId, status }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+        fetchAdminData();
+      } else {
+        setFeedback({ type: "error", message: data.message });
+      }
+    } catch (e: any) {
+      setFeedback({ type: "error", message: e.message });
     }
   };
 
@@ -184,6 +227,7 @@ export default function AdminPage() {
           autoApprove,
           apiKey,
           tradeFee: Number(tradeFee),
+          listingFee: Number(listingFee),
         }),
       });
       const data = await res.json();
@@ -840,7 +884,7 @@ export default function AdminPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
             <div>
               <label className="font-semibold text-zinc-300 block mb-1">
                 Parlamentum Game Market Tax (%)
@@ -884,6 +928,27 @@ export default function AdminPage() {
 
             <div>
               <label className="font-semibold text-zinc-300 block mb-1">
+                Standard IPO Listing Fee (gold)
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="10000"
+                  step="50"
+                  value={listingFee}
+                  onChange={(e) => setListingFee(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-3 pr-8 py-2 font-mono text-amber-300 font-bold text-sm focus:outline-none focus:border-amber-400"
+                />
+                <Coins className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3" />
+              </div>
+              <span className="text-[10px] text-zinc-400 mt-1 block">
+                Charter underwriting fee credited to Treasury.
+              </span>
+            </div>
+
+            <div>
+              <label className="font-semibold text-zinc-300 block mb-1">
                 Operator House Name
               </label>
               <input
@@ -916,13 +981,127 @@ export default function AdminPage() {
           </div>
         </form>
 
-        {/* Section 4: Registered Citizens Directory */}
+        {/* Section 4: Listed Companies & Ticker Controls (Method 5) */}
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+            <div>
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-amber-400" />
+                Listed Companies & Ticker Floor Controls (Method 5)
+              </h3>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                Operator power over tickers: temporarily halt trading for price stabilization or flag defaulting/scam companies.
+              </p>
+            </div>
+            <span className="text-[11px] font-mono text-zinc-400">
+              {companies.length} chartered
+            </span>
+          </div>
+
+          {companies.length === 0 ? (
+            <div className="py-8 text-center text-zinc-500 text-xs">
+              0 companies currently listed on the exchange.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-mono text-xs">
+                <thead>
+                  <tr className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
+                    <th className="py-3 px-4">Company</th>
+                    <th className="py-3 px-4">Founder</th>
+                    <th className="py-3 px-4 text-right">Last Price</th>
+                    <th className="py-3 px-4 text-right">Shares Bought Back</th>
+                    <th className="py-3 px-4 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Operator Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/60">
+                  {companies.map((cmp) => (
+                    <tr key={cmp.id} className="hover:bg-zinc-800/30">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{cmp.logoUrl || "🏛️"}</span>
+                          <div>
+                            <Link href={`/trade/${cmp.ticker}`} className="text-white font-bold font-sans hover:text-amber-400 transition">
+                              {cmp.name}
+                            </Link>
+                            <span className="font-mono text-amber-400 font-bold ml-1.5 text-[11px]">
+                              ${cmp.ticker}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-zinc-300 font-sans text-xs">
+                        {cmp.creatorName || cmp.creatorId}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-white">
+                        {cmp.currentPrice.toFixed(2)}g
+                      </td>
+                      <td className="py-3 px-4 text-right text-emerald-400">
+                        {cmp.sharesBoughtBack ? `${cmp.sharesBoughtBack.toLocaleString()} shares` : "0"}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {cmp.status === "HALTED" ? (
+                          <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                            ⏸️ HALTED
+                          </span>
+                        ) : cmp.status === "DEFAULTED" ? (
+                          <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold">
+                            🚨 DEFAULTED
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                            🟢 ACTIVE
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5 font-sans">
+                          {cmp.status === "HALTED" ? (
+                            <button
+                              onClick={() => handleSetCompanyStatus(cmp.id, "ACTIVE")}
+                              className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-semibold transition cursor-pointer"
+                            >
+                              Resume
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleSetCompanyStatus(cmp.id, "HALTED")}
+                              className="px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 text-black text-[10px] font-semibold transition cursor-pointer"
+                            >
+                              Halt
+                            </button>
+                          )}
+                          {cmp.status !== "DEFAULTED" && (
+                            <button
+                              onClick={() => handleSetCompanyStatus(cmp.id, "DEFAULTED")}
+                              className="px-2.5 py-1 rounded bg-rose-950 hover:bg-rose-800 text-rose-300 border border-rose-700/50 text-[10px] font-semibold transition cursor-pointer"
+                            >
+                              Flag Scam
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Section 5: Registered Citizens Directory & Freeze Hammer */}
         <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-blue-400" />
-              Registered Parlamentum Citizens ({citizens.length})
-            </h3>
+            <div>
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-blue-400" />
+                Registered Parlamentum Citizens ({citizens.length})
+              </h3>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                Freeze Hammer: instantly freeze any citizen wallet to block order execution and withdrawals if fraud is suspected.
+              </p>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -931,8 +1110,10 @@ export default function AdminPage() {
                 <tr className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
                   <th className="py-3 px-4">Citizen Name</th>
                   <th className="py-3 px-4">Role</th>
+                  <th className="py-3 px-4">Compliance Status</th>
                   <th className="py-3 px-4 text-right">Purse Balance</th>
                   <th className="py-3 px-4 text-right">Locked in Orders</th>
+                  <th className="py-3 px-4 text-center">Freeze Hammer</th>
                   <th className="py-3 px-4 text-center">Quick Load</th>
                 </tr>
               </thead>
@@ -949,11 +1130,39 @@ export default function AdminPage() {
                         <span>Citizen</span>
                       )}
                     </td>
+                    <td className="py-3 px-4 text-[11px] font-sans">
+                      {Number(c.is_frozen || 0) === 1 ? (
+                        <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
+                          ❄️ FROZEN
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
+                          Active
+                        </span>
+                      )}
+                    </td>
                     <td className="py-3 px-4 text-right font-bold text-emerald-400">
                       {c.cash_balance.toLocaleString()} gold
                     </td>
                     <td className="py-3 px-4 text-right text-zinc-400">
                       {c.locked_cash.toLocaleString()} gold
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {Number(c.is_frozen || 0) === 1 ? (
+                        <button
+                          onClick={() => handleFreezeUser(c.id, false)}
+                          className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-sans font-semibold transition cursor-pointer"
+                        >
+                          Unfreeze Wallet
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleFreezeUser(c.id, true)}
+                          className="px-2.5 py-1 rounded bg-rose-950 hover:bg-rose-800 text-rose-300 border border-rose-700/50 text-[10px] font-sans font-semibold transition cursor-pointer"
+                        >
+                          Freeze Wallet
+                        </button>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <button

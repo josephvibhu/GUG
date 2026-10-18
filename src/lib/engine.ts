@@ -56,6 +56,17 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   }
   const user = userRes.rows[0];
 
+  if (Number(user.is_frozen || 0) === 1) {
+    return {
+      success: false,
+      message: "Your account has been FROZEN by the Exchange Operator pending compliance review. Order placement is suspended.",
+      filledQuantity: 0,
+      remainingQuantity: 0,
+      averageFillPrice: 0,
+      tradesExecuted: [],
+    };
+  }
+
   const companyRes = await db.execute({
     sql: "SELECT * FROM companies WHERE id = ? OR ticker = ?",
     args: [companyId, companyId.toUpperCase()],
@@ -65,6 +76,28 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   }
   const company = companyRes.rows[0];
   const actualCompanyId = String(company.id);
+
+  if (company.status === "HALTED") {
+    return {
+      success: false,
+      message: `Trading for $${company.ticker} is currently HALTED by the Exchange Operator.`,
+      filledQuantity: 0,
+      remainingQuantity: 0,
+      averageFillPrice: 0,
+      tradesExecuted: [],
+    };
+  }
+
+  if (company.status === "DEFAULTED") {
+    return {
+      success: false,
+      message: `Company $${company.ticker} has been flagged as DEFAULTED. All trading is permanently suspended.`,
+      filledQuantity: 0,
+      remainingQuantity: 0,
+      averageFillPrice: 0,
+      tradesExecuted: [],
+    };
+  }
 
   // 2. Validate Available Balance / Shares & Lock Escrow
   if (type === "BUY") {

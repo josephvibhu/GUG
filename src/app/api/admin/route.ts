@@ -18,19 +18,21 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "Forbidden: Admin access required." }, { status: 403 });
     }
 
-    const [taxRate, houseName, apiKey, autoApprove, tradeFee] = await Promise.all([
+    const [taxRate, houseName, apiKey, autoApprove, tradeFee, listingFee] = await Promise.all([
       getSetting("tax_rate", "10"),
       getSetting("house_name", "Parliament_Exchange"),
       getSetting("api_key", "pse_secret_parlamentum_key_2026"),
       getSetting("auto_approve_deposits", "true"),
       getSetting("trade_fee_percent", "0.5"),
+      getSetting("ipo_listing_fee", "200"),
     ]);
 
     const { getMarketSchedule } = await import("@/lib/marketHours");
-    const { getIPOApplications } = await import("@/lib/market");
-    const [marketSchedule, ipoApplications] = await Promise.all([
+    const { getIPOApplications, getAllCompanies } = await import("@/lib/market");
+    const [marketSchedule, ipoApplications, companies] = await Promise.all([
       getMarketSchedule(),
       getIPOApplications("PENDING"),
+      getAllCompanies(),
     ]);
 
     // Fetch pending transactions
@@ -42,9 +44,9 @@ export async function GET() {
       ORDER BY w.created_at DESC
     `);
 
-    // Fetch citizens list
+    // Fetch citizens list with freeze status
     const citizensRes = await db.execute(`
-      SELECT id, username, display_name, parlamentum_name, cash_balance, locked_cash, is_admin, created_at 
+      SELECT id, username, display_name, parlamentum_name, cash_balance, locked_cash, is_admin, is_frozen, created_at 
       FROM users 
       ORDER BY cash_balance DESC
     `);
@@ -57,10 +59,12 @@ export async function GET() {
         apiKey,
         autoApprove: autoApprove === "true",
         tradeFee: Number(tradeFee),
+        listingFee: Number(listingFee),
       },
       marketSchedule,
       pendingDeposits: pendingRes.rows,
       ipoApplications,
+      companies,
       citizens: citizensRes.rows,
     });
   } catch (error: any) {
@@ -122,14 +126,48 @@ export async function POST(request: Request) {
     }
 
     if (action === "update_settings") {
-      const { taxRate, houseName, autoApprove, apiKey, tradeFee } = body;
+      const { taxRate, houseName, autoApprove, apiKey, tradeFee, listingFee } = body;
       if (taxRate !== undefined) await setSetting("tax_rate", String(taxRate));
       if (houseName !== undefined) await setSetting("house_name", String(houseName));
       if (autoApprove !== undefined) await setSetting("auto_approve_deposits", String(autoApprove));
       if (apiKey !== undefined) await setSetting("api_key", String(apiKey));
       if (tradeFee !== undefined) await setSetting("trade_fee_percent", String(tradeFee));
+      if (listingFee !== undefined) await setSetting("ipo_listing_fee", String(listingFee));
 
       return NextResponse.json({ success: true, message: "Operator settings updated successfully!" });
+    }
+
+    if (action === "freeze_user") {
+      const { userId } = body;
+      const db = getDb();
+      await db.execute({
+        sql: "UPDATE users SET is_frozen = 1 WHERE id = ?",
+        args: [userId],
+      });
+      return NextResponse.json({ success: true, message: "Citizen wallet FROZEN. All trading & withdrawal halted." });
+    }
+
+    if (action === "unfreeze_user") {
+      const { userId } = body;
+      const db = getDb();
+      await db.execute({
+        sql: "UPDATE users SET is_frozen = 0 WHERE id = ?",
+        args: [userId],
+      });
+      return NextResponse.json({ success: true, message: "Citizen wallet UNFROZEN. Trading restored." });
+    }
+
+    if (action === "set_company_status") {
+      const { companyId, status } = body;
+      if (!["ACTIVE", "HALTED", "DEFAULTED"].includes(status)) {
+        return NextResponse.json({ success: false, message: "Invalid status" }, { status: 400 });
+      }
+      const db = getDb();
+      await db.execute({
+        sql: "UPDATE companies SET status = ? WHERE id = ?",
+        args: [status, companyId],
+      });
+      return NextResponse.json({ success: true, message: `Company status updated to ${status}.` });
     }
 
     if (action === "approve_ipo") {

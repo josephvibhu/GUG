@@ -70,6 +70,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Please log in with your Parlamentum name." }, { status: 401 });
     }
 
+    if (user.isFrozen) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "Your citizen wallet has been FROZEN by the Exchange Operator pending compliance review. Cash operations are suspended." 
+      }, { status: 403 });
+    }
+
     const body = await request.json();
     const { action, amount, method, parlamentumName } = body;
     const numAmount = Math.floor(Number(amount));

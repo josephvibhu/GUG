@@ -71,14 +71,14 @@ export default function HomePage() {
               <Sparkles className="w-3.5 h-3.5" /> High Chancellor's Order of Commerce
             </div>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-              The Sovereign Stock Exchange of{" "}
+              Grow Ur Gold –{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-amber-600">
                 Parlamentum
               </span>
             </h1>
             <p className="mt-3 text-sm sm:text-base text-zinc-400 leading-relaxed max-w-2xl">
-              Trade publicly chartered companies using in-game Parlamentum gold. Buy grain to fund your purse, 
-              issue shares for your enterprise via IPO, and trade with continuous limit & market order matching.
+              The official sovereign stock exchange for Parlamentum gold. Fund your purse via Raw Iron @ 5g, 
+              issue shares for your guild enterprise via Curated IPOs, execute share buybacks, and trade with continuous order book matching.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link

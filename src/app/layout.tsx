@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Parlamentum Bourse | Sovereign Stock Exchange",
-  description: "Real-time order-book stock market exchange for the Realm of Parlamentum. Trade public company shares, launch IPOs, and manage your wealth.",
+  title: "Grow Ur Gold - Parlamentum | Sovereign Stock Exchange",
+  description: "Real-time order-book stock market exchange for the Realm of Parlamentum. Trade public company shares, launch IPOs, and grow your gold.",
 };
 
 export default function RootLayout({

@@ -82,10 +82,10 @@ export default function LoginPage() {
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
-          The Parlamentum Bourse
+          Grow Ur Gold
         </h1>
         <p className="text-xs text-amber-400/90 font-mono tracking-widest uppercase mt-1">
-          Stock Exchange for Parlamentum Gold
+          Parlamentum Stock Exchange
         </p>
 
         {/* Tab Switcher: Log in / New here */}

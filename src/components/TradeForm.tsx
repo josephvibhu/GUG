@@ -244,6 +244,20 @@ export default function TradeForm({
           </div>
         </div>
 
+        {/* Company Halted or Defaulted Warning */}
+        {company.status && company.status !== "ACTIVE" && (
+          <div className="p-2.5 rounded-lg text-[11px] bg-amber-950/60 border border-amber-600/40 text-amber-300 leading-relaxed flex flex-col gap-0.5">
+            <span className="font-bold flex items-center gap-1.5 text-amber-400">
+              ⏸️ Trading {company.status === "HALTED" ? "Halted" : "Suspended (Default)"}
+            </span>
+            <span className="text-zinc-300">
+              {company.status === "HALTED" 
+                ? "The Exchange Operator has temporarily halted trading for this company." 
+                : "This company has been flagged as defaulted. Trading is suspended."}
+            </span>
+          </div>
+        )}
+
         {/* Floor Closed Warning */}
         {marketSchedule && !marketSchedule.isOpen && (
           <div className="p-2.5 rounded-lg text-[11px] bg-rose-950/60 border border-rose-600/40 text-rose-300 leading-relaxed flex flex-col gap-0.5">
@@ -272,16 +286,18 @@ export default function TradeForm({
         {/* Action Button */}
         <button
           type="submit"
-          disabled={isLoading || (marketSchedule ? !marketSchedule.isOpen : false)}
+          disabled={isLoading || (marketSchedule ? !marketSchedule.isOpen : false) || (company.status && company.status !== "ACTIVE")}
           className={`w-full py-2.5 rounded-lg font-bold text-sm tracking-wide transition shadow-lg ${
-            marketSchedule && !marketSchedule.isOpen
+            (company.status && company.status !== "ACTIVE") || (marketSchedule && !marketSchedule.isOpen)
               ? "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700"
               : side === "BUY"
               ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20 cursor-pointer"
               : "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20 cursor-pointer"
           } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
         >
-          {marketSchedule && !marketSchedule.isOpen
+          {company.status && company.status !== "ACTIVE"
+            ? `Trading ${company.status} · Order Blocked`
+            : marketSchedule && !marketSchedule.isOpen
             ? "Floor Closed · Order Blocked"
             : isLoading
             ? "Executing Order..."

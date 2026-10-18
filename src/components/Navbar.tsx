@@ -143,7 +143,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
       {/* Ticker Tape */}
       <div className="bg-zinc-900/80 border-b border-zinc-800/80 px-4 py-1.5 text-xs overflow-x-auto scrollbar-none flex items-center gap-6">
         <span className="flex items-center gap-1.5 font-semibold text-amber-400 shrink-0 uppercase tracking-wider text-[11px]">
-          <Zap className="w-3.5 h-3.5" /> Parlamentum Bourse
+          <Zap className="w-3.5 h-3.5" /> Grow Ur Gold · Parlamentum
         </span>
 
         {marketSchedule && (
@@ -206,13 +206,13 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
             </div>
             <div>
               <div className="font-bold tracking-tight text-base sm:text-lg flex items-center gap-2">
-                <span>PARLAMENTUM</span>
+                <span>GROW UR GOLD</span>
                 <span className="text-xs bg-amber-500/20 text-amber-300 font-mono px-1.5 py-0.5 rounded border border-amber-500/30">
-                  EXCHANGE
+                  PARLAMENTUM
                 </span>
               </div>
               <div className="text-[10px] text-zinc-400 uppercase tracking-widest -mt-0.5">
-                Public Share Trading
+                Official Stock Exchange
               </div>
             </div>
           </Link>

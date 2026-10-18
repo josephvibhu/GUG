@@ -70,6 +70,36 @@ export async function initDb(): Promise<void> {
     await db.execute(`ALTER TABLE wallet_transactions ADD COLUMN iron_units INTEGER NOT NULL DEFAULT 0;`);
   } catch {}
 
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN is_frozen INTEGER NOT NULL DEFAULT 0;`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE companies ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE';`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE companies ADD COLUMN shares_bought_back INTEGER NOT NULL DEFAULT 0;`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE companies ADD COLUMN buyback_gold_spent REAL NOT NULL DEFAULT 0.0;`);
+  } catch {}
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS buybacks (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      founder_id TEXT NOT NULL,
+      shares_count INTEGER NOT NULL,
+      gold_spent REAL NOT NULL,
+      avg_price REAL NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (company_id) REFERENCES companies(id),
+      FOREIGN KEY (founder_id) REFERENCES users(id)
+    );
+  `);
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
@@ -204,6 +234,7 @@ export async function initDb(): Promise<void> {
     ('iron_price', '5'),
     ('house_name', 'Parliament_Exchange'),
     ('api_key', 'pse_secret_parlamentum_key_2026'),
+    ('ipo_listing_fee', '200'),
     ('auto_approve_deposits', 'true');
   `);
 

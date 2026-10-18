@@ -19,6 +19,9 @@ export interface Company {
   low24h: number;
   marketCap: number;
   logoUrl: string;
+  status: "ACTIVE" | "HALTED" | "DEFAULTED";
+  sharesBoughtBack: number;
+  buybackGoldSpent: number;
   createdAt: string;
 }
 
@@ -100,6 +103,9 @@ export async function getAllCompanies(): Promise<Company[]> {
     low24h: Number(row.low_24h),
     marketCap: Number(row.current_price) * Number(row.total_shares),
     logoUrl: String(row.logo_url || "🏢"),
+    status: (row.status as any) || "ACTIVE",
+    sharesBoughtBack: Number(row.shares_bought_back || 0),
+    buybackGoldSpent: Number(row.buyback_gold_spent || 0),
     createdAt: String(row.created_at),
   }));
 }
@@ -137,6 +143,9 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
     low24h: Number(row.low_24h),
     marketCap: Number(row.current_price) * Number(row.total_shares),
     logoUrl: String(row.logo_url || "🏢"),
+    status: (row.status as any) || "ACTIVE",
+    sharesBoughtBack: Number(row.shares_bought_back || 0),
+    buybackGoldSpent: Number(row.buyback_gold_spent || 0),
     createdAt: String(row.created_at),
   };
 }
@@ -669,5 +678,178 @@ export async function rejectIPOApplication(appId: string, reason: string): Promi
   });
 
   return { success: true, message: "IPO application rejected." };
+}
+
+export async function executeShareBuyback(params: {
+  founderId: string;
+  ticker: string;
+  goldToSpend: number;
+}): Promise<{ success: boolean; message: string; sharesAcquired?: number; avgPrice?: number; totalSpent?: number }> {
+  await initDb();
+  const db = getDb();
+
+  const goldToSpend = Math.round(params.goldToSpend * 100) / 100;
+  if (goldToSpend < 10) {
+    return { success: false, message: "Minimum buyback allocation is 10 gold." };
+  }
+
+  // 1. Fetch founder user
+  const userRes = await db.execute({
+    sql: "SELECT * FROM users WHERE id = ?",
+    args: [params.founderId],
+  });
+  if (userRes.rows.length === 0) {
+    return { success: false, message: "User not found" };
+  }
+  const user = userRes.rows[0];
+  if (Number(user.is_frozen || 0) === 1) {
+    return { success: false, message: "Your wallet is frozen by the operator." };
+  }
+  if (Number(user.cash_balance) < goldToSpend) {
+    return { 
+      success: false, 
+      message: `Insufficient gold balance. You have ${Number(user.cash_balance).toFixed(2)} gold, requested ${goldToSpend.toFixed(2)} gold.` 
+    };
+  }
+
+  // 2. Fetch company
+  const compRes = await db.execute({
+    sql: "SELECT * FROM companies WHERE UPPER(ticker) = UPPER(?)",
+    args: [params.ticker],
+  });
+  if (compRes.rows.length === 0) {
+    return { success: false, message: "Company not found" };
+  }
+  const company = compRes.rows[0];
+  if (String(company.creator_id) !== params.founderId && Number(user.is_admin) !== 1) {
+    return { success: false, message: "Only the company founder (or operator) can initiate a corporate share buyback." };
+  }
+  if (company.status === "HALTED" || company.status === "DEFAULTED") {
+    return { success: false, message: `Company trading is ${company.status}. Buyback suspended.` };
+  }
+
+  const companyId = String(company.id);
+
+  // 3. Find open SELL orders on the book, lowest price first
+  const sellOrdersRes = await db.execute({
+    sql: `SELECT * FROM orders 
+          WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND remaining_quantity > 0
+          ORDER BY price ASC, created_at ASC`,
+    args: [companyId],
+  });
+
+  if (sellOrdersRes.rows.length === 0) {
+    return { success: false, message: `No open sell orders available on the book for $${company.ticker} to buy back.` };
+  }
+
+  let remainingGold = goldToSpend;
+  let totalSharesAcquired = 0;
+  let totalGoldSpent = 0;
+  let lastFillPrice = Number(company.current_price);
+  const now = new Date().toISOString();
+
+  for (const row of sellOrdersRes.rows) {
+    if (remainingGold <= 0) break;
+    const orderId = String(row.id);
+    const sellerId = String(row.user_id);
+    const askPrice = Number(row.price);
+    const remainingQty = Number(row.remaining_quantity);
+
+    const maxSharesAffordable = Math.floor(remainingGold / askPrice);
+    if (maxSharesAffordable <= 0) break;
+
+    const fillQty = Math.min(remainingQty, maxSharesAffordable);
+    const cost = Math.round(fillQty * askPrice * 100) / 100;
+
+    remainingGold -= cost;
+    totalGoldSpent += cost;
+    totalSharesAcquired += fillQty;
+    lastFillPrice = askPrice;
+
+    const newRemaining = remainingQty - fillQty;
+    const newStatus = newRemaining === 0 ? "FILLED" : "PARTIAL";
+    await db.execute({
+      sql: "UPDATE orders SET remaining_quantity = ?, status = ? WHERE id = ?",
+      args: [newRemaining, newStatus, orderId],
+    });
+
+    const fee = Math.round(cost * 0.005 * 100) / 100;
+    const netSellerProceeds = cost - fee;
+
+    await db.execute({
+      sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
+      args: [netSellerProceeds, sellerId],
+    });
+
+    if (fee > 0) {
+      await db.execute({
+        sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = 'usr_treasury'",
+        args: [fee],
+      });
+    }
+
+    const tradeId = `trd_bb_${crypto.randomUUID().slice(0, 8)}`;
+    await db.execute({
+      sql: `INSERT INTO trades (id, company_id, buyer_id, seller_id, buy_order_id, sell_order_id, price, quantity, total, created_at)
+            VALUES (?, ?, ?, ?, 'BUYBACK', ?, ?, ?, ?, ?)`,
+      args: [tradeId, companyId, params.founderId, sellerId, orderId, askPrice, fillQty, cost, now],
+    });
+  }
+
+  if (totalSharesAcquired === 0) {
+    return { 
+      success: false, 
+      message: `Could not buy any shares. Lowest ask price is higher than allocated gold (${goldToSpend}g).` 
+    };
+  }
+
+  // Deduct actual total spent from founder's purse
+  await db.execute({
+    sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ?",
+    args: [totalGoldSpent, params.founderId],
+  });
+
+  // Update company metrics (retire shares, update price)
+  await db.execute({
+    sql: `UPDATE companies 
+          SET shares_bought_back = shares_bought_back + ?, 
+              buyback_gold_spent = buyback_gold_spent + ?,
+              float_shares = MAX(0, float_shares - ?),
+              current_price = ?,
+              high_24h = MAX(high_24h, ?),
+              low_24h = MIN(low_24h, ?)
+          WHERE id = ?`,
+    args: [totalSharesAcquired, totalGoldSpent, totalSharesAcquired, lastFillPrice, lastFillPrice, lastFillPrice, companyId],
+  });
+
+  const avgPrice = Math.round((totalGoldSpent / totalSharesAcquired) * 100) / 100;
+  const buybackId = `bb_${crypto.randomUUID().slice(0, 8)}`;
+
+  await db.execute({
+    sql: `INSERT INTO buybacks (id, company_id, founder_id, shares_count, gold_spent, avg_price, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: [buybackId, companyId, params.founderId, totalSharesAcquired, totalGoldSpent, avgPrice, now],
+  });
+
+  await db.execute({
+    sql: `INSERT INTO announcements (id, company_id, title, content, author_id, created_at)
+          VALUES (?, ?, ?, ?, ?, ?)`,
+    args: [
+      `ann_bb_${buybackId}`,
+      companyId,
+      `📢 SHARE BUYBACK: ${totalSharesAcquired.toLocaleString()} shares redeemed!`,
+      `Founder ${user.display_name} has completed a corporate share buyback, purchasing ${totalSharesAcquired.toLocaleString()} shares from the open market for a total of ${totalGoldSpent.toLocaleString()} gold (avg price: ${avgPrice.toFixed(2)}g). These shares are retired from circulation, reducing public float.`,
+      params.founderId,
+      now,
+    ],
+  });
+
+  return {
+    success: true,
+    message: `Share buyback successful! Purchased ${totalSharesAcquired.toLocaleString()} shares for ${totalGoldSpent.toLocaleString()} gold (avg price ${avgPrice.toFixed(2)}g).`,
+    sharesAcquired: totalSharesAcquired,
+    avgPrice,
+    totalSpent: totalGoldSpent,
+  };
 }
 
