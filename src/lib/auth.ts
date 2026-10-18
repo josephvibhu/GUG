@@ -277,26 +277,3 @@ export async function logoutUser(): Promise<boolean> {
   return true;
 }
 
-export async function switchDemoUser(userId: string): Promise<boolean> {
-  try {
-    const cookieStore = await cookies();
-    cookieStore.set(COOKIE_NAME, userId, {
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 30,
-    });
-  } catch {}
-  return true;
-}
-
-export async function depositCash(userId: string, amount: number): Promise<void> {
-  await initDb();
-  const db = getDb();
-  await db.execute({
-    sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
-    args: [amount, userId],
-  });
-  await persistDbToBlob();
-}
-
