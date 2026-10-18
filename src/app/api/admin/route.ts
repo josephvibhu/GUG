@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, initDb } from "@/lib/db";
+import { getDb, initDb, LEAKED_API_KEY } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { 
   getSetting, 
@@ -21,7 +21,7 @@ export async function GET() {
     const [taxRate, houseName, apiKey, autoApprove, tradeFee, listingFee] = await Promise.all([
       getSetting("tax_rate", "10"),
       getSetting("house_name", "JosephArora"),
-      getSetting("api_key", "pse_secret_parlamentum_key_2026"),
+      getSetting("api_key", ""),
       getSetting("auto_approve_deposits", "true"),
       getSetting("trade_fee_percent", "0.5"),
       getSetting("ipo_listing_fee", "200"),
@@ -136,6 +136,12 @@ export async function GET() {
   }
 }
 
+// Webhook/maintenance actions: the stored key must be set and must not be the old public default
+async function isValidApiKey(apiKey: unknown): Promise<boolean> {
+  const expectedKey = await getSetting("api_key", "");
+  return typeof apiKey === "string" && expectedKey !== "" && expectedKey !== LEAKED_API_KEY && apiKey === expectedKey;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -155,9 +161,7 @@ export async function POST(request: Request) {
     // 1. Direct In-Game Ledger Sync (/trade/ledger)
     if (action === "webhook_ledger_sync") {
       const { apiKey, entries, stats } = body;
-      const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
-
-      if (apiKey !== expectedKey) {
+      if (!(await isValidApiKey(apiKey))) {
         return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
       }
 
@@ -169,9 +173,7 @@ export async function POST(request: Request) {
     // 2. Automated Parlamentum in-game sale event webhook
     if (action === "webhook_credit" || action === "webhook_sale_event") {
       const { apiKey, buyerName, goldAmount, ironUnits, rawNotification } = body;
-      const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
-
-      if (apiKey !== expectedKey) {
+      if (!(await isValidApiKey(apiKey))) {
         return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
       }
 
@@ -266,8 +268,7 @@ export async function POST(request: Request) {
 
     if (action === "test_blob") {
       const { apiKey } = body;
-      const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
-      if (apiKey !== expectedKey) {
+      if (!(await isValidApiKey(apiKey))) {
         return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
       }
       const { persistDbToBlob, getDbPath, getDb, syncDbFromBlob } = await import("@/lib/db");
@@ -297,9 +298,7 @@ export async function POST(request: Request) {
     // Direct Purge & Admin Setup (secured by API key)
     if (action === "purge_users_and_create_admin") {
       const { apiKey } = body;
-      const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
-
-      if (apiKey !== expectedKey) {
+      if (!(await isValidApiKey(apiKey))) {
         return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
       }
 

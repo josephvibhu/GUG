@@ -23,7 +23,7 @@
   const OPERATOR_NAMES = ["JOSEPHARORA", "JOSEPH ARORA", "JOSEPH_ARORA"];
   const CITIZEN_NAMES = ["CARDINALSANJAY", "CARDINAL SANJAY", "CARDINAL_SANJAY"];
   const EXCHANGE_API_URL = "https://growurgold.vercel.app/api/admin";
-  const SECRET_API_KEY = "pse_secret_parlamentum_key_2026";
+  const SECRET_API_KEY = ""; // paste the key shown in the Operator Panel (this file is public, so it ships empty)
   const POLL_INTERVAL_MS = 10000; // 10 seconds background sync
 
   const STORAGE_KEY = "gug_processed_ledger_v2";
@@ -257,6 +257,10 @@
 
   // 5. PERIODIC LEDGER SYNCHRONIZER
   async function syncTradeLedger(isManualClick = false) {
+    if (!SECRET_API_KEY) {
+      updateWidget("⚠️ GUG Verifier: paste the Operator Panel API key into this script", "#7f1d1d", "#f87171", "#ffffff");
+      return;
+    }
     try {
       let htmlText = "";
 

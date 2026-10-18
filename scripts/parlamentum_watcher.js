@@ -23,7 +23,7 @@ const CONFIG = {
   // Your exchange endpoint (local or Vercel URL)
   exchangeUrl: process.env.EXCHANGE_URL || "http://localhost:3000/api/admin",
   // Secret API Key configured in your exchange Operator Panel
-  apiKey: process.env.EXCHANGE_API_KEY || "pse_secret_parlamentum_key_2026",
+  apiKey: process.env.EXCHANGE_API_KEY || "",
   // In-game commodity rate
   goldPerIron: 5,
   // Poll interval in milliseconds (e.g. every 5 seconds)
@@ -112,6 +112,9 @@ console.log(`Target Exchange: ${CONFIG.exchangeUrl}`);
 console.log(`Poll Frequency:  Every ${CONFIG.pollIntervalMs / 1000} seconds`);
 console.log(`Rate:            ${CONFIG.goldPerIron} gold per Raw Iron`);
 console.log("Ready. Waiting for in-game sales...\n");
+if (!CONFIG.apiKey) {
+  console.warn("[WARN] EXCHANGE_API_KEY is not set: copy the key from the Operator Panel, or every webhook will be rejected.");
+}
 
 setInterval(pollParlamentumSales, CONFIG.pollIntervalMs);
 

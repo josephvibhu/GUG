@@ -1,6 +1,10 @@
 import { createClient, Client } from "@libsql/client";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
+
+// Webhook key that used to ship as the default; never accept it
+export const LEAKED_API_KEY = "pse_secret_parlamentum_key_2026";
 
 let clientInstance: Client | null = null;
 let lastBlobSyncedAt = 0;
@@ -455,15 +459,24 @@ export async function initDb(): Promise<void> {
   `);
 
   // Default settings
-  await db.execute(`
-    INSERT OR IGNORE INTO settings (key, value) VALUES 
+  await db.execute({
+    sql: `
+    INSERT OR IGNORE INTO settings (key, value) VALUES
     ('tax_rate', '10'),
     ('iron_price', '5'),
     ('house_name', 'JosephArora'),
-    ('api_key', 'pse_secret_parlamentum_key_2026'),
+    ('api_key', ?),
     ('ipo_listing_fee', '200'),
     ('auto_approve_deposits', 'false');
-  `);
+  `,
+    args: [crypto.randomBytes(24).toString("hex")],
+  });
+
+  // The old default webhook key is public (it was committed to the repo and the userscript): replace it
+  await db.execute({
+    sql: "UPDATE settings SET value = ? WHERE key = 'api_key' AND value = ?",
+    args: [crypto.randomBytes(24).toString("hex"), LEAKED_API_KEY],
+  });
 
   // Ensure Exchange Treasury user exists for market-making float orders
   await db.execute(`
