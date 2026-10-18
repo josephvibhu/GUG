@@ -22,6 +22,7 @@ export interface Company {
   status: "ACTIVE" | "HALTED" | "DEFAULTED";
   sharesBoughtBack: number;
   buybackGoldSpent: number;
+  totalDividendsPaid?: number;
   createdAt: string;
 }
 
@@ -146,6 +147,7 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
     status: (row.status as any) || "ACTIVE",
     sharesBoughtBack: Number(row.shares_bought_back || 0),
     buybackGoldSpent: Number(row.buyback_gold_spent || 0),
+    totalDividendsPaid: Number(row.total_dividends_paid || 0),
     createdAt: String(row.created_at),
   };
 }
