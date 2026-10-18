@@ -478,10 +478,12 @@ export async function initDb(): Promise<void> {
     args: [crypto.randomBytes(24).toString("hex"), LEAKED_API_KEY],
   });
 
-  // Ensure Exchange Treasury user exists for market-making float orders
+  // Ensure Exchange Treasury user exists (trading and buyback fees are credited to it). It starts empty:
+  // the seed no longer wipes admin purses on every cold start, so a starting balance would stay as
+  // gold nobody deposited. Existing databases keep their current treasury row.
   await db.execute(`
     INSERT OR IGNORE INTO users (id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, avatar, is_admin, created_at)
-    VALUES ('usr_treasury', 'ExchangeTreasury', 'none', 'Exchange Treasury', 'ExchangeTreasury', 1000000.0, 0.0, '🏛️', 1, '2026-01-01T00:00:00Z');
+    VALUES ('usr_treasury', 'ExchangeTreasury', 'none', 'Exchange Treasury', 'ExchangeTreasury', 0.0, 0.0, '🏛️', 1, '2026-01-01T00:00:00Z');
   `);
 
   isInitialized = true;
