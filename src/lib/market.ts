@@ -732,12 +732,12 @@ export async function executeShareBuyback(params: {
 
   const companyId = String(company.id);
 
-  // 3. Find open SELL orders on the book, lowest price first
+  // 3. Find open SELL orders on the book, lowest price first (not the buyer's own, e.g. the founder's unsold IPO float)
   const sellOrdersRes = await db.execute({
-    sql: `SELECT * FROM orders 
-          WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND remaining_quantity > 0
+    sql: `SELECT * FROM orders
+          WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND remaining_quantity > 0 AND user_id != ?
           ORDER BY price ASC, created_at ASC`,
-    args: [companyId],
+    args: [companyId, params.founderId],
   });
 
   if (sellOrdersRes.rows.length === 0) {
@@ -781,6 +781,12 @@ export async function executeShareBuyback(params: {
     await db.execute({
       sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
       args: [netSellerProceeds, sellerId],
+    });
+
+    // The sold shares leave the seller's portfolio (they were escrowed by the sell order)
+    await db.execute({
+      sql: "UPDATE portfolios SET shares = shares - ?, locked_shares = locked_shares - ? WHERE user_id = ? AND company_id = ?",
+      args: [fillQty, fillQty, sellerId, companyId],
     });
 
     if (fee > 0) {
