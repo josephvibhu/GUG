@@ -38,11 +38,11 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   const quantity = Math.floor(params.quantity);
   const price = Math.round(params.price * 100) / 100;
 
-  if (quantity <= 0) {
+  if (!Number.isFinite(quantity) || quantity <= 0) {
     return { success: false, message: "Quantity must be greater than 0", filledQuantity: 0, remainingQuantity: 0, averageFillPrice: 0, tradesExecuted: [] };
   }
 
-  if (orderType === "LIMIT" && price <= 0) {
+  if (orderType === "LIMIT" && (!Number.isFinite(price) || price <= 0)) {
     return { success: false, message: "Price must be greater than 0 for limit orders", filledQuantity: 0, remainingQuantity: 0, averageFillPrice: 0, tradesExecuted: [] };
   }
 
@@ -158,12 +158,13 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   const now = new Date().toISOString();
 
   if (type === "BUY") {
-    // Fetch Asks (SELL orders) with price <= order.price (or any if MARKET), ordered by price ASC, created_at ASC
-    const matchQuery = orderType === "LIMIT"
-      ? "SELECT * FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND price <= ? AND user_id != ? ORDER BY price ASC, created_at ASC"
-      : "SELECT * FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND user_id != ? ORDER BY price ASC, created_at ASC";
+    // Fetch Asks (SELL orders) with price <= order.price, ordered by price ASC, created_at ASC.
+    // MARKET buys only escrowed current price + 5%, so they can't take asks above that band
+    // (the buyer would be charged the escrow while the seller is paid the full ask).
+    const matchQuery = "SELECT * FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND price <= ? AND user_id != ? ORDER BY price ASC, created_at ASC";
+    const priceCap = orderType === "LIMIT" ? price : Number(company.current_price) * 1.05;
 
-    const matchArgs = orderType === "LIMIT" ? [actualCompanyId, price, userId] : [actualCompanyId, userId];
+    const matchArgs = [actualCompanyId, priceCap, userId];
     const opposingOrders = await db.execute({ sql: matchQuery, args: matchArgs });
 
     for (const ask of opposingOrders.rows) {
@@ -359,8 +360,10 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   return {
     success: true,
     orderId: newOrderId,
-    message: filledQuantity === quantity 
+    message: filledQuantity === quantity
       ? `Order fully executed (${filledQuantity} shares @ avg Ᵽ${avgFillPrice})`
+      : orderType === "MARKET"
+      ? `Market order filled ${filledQuantity}/${quantity} shares${filledQuantity > 0 ? ` @ avg Ᵽ${avgFillPrice}` : ""}; no more matching orders${type === "BUY" ? " within 5% of the last price" : ""}, the rest was cancelled.`
       : filledQuantity > 0
       ? `Order partially filled (${filledQuantity}/${quantity} shares @ avg Ᵽ${avgFillPrice}, remaining open)`
       : `Limit order placed successfully on the order book.`,
