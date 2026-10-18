@@ -72,89 +72,68 @@ export async function seedMarketData(force = false) {
     WHERE is_admin = 1 OR id IN ('usr_house', 'usr_treasury')
   `);
 
-  // Check if companies exist
-  const companyCountRes = await db.execute("SELECT COUNT(*) as count FROM companies");
-  const companyCount = Number(companyCountRes.rows[0].count);
+  // Remove legacy/imperial iron companies and previous seeds
+  const legacyComps = await db.execute("SELECT id FROM companies WHERE UPPER(ticker) IN ('IRON', 'GRAIN')");
+  for (const row of legacyComps.rows) {
+    const cId = String(row.id);
+    await db.execute({ sql: "DELETE FROM orders WHERE company_id = ?", args: [cId] });
+    await db.execute({ sql: "DELETE FROM candles WHERE company_id = ?", args: [cId] });
+    await db.execute({ sql: "DELETE FROM announcements WHERE company_id = ?", args: [cId] });
+    await db.execute({ sql: "DELETE FROM portfolios WHERE company_id = ?", args: [cId] });
+    await db.execute({ sql: "DELETE FROM trades WHERE company_id = ?", args: [cId] });
+    await db.execute({ sql: "DELETE FROM buybacks WHERE company_id = ?", args: [cId] });
+    await db.execute({ sql: "DELETE FROM companies WHERE id = ?", args: [cId] });
+  }
+  await db.execute("DELETE FROM ipo_applications WHERE UPPER(ticker) IN ('IRON', 'GRAIN')");
 
-  if (companyCount === 0 || force) {
+  // Ensure Grow UR Gold (GUG) is chartered as the flagship sovereign marketplace company
+  // Specs: Grow UR Gold - GUG, The Official Marketplace of the Singaporean Stock Exchange
+  // List 10% at 1000 stocks each at 3 gold per stock (Total: 10,000 shares, 1,000 float, 9,000 founder)
+  const gugRes = await db.execute("SELECT id FROM companies WHERE UPPER(ticker) = 'GUG'");
+  if (gugRes.rows.length === 0 || force) {
     const hourBucket = now.slice(0, 13) + ":00:00Z";
+    const gugCompanyId = "cmp_gug_001";
+    const totalShares = 10000;
+    const floatShares = 1000; // 10% listed
+    const founderShares = 9000; // 90% retained
+    const ipoPrice = 3.0;
 
-    // 1. $IRON - Imperial Ironworks Guild
-    const ironCompanyId = "cmp_iron_001";
     await db.execute({
       sql: `INSERT OR REPLACE INTO companies (id, ticker, name, description, sector, creator_id, total_shares, float_shares, ipo_price, current_price, change_24h, volume_24h, high_24h, low_24h, logo_url, status, created_at)
-            VALUES (?, 'IRON', 'Imperial Ironworks Guild', 'Premier metallurgical syndicate supplying forged iron ingots, structural girders, and knight armaments across Parlamentum.', 'RAW_MATERIALS', 'usr_house', 50000, 35000, 10.0, 10.0, 2.5, 12500.0, 10.8, 9.6, '⚒️', 'ACTIVE', ?)`,
-      args: [ironCompanyId, now],
+            VALUES (?, 'GUG', 'Grow UR Gold', 'The Official Marketplace of the Singaporean Stock Exchange', 'FINANCIAL_SERVICES', 'usr_house', ?, ?, ?, ?, 0.0, 0.0, ?, ?, '🪙', 'ACTIVE', ?)`,
+      args: [gugCompanyId, totalShares, floatShares, ipoPrice, ipoPrice, ipoPrice, ipoPrice, now],
     });
 
     await db.execute({
       sql: `INSERT OR REPLACE INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
-            VALUES (?, 'usr_house', ?, 15000, 0, 10.0)`,
-      args: [`port_usr_house_IRON`, ironCompanyId],
+            VALUES (?, 'usr_house', ?, ?, 0, ?)`,
+      args: [`port_usr_house_GUG`, gugCompanyId, founderShares, ipoPrice],
     });
 
     await db.execute({
       sql: `INSERT OR REPLACE INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
-            VALUES (?, 'usr_treasury', ?, 35000, 35000, 10.0)`,
-      args: [`port_treasury_IRON`, ironCompanyId],
+            VALUES (?, 'usr_treasury', ?, ?, ?, ?)`,
+      args: [`port_treasury_GUG`, gugCompanyId, floatShares, floatShares, ipoPrice],
     });
 
     await db.execute({
       sql: `INSERT OR REPLACE INTO orders (id, user_id, company_id, type, order_type, price, initial_quantity, remaining_quantity, status, created_at)
-            VALUES (?, 'usr_treasury', ?, 'SELL', 'LIMIT', 10.0, 35000, 35000, 'OPEN', ?)`,
-      args: [`ord_ipo_cmp_iron_001`, ironCompanyId, now],
+            VALUES (?, 'usr_treasury', ?, 'SELL', 'LIMIT', ?, ?, ?, 'OPEN', ?)`,
+      args: [`ord_ipo_cmp_gug_001`, gugCompanyId, ipoPrice, floatShares, floatShares, now],
     });
 
     await db.execute({
       sql: `INSERT OR REPLACE INTO candles (id, company_id, time_bucket, open, high, low, close, volume)
-            VALUES (?, ?, ?, 10.0, 10.8, 9.6, 10.0, 1250)`,
-      args: [`cnd_iron_init`, ironCompanyId, hourBucket],
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+      args: [`cnd_gug_init`, gugCompanyId, hourBucket, ipoPrice, ipoPrice, ipoPrice, ipoPrice],
     });
 
     await db.execute({
       sql: `INSERT OR REPLACE INTO announcements (id, company_id, title, content, author_id, created_at)
-            VALUES (?, ?, 'Official IPO Charter: $IRON', 'The High Registrar of Parlamentum formally inaugurates $IRON. 35,000 primary shares released for public subscription at 10.00 gold.', 'usr_house', ?)`,
-      args: [`anc_iron_init`, ironCompanyId, now],
+            VALUES (?, ?, 'Official IPO Charter: $GUG (Grow UR Gold)', 'The Official Marketplace of the Singaporean Stock Exchange ($GUG) has formally listed on the sovereign exchange floor. 1,000 primary float shares (10% equity) are officially open for public subscription at 3.00 gold per stock.', 'usr_house', ?)`,
+      args: [`anc_gug_init`, gugCompanyId, now],
     });
 
-    // 2. $GRAIN - Royal Granary & Agriculture
-    const grainCompanyId = "cmp_grain_001";
-    await db.execute({
-      sql: `INSERT OR REPLACE INTO companies (id, ticker, name, description, sector, creator_id, total_shares, float_shares, ipo_price, current_price, change_24h, volume_24h, high_24h, low_24h, logo_url, status, created_at)
-            VALUES (?, 'GRAIN', 'Royal Granary & Provisions', 'Staple breadbasket cartel controlling granary silos, flour mills, and grain trade routes throughout the kingdom.', 'AGRICULTURE', 'usr_house', 100000, 70000, 4.5, 4.5, -1.1, 8400.0, 4.9, 4.3, '🌾', 'ACTIVE', ?)`,
-      args: [grainCompanyId, now],
-    });
-
-    await db.execute({
-      sql: `INSERT OR REPLACE INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
-            VALUES (?, 'usr_house', ?, 30000, 0, 4.5)`,
-      args: [`port_usr_house_GRAIN`, grainCompanyId],
-    });
-
-    await db.execute({
-      sql: `INSERT OR REPLACE INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
-            VALUES (?, 'usr_treasury', ?, 70000, 70000, 4.5)`,
-      args: [`port_treasury_GRAIN`, grainCompanyId],
-    });
-
-    await db.execute({
-      sql: `INSERT OR REPLACE INTO orders (id, user_id, company_id, type, order_type, price, initial_quantity, remaining_quantity, status, created_at)
-            VALUES (?, 'usr_treasury', ?, 'SELL', 'LIMIT', 4.5, 70000, 70000, 'OPEN', ?)`,
-      args: [`ord_ipo_cmp_grain_001`, grainCompanyId, now],
-    });
-
-    await db.execute({
-      sql: `INSERT OR REPLACE INTO candles (id, company_id, time_bucket, open, high, low, close, volume)
-            VALUES (?, ?, ?, 4.5, 4.9, 4.3, 4.5, 840)`,
-      args: [`cnd_grain_init`, grainCompanyId, hourBucket],
-    });
-
-    await db.execute({
-      sql: `INSERT OR REPLACE INTO announcements (id, company_id, title, content, author_id, created_at)
-            VALUES (?, ?, 'Official IPO Charter: $GRAIN', 'Royal grain provisions syndicate chartered for public trade at 4.50 gold per share.', 'usr_house', ?)`,
-      args: [`anc_grain_init`, grainCompanyId, now],
-    });
-
-    console.log("Exchange initialized with starter companies $IRON and $GRAIN!");
+    console.log("Exchange initialized with premier flagship company $GUG (Grow UR Gold)!");
   }
 }
