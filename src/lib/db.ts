@@ -6,6 +6,10 @@ import crypto from "crypto";
 // Webhook key that used to ship as the default; never accept it
 export const LEAKED_API_KEY = "pse_secret_parlamentum_key_2026";
 
+// Remote database (Turso / libSQL). The Vercel Marketplace Turso integration names these TURSO_*.
+const remoteDbUrl = () => process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL;
+const remoteDbToken = () => process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
+
 let clientInstance: Client | null = null;
 let lastBlobSyncedAt = 0;
 let lastBlobCheckAt = 0;
@@ -21,7 +25,7 @@ export function getDbPath(): string {
 
 export async function syncDbFromBlob(force = false): Promise<void> {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token || process.env.DATABASE_URL) return;
+  if (!token || remoteDbUrl()) return;
 
   const now = Date.now();
   if (!force && now - lastBlobCheckAt < 3000) {
@@ -91,7 +95,7 @@ export async function syncDbFromBlob(force = false): Promise<void> {
 
 export async function persistDbToBlob(): Promise<{ success: boolean; error?: string }> {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token || process.env.DATABASE_URL) return { success: false, error: "No BLOB_READ_WRITE_TOKEN or DATABASE_URL set" };
+  if (!token || remoteDbUrl()) return { success: false, error: "No BLOB_READ_WRITE_TOKEN, or a remote DATABASE_URL is in use" };
 
   try {
     const dbPath = getDbPath();
@@ -121,7 +125,7 @@ export async function persistDbToBlob(): Promise<{ success: boolean; error?: str
 }
 
 export function scheduleBlobPersist(): void {
-  if (process.env.DATABASE_URL || !process.env.BLOB_READ_WRITE_TOKEN) return;
+  if (remoteDbUrl() || !process.env.BLOB_READ_WRITE_TOKEN) return;
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     persistDbToBlob().catch((e) => console.warn("Background Blob persist error:", e));
@@ -130,8 +134,8 @@ export function scheduleBlobPersist(): void {
 
 export function getDb(): Client {
   if (!clientInstance) {
-    const databaseUrl = process.env.DATABASE_URL;
-    const authToken = process.env.DATABASE_AUTH_TOKEN;
+    const databaseUrl = remoteDbUrl();
+    const authToken = remoteDbToken();
 
     if (databaseUrl) {
       clientInstance = createClient({
