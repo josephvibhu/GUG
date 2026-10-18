@@ -65,7 +65,6 @@ export async function registerUser(
   adminCode?: string
 ): Promise<{ success: boolean; message?: string; user?: UserSession }> {
   await initDb();
-  await syncDbFromBlob(true);
   const db = getDb();
 
   const cleanUser = username.trim();
@@ -133,24 +132,32 @@ export async function loginUser(
   password: string
 ): Promise<{ success: boolean; message?: string; user?: UserSession }> {
   await initDb();
-  await syncDbFromBlob(true);
-  const db = getDb();
-
   const cleanUser = username.trim();
 
-  const res = await db.execute({
+  let db = getDb();
+  let res = await db.execute({
     sql: "SELECT * FROM users WHERE LOWER(username) = ?",
     args: [cleanUser.toLowerCase()],
   });
 
+  // If citizen not found in current container instance, sync from Blob and retry
   if (res.rows.length === 0) {
-    return { success: false, message: `Citizen "${cleanUser}" not found in exchange records.` };
+    await syncDbFromBlob(true);
+    db = getDb();
+    res = await db.execute({
+      sql: "SELECT * FROM users WHERE LOWER(username) = ?",
+      args: [cleanUser.toLowerCase()],
+    });
+  }
+
+  if (res.rows.length === 0) {
+    return { success: false, message: "Invalid citizen name or password." };
   }
 
   const u = res.rows[0];
   const valid = await bcrypt.compare(password, String(u.password_hash));
   if (!valid) {
-    return { success: false, message: `Incorrect password for citizen "${cleanUser}".` };
+    return { success: false, message: "Invalid citizen name or password." };
   }
 
   try {
