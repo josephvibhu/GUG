@@ -48,6 +48,7 @@ export async function GET() {
     const citizensRes = await db.execute(`
       SELECT id, username, display_name, parlamentum_name, cash_balance, locked_cash, is_admin, is_frozen, account_type, state_realm_name, state_motto, state_crest, created_at 
       FROM users 
+      WHERE id NOT IN ('usr_treasury', 'usr_house')
       ORDER BY cash_balance DESC
     `);
 

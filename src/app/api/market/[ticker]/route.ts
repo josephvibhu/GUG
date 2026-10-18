@@ -36,7 +36,7 @@ export async function GET(
           SELECT p.shares, u.id as user_id, u.username, u.display_name, u.account_type, u.state_realm_name, u.state_crest
           FROM portfolios p
           JOIN users u ON p.user_id = u.id
-          WHERE p.company_id = ? AND p.shares > 0
+          WHERE p.company_id = ? AND p.shares > 0 AND u.id NOT IN ('usr_treasury', 'usr_house')
           ORDER BY p.shares DESC
           LIMIT 12
         `,
