@@ -170,7 +170,7 @@ export async function POST(request: Request) {
 
       await db.execute({
         sql: `INSERT INTO wallet_transactions (id, user_id, type, method, amount, iron_units, parlamentum_name, status, recipe_note, created_at)
-              VALUES (?, ?, 'WITHDRAWAL', 'MARKET_IRON', ?, ?, ?, 'COMPLETED', ?, ?)`,
+              VALUES (?, ?, 'WITHDRAWAL', 'MARKET_IRON', ?, ?, ?, 'PENDING', ?, ?)`,
         args: [txId, user.id, numAmount, ironUnits, targetName, recipe, now],
       });
 

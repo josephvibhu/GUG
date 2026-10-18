@@ -487,9 +487,9 @@ export default function WalletModal({
                 </div>
                 <input
                   type="number"
-                  min="10"
+                  min="1"
                   max={balance}
-                  step="10"
+                  step="1"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 font-mono text-amber-400 font-bold text-sm focus:outline-none focus:border-amber-400"
@@ -499,7 +499,7 @@ export default function WalletModal({
                     <button
                       key={pct}
                       type="button"
-                      onClick={() => setWithdrawAmount(Math.floor(balance * (pct / 100)).toString())}
+                      onClick={() => setWithdrawAmount(Math.max(1, Math.floor(balance * (pct / 100))).toString())}
                       className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono py-1 rounded text-[10px] cursor-pointer"
                     >
                       {pct}%
@@ -510,9 +510,9 @@ export default function WalletModal({
 
               <button
                 type="submit"
-                disabled={loading || balance < 10}
+                disabled={loading || balance < 1}
                 className={`w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs tracking-wide transition shadow-lg shadow-amber-500/20 cursor-pointer ${
-                  balance < 10 ? "opacity-50 cursor-not-allowed" : ""
+                  balance < 1 ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
                 {loading ? "Requesting House Purchase..." : `Withdraw ${numWithdraw.toLocaleString()} Gold Net to Parlamentum`}

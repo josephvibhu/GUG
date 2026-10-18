@@ -40,6 +40,7 @@ interface PendingDeposit {
   id: string;
   user_id: string;
   username: string;
+  type?: string;
   amount: number;
   iron_units: number;
   parlamentum_name: string;
@@ -166,6 +167,25 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "approve", txId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+        fetchAdminData();
+      } else {
+        setFeedback({ type: "error", message: data.message });
+      }
+    } catch (e: any) {
+      setFeedback({ type: "error", message: e.message });
+    }
+  };
+
+  const handleRejectTransaction = async (txId: string) => {
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject", txId }),
       });
       const data = await res.json();
       if (data.success) {
@@ -520,36 +540,81 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="space-y-2.5 overflow-y-auto max-h-[340px] pr-1 scrollbar-thin">
-                {pendingDeposits.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div>
-                      <div className="font-bold text-white flex items-center gap-2">
-                        <span>@{tx.parlamentum_name}</span>
-                        <span className="font-mono text-emerald-400 font-bold">
-                          +{tx.amount.toLocaleString()} gold ({tx.iron_units} Raw Iron)
-                        </span>
+                {pendingDeposits.map((tx) => {
+                  const isWithdrawal = tx.type === "WITHDRAWAL";
+                  return (
+                    <div
+                      key={tx.id}
+                      className={`p-3 bg-zinc-950 border rounded-xl flex items-center justify-between gap-3 text-xs ${
+                        isWithdrawal ? "border-amber-500/30 bg-amber-950/10" : "border-zinc-800"
+                      }`}
+                    >
+                      <div>
+                        <div className="font-bold text-white flex items-center gap-2">
+                          {isWithdrawal ? (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold">
+                              🔻 WITHDRAWAL PAYOUT
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold">
+                              🟢 DEPOSIT
+                            </span>
+                          )}
+                          <span>@{tx.parlamentum_name}</span>
+                          <span className={`font-mono font-bold ${isWithdrawal ? "text-amber-400" : "text-emerald-400"}`}>
+                            {isWithdrawal ? "-" : "+"}{tx.amount.toLocaleString()} gold ({tx.iron_units} Raw Iron)
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-zinc-300 mt-1 line-clamp-2">
+                          {tx.recipe_note}
+                        </div>
+                        <div className="text-[10px] text-zinc-500 mt-1 font-mono">
+                          {new Date(tx.created_at).toLocaleTimeString()}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1">
-                        {tx.recipe_note}
-                      </div>
-                      <div className="text-[10px] text-zinc-400 mt-1 font-mono">
-                        {new Date(tx.created_at).toLocaleTimeString()}
-                      </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => handleApproveDeposit(tx.id)}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition cursor-pointer"
-                      >
-                        Approve & Credit
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isWithdrawal ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleRejectTransaction(tx.id)}
+                              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-rose-950 text-rose-300 text-xs font-semibold transition cursor-pointer"
+                              title="Cancel withdrawal and refund gold to purse"
+                            >
+                              Refund
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleApproveDeposit(tx.id)}
+                              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition cursor-pointer shadow-lg shadow-amber-500/20"
+                              title="Confirm you purchased their Raw Iron in Parlamentum"
+                            >
+                              Confirm Bought
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleRejectTransaction(tx.id)}
+                              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-rose-950 text-rose-300 text-xs font-semibold transition cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleApproveDeposit(tx.id)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition cursor-pointer shadow-lg shadow-emerald-500/20"
+                            >
+                              Approve & Credit
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

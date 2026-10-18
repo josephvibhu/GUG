@@ -59,8 +59,8 @@ export function calculateWithdrawalRecipe(goldAmount: number, taxRate = 10): Rec
   const gross = t < 1 ? Math.round((goldAmount / (1 - t)) * 100) / 100 : goldAmount;
   const taxNegated = Math.round((gross - goldAmount) * 100) / 100;
   
-  // Use standard 100 Raw Iron units (or proportional for small amounts)
-  const ironUnits = goldAmount >= 100 ? 100 : Math.max(10, Math.ceil(goldAmount / IRON_UNIT_PRICE));
+  // Proportional 1 Raw Iron per ~5 gold (minimum 1 unit)
+  const ironUnits = Math.max(1, Math.ceil(goldAmount / IRON_UNIT_PRICE));
   const unitPrice = Math.round((gross / ironUnits) * 100) / 100;
 
   return {
@@ -75,7 +75,7 @@ export function calculateWithdrawalRecipe(goldAmount: number, taxRate = 10): Rec
   };
 }
 
-// Admin / Webhook: Process and approve deposit
+// Admin / Webhook: Process and approve deposit or fulfill withdrawal
 export async function approveDeposit(txId: string): Promise<{ success: boolean; message: string }> {
   await initDb();
   const db = getDb();
@@ -92,7 +92,19 @@ export async function approveDeposit(txId: string): Promise<{ success: boolean; 
   const tx = txRes.rows[0];
   const amount = Number(tx.amount);
   const userId = String(tx.user_id);
+  const type = String(tx.type);
 
+  if (type === "WITHDRAWAL") {
+    // Withdrawal fulfillment: gold was already deducted upon request.
+    // Operator confirmed in-game purchase in Parlamentum.
+    await db.execute({
+      sql: "UPDATE wallet_transactions SET status = 'COMPLETED' WHERE id = ?",
+      args: [txId],
+    });
+    return { success: true, message: `Withdrawal of ${amount.toLocaleString()} gold marked as fulfilled! In-game purchase confirmed.` };
+  }
+
+  // Otherwise DEPOSIT: Credit user purse
   await db.execute({
     sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
     args: [amount, userId],
@@ -104,6 +116,46 @@ export async function approveDeposit(txId: string): Promise<{ success: boolean; 
   });
 
   return { success: true, message: `Approved and credited ${amount.toLocaleString()} gold to citizen's purse!` };
+}
+
+// Admin: Reject deposit or cancel & refund withdrawal
+export async function rejectTransaction(txId: string): Promise<{ success: boolean; message: string }> {
+  await initDb();
+  const db = getDb();
+
+  const txRes = await db.execute({
+    sql: "SELECT * FROM wallet_transactions WHERE id = ? AND status = 'PENDING'",
+    args: [txId],
+  });
+
+  if (txRes.rows.length === 0) {
+    return { success: false, message: "Transaction not found or already processed." };
+  }
+
+  const tx = txRes.rows[0];
+  const amount = Number(tx.amount);
+  const userId = String(tx.user_id);
+  const type = String(tx.type);
+
+  if (type === "WITHDRAWAL") {
+    // Refund the deducted gold back to the citizen!
+    await db.execute({
+      sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
+      args: [amount, userId],
+    });
+    await db.execute({
+      sql: "UPDATE wallet_transactions SET status = 'REJECTED' WHERE id = ?",
+      args: [txId],
+    });
+    return { success: true, message: `Withdrawal cancelled and ${amount.toLocaleString()} gold refunded back to citizen's purse.` };
+  }
+
+  await db.execute({
+    sql: "UPDATE wallet_transactions SET status = 'REJECTED' WHERE id = ?",
+    args: [txId],
+  });
+
+  return { success: true, message: "Deposit announcement rejected." };
 }
 
 // Admin Manual Purse Load

@@ -243,12 +243,9 @@ export async function POST(request: Request) {
 
     if (action === "reject") {
       const { txId } = body;
-      const db = getDb();
-      await db.execute({
-        sql: "UPDATE wallet_transactions SET status = 'REJECTED' WHERE id = ?",
-        args: [txId],
-      });
-      return NextResponse.json({ success: true, message: "Deposit rejected." });
+      const { rejectTransaction } = await import("@/lib/wallet");
+      const res = await rejectTransaction(txId);
+      return NextResponse.json(res);
     }
 
     if (action === "manual_credit") {
