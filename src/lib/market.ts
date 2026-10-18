@@ -432,10 +432,16 @@ export async function createCompanyIPO(params: {
     args: [`port_${params.creatorId}_${ticker}`, params.creatorId, companyId, founderShares, ipoPrice],
   });
 
+  // Ensure usr_treasury exists in users table to satisfy foreign key constraints
+  await db.execute(`
+    INSERT OR IGNORE INTO users (id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, avatar, is_admin, created_at)
+    VALUES ('usr_treasury', 'ExchangeTreasury', 'none', 'Exchange Treasury', 'ExchangeTreasury', 1000000.0, 0.0, '🏛️', 1, '2026-01-01T00:00:00Z');
+  `);
+
   // Assign float shares to Treasury / Market Maker Bot and post initial IPO sell orders on the book!
   const botShares = floatShares;
   await db.execute({
-    sql: `INSERT INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
+    sql: `INSERT OR REPLACE INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
           VALUES (?, ?, ?, ?, ?, ?)`,
     args: [`port_treasury_${ticker}`, "usr_treasury", companyId, botShares, botShares, ipoPrice],
   });
@@ -443,7 +449,7 @@ export async function createCompanyIPO(params: {
   // Place Primary IPO Offering orders on the book
   const orderId = `ord_ipo_${companyId}`;
   await db.execute({
-    sql: `INSERT INTO orders (id, user_id, company_id, type, order_type, price, initial_quantity, remaining_quantity, status, created_at)
+    sql: `INSERT OR REPLACE INTO orders (id, user_id, company_id, type, order_type, price, initial_quantity, remaining_quantity, status, created_at)
           VALUES (?, 'usr_treasury', ?, 'SELL', 'LIMIT', ?, ?, ?, 'OPEN', ?)`,
     args: [orderId, companyId, ipoPrice, botShares, botShares, now],
   });
