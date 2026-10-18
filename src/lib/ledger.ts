@@ -129,12 +129,13 @@ export async function syncLedgerData(
         const citizen = userRes.rows[0];
         matchedUserId = String(citizen.id);
 
-        // 1. Check if user has an active PENDING deposit
+        // 1. Check if user has an active PENDING deposit for exactly this sale's amount
+        // (otherwise the sale is credited directly below, so a large claimed deposit can't be settled by a small sale)
         const pending = await db.execute({
-          sql: `SELECT id, amount FROM wallet_transactions 
-                WHERE user_id = ? AND type = 'DEPOSIT' AND status = 'PENDING'
+          sql: `SELECT id, amount FROM wallet_transactions
+                WHERE user_id = ? AND type = 'DEPOSIT' AND status = 'PENDING' AND amount = ?
                 ORDER BY created_at ASC LIMIT 1`,
-          args: [citizen.id],
+          args: [citizen.id, totalAmount],
         });
 
         if (pending.rows.length > 0) {

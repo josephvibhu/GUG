@@ -181,15 +181,16 @@ export async function POST(request: Request) {
       const units = Number(ironUnits) || (goldAmount ? Math.ceil(Number(goldAmount) / 5) : 0);
       const gold = Number(goldAmount) || (units * 5);
 
-      // 1. If buyerName is specified, find their pending deposit or credit directly
+      // 1. If buyerName is specified, find their pending deposit for this amount or credit what was paid directly
+      // (a pending deposit is only approved when the sale covers its amount, never on the claim alone)
       if (buyerName) {
         const pending = await db.execute({
           sql: `SELECT wt.id FROM wallet_transactions wt
                 JOIN users u ON wt.user_id = u.id
                 WHERE (LOWER(u.username) = ? OR LOWER(wt.parlamentum_name) = ?)
-                AND wt.type = 'DEPOSIT' AND wt.status = 'PENDING'
+                AND wt.type = 'DEPOSIT' AND wt.status = 'PENDING' AND wt.amount = ?
                 ORDER BY wt.created_at DESC LIMIT 1`,
-          args: [buyerName.toLowerCase(), buyerName.toLowerCase()],
+          args: [buyerName.toLowerCase(), buyerName.toLowerCase(), gold],
         });
 
         if (pending.rows.length > 0) {
