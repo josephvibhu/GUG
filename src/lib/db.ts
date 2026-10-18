@@ -43,15 +43,17 @@ export async function syncDbFromBlob(force = false): Promise<void> {
     if (!meta) {
       if (fs.existsSync(repoDbPath)) {
         const buf = fs.readFileSync(repoDbPath);
-        await put("parlamentum_market.db", buf, {
-          token,
-          access: "private",
-          addRandomSuffix: false,
-          allowOverwrite: true,
-        });
-        if (process.env.VERCEL && !fs.existsSync(dbPath)) {
+        if (process.env.VERCEL) {
           fs.writeFileSync(dbPath, buf);
         }
+        try {
+          await put("parlamentum_market.db", buf, {
+            token,
+            access: "private",
+            addRandomSuffix: false,
+            allowOverwrite: true,
+          });
+        } catch {}
         lastBlobSyncedAt = Date.now();
       }
       return;
@@ -135,9 +137,19 @@ export function getDb(): Client {
     } else {
       const dbPath = getDbPath();
       const repoDbPath = path.resolve(process.cwd(), "parlamentum_market.db");
-      if (process.env.VERCEL && !fs.existsSync(dbPath) && fs.existsSync(repoDbPath)) {
+      if (process.env.VERCEL && fs.existsSync(repoDbPath)) {
         try {
-          fs.copyFileSync(repoDbPath, dbPath);
+          let shouldCopy = !fs.existsSync(dbPath);
+          if (!shouldCopy) {
+            const repoStat = fs.statSync(repoDbPath);
+            const dbStat = fs.statSync(dbPath);
+            if (repoStat.mtimeMs > dbStat.mtimeMs) {
+              shouldCopy = true;
+            }
+          }
+          if (shouldCopy) {
+            fs.copyFileSync(repoDbPath, dbPath);
+          }
         } catch (e) {
           console.warn("Failed to copy bundled database to /tmp:", e);
         }
