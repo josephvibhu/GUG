@@ -2371,23 +2371,23 @@ export default function AdminPage() {
                               </div>
                             </td>
 
-                            <td className="py-3 px-3 text-[11px] font-sans">
+                            <td className="py-3 px-3 text-[11px] font-sans whitespace-nowrap">
                               {c.is_admin ? (
-                                <span className="px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold">
+                                <span className="px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold whitespace-nowrap inline-flex items-center gap-1">
                                   🛡️ Operator
                                 </span>
                               ) : isState ? (
-                                <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold">
+                                <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold whitespace-nowrap inline-flex items-center gap-1">
                                   🏛️ Sovereign Realm
                                 </span>
                               ) : (
-                                <span className="text-zinc-400">
+                                <span className="text-zinc-400 whitespace-nowrap inline-flex items-center gap-1">
                                   👤 Citizen
                                 </span>
                               )}
                             </td>
 
-                            <td className="py-3 px-3 text-right">
+                            <td className="py-3 px-3 text-right whitespace-nowrap">
                               <div className="font-mono font-black text-emerald-400 text-sm">
                                 {purseCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                               </div>
@@ -2405,7 +2405,7 @@ export default function AdminPage() {
                               </button>
                             </td>
 
-                            <td className="py-3 px-3 text-right font-mono text-zinc-400">
+                            <td className="py-3 px-3 text-right font-mono text-zinc-400 whitespace-nowrap">
                               {lockedCash > 0 ? (
                                 <span className="text-amber-300 font-semibold">
                                   {lockedCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
@@ -2417,13 +2417,13 @@ export default function AdminPage() {
 
                             <td className="py-3 px-3">
                               {holdings.length === 0 ? (
-                                <span className="text-zinc-500 font-sans text-[11px]">No shares held</span>
+                                <span className="text-zinc-500 font-sans text-[11px] whitespace-nowrap">No shares held</span>
                               ) : (
-                                <div className="flex flex-wrap gap-1 max-w-[240px]">
+                                <div className="flex flex-wrap gap-1.5 max-w-[340px]">
                                   {holdings.map((h, idx) => (
                                     <span
                                       key={idx}
-                                      className="px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/30 text-[10px] font-mono text-purple-300 flex items-center gap-1"
+                                      className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/30 text-[10px] font-mono text-purple-300 whitespace-nowrap inline-flex items-center gap-1"
                                       title={`${h.companyName} (${h.totalShares.toLocaleString()} shares @ ${h.currentPrice.toFixed(2)}g)`}
                                     >
                                       <b className="text-amber-400">${h.ticker}</b>: {h.totalShares.toLocaleString()} sh
