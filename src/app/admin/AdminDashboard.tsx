@@ -838,13 +838,13 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
             <div className="flex items-center gap-2">
               <a
-                href="/parlamentum-gug-verifier.user.js"
+                href={`/api/admin/userscript?key=${apiKey}`}
                 target="_blank"
                 className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold text-xs transition flex items-center gap-1.5"
-                title="Install / Update Tampermonkey script v2.0"
+                title="Install / Update Tampermonkey script v2.1"
               >
                 <Zap className="w-3.5 h-3.5" />
-                Userscript v2.0
+                Userscript v2.1
               </a>
               <a
                 href="https://parlamentum.org/trade/ledger"
@@ -1854,12 +1854,12 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </div>
 
             <a
-              href="/parlamentum-gug-verifier.user.js"
+              href={`/api/admin/userscript?key=${apiKey}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition shadow-lg shadow-emerald-500/20 shrink-0"
             >
-              <span>Install Userscript</span>
+              <span>Install Userscript v2.1</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>

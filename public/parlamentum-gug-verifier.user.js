@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         Grow UR Gold - Parlamentum Trade Ledger & Deposit Verifier
 // @namespace    https://growurgold.vercel.app/
-// @version      2.0.0
+// @version      2.1.0
 // @description  Automatically detects Raw Iron sales & trade fills on operator JosephArora's Parlamentum account by scraping /trade/ledger and auto-credits citizen purses in Grow UR Gold with zero latency.
 // @author       Grow UR Gold Exchange Team
 // @match        *://parlamentum.org/*
 // @match        *://*.parlamentum.org/*
 // @grant        GM_xmlhttpRequest
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @grant        unsafeWindow
 // @grant        window.onurlchange
 // @connect      growurgold.vercel.app
@@ -17,16 +19,64 @@
 (function () {
   'use strict';
 
-  console.log("%c[GUG Verifier v2.0] Ledger Edition Loaded on " + window.location.href, "background: #10b981; color: #000; font-size: 13px; font-weight: bold; padding: 4px 8px; border-radius: 4px;");
+  console.log("%c[GUG Verifier v2.1] Ledger Edition Loaded on " + window.location.href, "background: #10b981; color: #000; font-size: 13px; font-weight: bold; padding: 4px 8px; border-radius: 4px;");
 
   // CONFIGURATION
   const OPERATOR_NAMES = ["JOSEPHARORA", "JOSEPH ARORA", "JOSEPH_ARORA"];
   const CITIZEN_NAMES = ["CARDINALSANJAY", "CARDINAL SANJAY", "CARDINAL_SANJAY"];
   const EXCHANGE_API_URL = "https://growurgold.vercel.app/api/admin";
-  const SECRET_API_KEY = ""; // paste the key shown in the Operator Panel (this file is public, so it ships empty)
+  const SECRET_API_KEY = ""; // Paste here, or click the HUD badge in Parlamentum to enter once!
   const POLL_INTERVAL_MS = 10000; // 10 seconds background sync
-
   const STORAGE_KEY = "gug_processed_ledger_v2";
+
+  function getActiveApiKey() {
+    if (SECRET_API_KEY && SECRET_API_KEY.trim()) return SECRET_API_KEY.trim();
+    try {
+      if (typeof GM_getValue !== "undefined") {
+        const val = GM_getValue("gug_api_key", "");
+        if (val && val.trim()) return val.trim();
+      }
+    } catch {}
+    try {
+      if (typeof localStorage !== "undefined") {
+        const val = localStorage.getItem("gug_api_key") || "";
+        if (val && val.trim()) return val.trim();
+      }
+    } catch {}
+    return "";
+  }
+
+  function setActiveApiKey(newKey) {
+    const trimmed = (newKey || "").trim();
+    try {
+      if (typeof GM_setValue !== "undefined") {
+        GM_setValue("gug_api_key", trimmed);
+      }
+    } catch {}
+    try {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("gug_api_key", trimmed);
+      }
+    } catch {}
+    return trimmed;
+  }
+
+  function promptForApiKey() {
+    const current = getActiveApiKey();
+    const entered = window.prompt(
+      "🔑 Grow UR Gold Operator Key\n\nEnter the secret API key shown in your Operator Panel (/admin):",
+      current
+    );
+    if (entered !== null) {
+      const saved = setActiveApiKey(entered);
+      if (saved) {
+        updateWidget("⚡ Key saved! Syncing now...", "#0f766e", "#2dd4bf", "#ffffff");
+        syncTradeLedger(true);
+      } else {
+        updateWidget("⚠️ No API Key set (Click to enter)", "#7f1d1d", "#f87171", "#ffffff");
+      }
+    }
+  }
 
   function getProcessedSignatures() {
     try {
@@ -47,7 +97,7 @@
 
   // 1. FLOATING STATUS & HUD WIDGET
   let statusBadge = null;
-  function updateWidget(htmlContent, bgColor = "#0f172a", borderColor = "#10b981", textColor = "#f8fafc") {
+  function updateWidget(htmlContent, bgColor = "#0f172a", borderColor = "#10b981", textColor = "#f8fafc", customAction = null) {
     if (!statusBadge) {
       statusBadge = document.createElement("div");
       statusBadge.id = "gug-verifier-widget";
@@ -67,13 +117,7 @@
       statusBadge.style.display = "flex";
       statusBadge.style.alignItems = "center";
       statusBadge.style.gap = "8px";
-      statusBadge.title = "Click to run instant Parlamentum Ledger sync";
-      statusBadge.onclick = (e) => {
-        // Prevent opening if clicking on an inner link
-        if ((e.target).tagName === "A") return;
-        updateWidget("⚡ Syncing /trade/ledger now...", "#0f766e", "#2dd4bf", "#ffffff");
-        syncTradeLedger(true);
-      };
+      statusBadge.title = "Grow UR Gold Verifier • Click to Sync (or hold Shift to change API key)";
 
       if (document.body) {
         document.body.appendChild(statusBadge);
@@ -82,13 +126,27 @@
       }
     }
 
-    statusBadge.textContent = htmlContent; // text only: messages include usernames, which players choose
+    statusBadge.onclick = (e) => {
+      if ((e.target).tagName === "A") return;
+      if (e.shiftKey || !getActiveApiKey()) {
+        promptForApiKey();
+        return;
+      }
+      if (customAction) {
+        customAction();
+        return;
+      }
+      updateWidget("⚡ Syncing /trade/ledger now...", "#0f766e", "#2dd4bf", "#ffffff");
+      syncTradeLedger(true);
+    };
+
+    statusBadge.textContent = htmlContent;
     statusBadge.style.backgroundColor = bgColor;
     statusBadge.style.borderColor = borderColor;
     statusBadge.style.color = textColor;
   }
 
-  updateWidget("🟡 GUG Verifier v2.0: Initializing...", "#1e293b", "#eab308", "#fef08a");
+  updateWidget("🟡 GUG Verifier v2.1: Initializing...", "#1e293b", "#eab308", "#fef08a");
 
   // 2. ACTIVE ACCOUNT IDENTIFIER
   async function detectActiveAccount() {
@@ -120,16 +178,17 @@
     return "UNKNOWN";
   }
 
-  // 3. SEND WEBHOOK PAYLOAD (Ledger sync or sale event)
+  // 3. SEND WEBHOOK PAYLOAD
   function sendWebhook(payloadObj, callback) {
     const payload = JSON.stringify(payloadObj);
 
     const onComplete = (status, responseText) => {
       try {
         const data = JSON.parse(responseText);
-        if (callback) callback(data);
+        if (callback) callback(data, status);
       } catch (e) {
         console.error(`[GUG Verifier] JSON parse error:`, responseText);
+        if (callback) callback({ success: false, message: `Parse error (${status})` }, status);
       }
     };
 
@@ -140,7 +199,10 @@
         headers: { "Content-Type": "application/json" },
         data: payload,
         onload: (res) => onComplete(res.status, res.responseText),
-        onerror: (err) => console.error("[GUG Verifier] Network error:", err),
+        onerror: (err) => {
+          console.error("[GUG Verifier] Network error:", err);
+          updateWidget("⚠️ Network error contacting GUG", "#7f1d1d", "#f87171", "#ffffff");
+        },
       });
     } else {
       fetch(EXCHANGE_API_URL, {
@@ -149,19 +211,18 @@
         body: payload,
       })
         .then((res) => res.text().then((text) => onComplete(res.status, text)))
-        .catch((err) => console.error("[GUG Verifier] Fetch error:", err));
+        .catch((err) => {
+          console.error("[GUG Verifier] Fetch error:", err);
+          updateWidget("⚠️ Fetch error contacting GUG", "#7f1d1d", "#f87171", "#ffffff");
+        });
     }
   }
 
   // 4. PARLAMENTUM TRADE LEDGER SCRAPER (parlamentum.org/trade/ledger)
-  // Extracts:
-  // - Top stats (Fills, Bought, Sold, Items, By-Item breakdown)
-  // - Table rows: Date, Side, Item, Qty, Price, Total, Tax, With (e.g. CardinalSanjay)
   function parseLedgerHtml(htmlText) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlText, "text/html");
 
-    // 1. Extract High-Level Stats
     let totalFills = 0;
     let boughtFills = 0;
     let soldFills = 0;
@@ -182,7 +243,6 @@
     const itemsMatch = pageText.match(/ITEMS\s*[\n\r\s]*(\d+)/i);
     if (itemsMatch) itemsCount = parseInt(itemsMatch[1], 10);
 
-    // Extract item lines in "BY ITEM": e.g. "Food bought 233 · sold 30 3,828.20 -> 499.50 -3,328.70 USD"
     const byItemRegex = /([A-Za-z0-9\s]+?)\s+bought\s*(\d+)\s*·\s*sold\s*(\d+)\s*([\d,.]+)\s*→\s*([\d,.]+)\s*([+-]?[\d,.]+)\s*(USD|gold)/gi;
     let itemMatch;
     while ((itemMatch = byItemRegex.exec(pageText)) !== null) {
@@ -197,7 +257,6 @@
       });
     }
 
-    // 2. Extract Table Rows (Ledger)
     const entries = [];
     const rows = doc.querySelectorAll("table tbody tr, tr");
 
@@ -213,7 +272,6 @@
         const taxStr = (cells[6]?.innerText || cells[6]?.textContent || "").trim();
         const withStr = (cells[7]?.innerText || cells[7]?.textContent || "").trim();
 
-        // Must look like a transaction row (has date and side)
         const isDate = /\d{1,2}\/\d{1,2}\/\d{2,4}/.test(dateStr);
         const hasSide = /SOLD|BOUGHT/i.test(sideStr);
 
@@ -257,22 +315,22 @@
 
   // 5. PERIODIC LEDGER SYNCHRONIZER
   async function syncTradeLedger(isManualClick = false) {
-    if (!SECRET_API_KEY) {
-      updateWidget("⚠️ GUG Verifier: paste the Operator Panel API key into this script", "#7f1d1d", "#f87171", "#ffffff");
+    const key = getActiveApiKey();
+    if (!key) {
+      updateWidget("⚠️ GUG Verifier: Missing API Key (Click to Enter)", "#7f1d1d", "#f87171", "#ffffff", promptForApiKey);
       return;
     }
+
     try {
       let htmlText = "";
 
-      // If user is currently on /trade/ledger, use live document HTML
       if (window.location.pathname.includes("/trade/ledger") && document.body) {
         htmlText = document.documentElement.outerHTML;
       } else {
-        // Otherwise fetch /trade/ledger in background using active session cookies
         const res = await fetch("/trade/ledger", { credentials: "include" });
         if (!res.ok) {
           console.warn("[GUG Verifier] Failed to fetch /trade/ledger. Status:", res.status);
-          if (isManualClick) updateWidget("⚠️ Sync Failed: Ledger unavailable", "#7f1d1d", "#f87171", "#ffffff");
+          if (isManualClick) updateWidget(`⚠️ Ledger unavailable (${res.status})`, "#7f1d1d", "#f87171", "#ffffff");
           return;
         }
         htmlText = await res.text();
@@ -283,79 +341,98 @@
 
       if (entries.length === 0) {
         if (isManualClick) {
-          updateWidget("ℹ️ Ledger synced: 0 entries found", "#1e293b", "#94a3b8", "#cbd5e1");
+          updateWidget("ℹ️ Ledger synced: 0 fills found", "#1e293b", "#94a3b8", "#cbd5e1");
         }
         return;
       }
 
-      // Send to Grow UR Gold
       sendWebhook({
         action: "webhook_ledger_sync",
-        apiKey: SECRET_API_KEY,
+        apiKey: key,
         stats,
         entries,
-      }, (data) => {
+      }, (data, status) => {
+        if (status === 401 || !data.success) {
+          if (data.message && data.message.includes("Invalid API Key")) {
+            updateWidget("⚠️ Invalid API Key (Click to Change)", "#7f1d1d", "#f87171", "#ffffff", promptForApiKey);
+          } else {
+            updateWidget(`⚠️ Sync error: ${data.message || "Failed"}`, "#7f1d1d", "#f87171", "#ffffff");
+          }
+          return;
+        }
+
         if (data.success) {
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
           if (data.newCredits && data.newCredits.length > 0) {
             const creditSummary = data.newCredits.map((c) => `@${c.user} (+${c.gold}g)`).join(", ");
             console.log("%c[GUG Verifier] 🚀 NEW AUTO-CREDITS:", "background: #059669; color: #fff; font-weight: bold;", creditSummary);
             updateWidget(`✅ Auto-Credited: ${creditSummary}`, "#065f46", "#34d399", "#ffffff");
-
-            // Mark in localStorage
-            data.newCredits.forEach((c) => {
-              markSignatureProcessed(`credit_${c.user}_${c.gold}`);
-            });
-          } else if (isManualClick) {
-            updateWidget(`🟢 Ledger Synced (${entries.length} fills). Watching JosephArora`, "#064e3b", "#10b981", "#a7f3d0");
+            data.newCredits.forEach((c) => markSignatureProcessed(`credit_${c.user}_${c.gold}`));
+          } else {
+            updateWidget(`🟢 Ledger Synced (${entries.length} fills) • ${timeStr}`, "#064e3b", "#10b981", "#a7f3d0");
           }
         }
       });
     } catch (e) {
       console.warn("[GUG Verifier] Ledger sync error:", e);
-      if (isManualClick) {
-        updateWidget("⚠️ Sync error (check console)", "#7f1d1d", "#f87171", "#ffffff");
-      }
+      if (isManualClick) updateWidget("⚠️ Sync error (check console)", "#7f1d1d", "#f87171", "#ffffff");
     }
   }
 
-  // 6. INITIALIZATION
-  async function init() {
-    const activeAccount = await detectActiveAccount();
-    console.log(`[GUG Verifier] Active account identified as: ${activeAccount}`);
+  // 6. INITIALIZATION & RECURRING MONITOR
+  let syncIntervalId = null;
 
+  async function checkAndRun() {
+    const isOnLedger = window.location.pathname.includes("/trade/ledger");
+    const activeAccount = await detectActiveAccount();
+    console.log(`[GUG Verifier] Active account detected: ${activeAccount} (onLedger: ${isOnLedger})`);
+
+    // Case A: User is browsing as CardinalSanjay
     if (activeAccount === "CARDINALSANJAY") {
-      updateWidget(`⚪ GUG Verifier: Dormant (CardinalSanjay)`, "#1e293b", "#64748b", "#94a3b8");
-      console.log("[GUG Verifier] Tab belongs to CardinalSanjay. Verifier is dormant on this tab.");
+      updateWidget("⚪ GUG: Dormant on @CardinalSanjay (Click to Sync)", "#1e293b", "#64748b", "#cbd5e1");
+      if (syncIntervalId) {
+        clearInterval(syncIntervalId);
+        syncIntervalId = null;
+      }
       return;
     }
 
-    if (activeAccount === "JOSEPHARORA") {
-      const isOnLedger = window.location.pathname.includes("/trade/ledger");
+    // Case B: Logged in as JosephArora OR on /trade/ledger page
+    if (activeAccount === "JOSEPHARORA" || isOnLedger) {
       updateWidget(
-        isOnLedger
-          ? `🟢 GUG Verifier: On Trade Ledger (JosephArora)`
-          : `🟢 GUG Verifier: Watching Ledger (JosephArora)`,
-        "#064e3b",
-        "#10b981",
-        "#a7f3d0"
+        isOnLedger ? "🟢 GUG Verifier: On Trade Ledger" : "🟢 GUG Verifier: Watching Ledger (JosephArora)",
+        "#064e3b", "#10b981", "#a7f3d0"
       );
 
-      // Run initial ledger sync
+      // Run sync immediately
       syncTradeLedger();
 
-      // Recurring sync every 10 seconds
-      setInterval(syncTradeLedger, POLL_INTERVAL_MS);
+      // Ensure background sync is running
+      if (!syncIntervalId) {
+        syncIntervalId = setInterval(syncTradeLedger, POLL_INTERVAL_MS);
+      }
       return;
     }
 
-    updateWidget(`🟡 GUG Verifier v2.0: Ready (Click to Sync)`, "#1e293b", "#eab308", "#fef08a");
+    // Case C: Account not yet detected
+    updateWidget("🟡 GUG Verifier: Ready (Click to Sync)", "#1e293b", "#eab308", "#fef08a");
+  }
+
+  let initCheckCount = 0;
+  function scheduleInit() {
+    checkAndRun().then(() => {
+      initCheckCount++;
+      if (initCheckCount < 5) {
+        setTimeout(scheduleInit, 3000);
+      }
+    });
   }
 
   if (window.onurlchange === null) {
     window.addEventListener('urlchange', () => {
-      setTimeout(init, 300);
+      setTimeout(checkAndRun, 400);
     });
   }
 
-  setTimeout(init, 600);
+  setTimeout(scheduleInit, 600);
 })();
