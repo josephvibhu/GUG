@@ -1,6 +1,14 @@
 import { createClient, Client } from "@libsql/client";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
+
+// Webhook key that used to ship as the default; never accept it
+export const LEAKED_API_KEY = "pse_secret_parlamentum_key_2026";
+
+// Remote database (Turso / libSQL). The Vercel Marketplace Turso integration names these TURSO_*.
+const remoteDbUrl = () => process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL;
+const remoteDbToken = () => process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
 
 let clientInstance: Client | null = null;
 let lastBlobSyncedAt = 0;
@@ -17,7 +25,7 @@ export function getDbPath(): string {
 
 export async function syncDbFromBlob(force = false): Promise<void> {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token || process.env.DATABASE_URL) return;
+  if (!token || remoteDbUrl()) return;
 
   const now = Date.now();
   if (!force && now - lastBlobCheckAt < 3000) {
@@ -87,7 +95,7 @@ export async function syncDbFromBlob(force = false): Promise<void> {
 
 export async function persistDbToBlob(): Promise<{ success: boolean; error?: string }> {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token || process.env.DATABASE_URL) return { success: false, error: "No BLOB_READ_WRITE_TOKEN or DATABASE_URL set" };
+  if (!token || remoteDbUrl()) return { success: false, error: "No BLOB_READ_WRITE_TOKEN, or a remote DATABASE_URL is in use" };
 
   try {
     const dbPath = getDbPath();
@@ -117,7 +125,7 @@ export async function persistDbToBlob(): Promise<{ success: boolean; error?: str
 }
 
 export function scheduleBlobPersist(): void {
-  if (process.env.DATABASE_URL || !process.env.BLOB_READ_WRITE_TOKEN) return;
+  if (remoteDbUrl() || !process.env.BLOB_READ_WRITE_TOKEN) return;
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     persistDbToBlob().catch((e) => console.warn("Background Blob persist error:", e));
@@ -126,8 +134,8 @@ export function scheduleBlobPersist(): void {
 
 export function getDb(): Client {
   if (!clientInstance) {
-    const databaseUrl = process.env.DATABASE_URL;
-    const authToken = process.env.DATABASE_AUTH_TOKEN;
+    const databaseUrl = remoteDbUrl();
+    const authToken = remoteDbToken();
 
     if (databaseUrl) {
       clientInstance = createClient({
@@ -216,6 +224,29 @@ export async function initDb(): Promise<void> {
       recipe_note TEXT,
       created_at TEXT NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+  `);
+
+  // Must exist before the companies ALTER migrations below, or a fresh DB gets a companies table without them
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS companies (
+      id TEXT PRIMARY KEY,
+      ticker TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      sector TEXT NOT NULL,
+      creator_id TEXT NOT NULL,
+      total_shares INTEGER NOT NULL,
+      float_shares INTEGER NOT NULL,
+      ipo_price REAL NOT NULL,
+      current_price REAL NOT NULL,
+      change_24h REAL NOT NULL DEFAULT 0.0,
+      volume_24h REAL NOT NULL DEFAULT 0.0,
+      high_24h REAL NOT NULL,
+      low_24h REAL NOT NULL,
+      logo_url TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (creator_id) REFERENCES users(id)
     );
   `);
 
@@ -334,28 +365,6 @@ export async function initDb(): Promise<void> {
   `);
 
   await db.execute(`
-    CREATE TABLE IF NOT EXISTS companies (
-      id TEXT PRIMARY KEY,
-      ticker TEXT UNIQUE NOT NULL,
-      name TEXT NOT NULL,
-      description TEXT NOT NULL,
-      sector TEXT NOT NULL,
-      creator_id TEXT NOT NULL,
-      total_shares INTEGER NOT NULL,
-      float_shares INTEGER NOT NULL,
-      ipo_price REAL NOT NULL,
-      current_price REAL NOT NULL,
-      change_24h REAL NOT NULL DEFAULT 0.0,
-      volume_24h REAL NOT NULL DEFAULT 0.0,
-      high_24h REAL NOT NULL,
-      low_24h REAL NOT NULL,
-      logo_url TEXT,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY (creator_id) REFERENCES users(id)
-    );
-  `);
-
-  await db.execute(`
     CREATE TABLE IF NOT EXISTS portfolios (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
@@ -454,20 +463,31 @@ export async function initDb(): Promise<void> {
   `);
 
   // Default settings
-  await db.execute(`
-    INSERT OR IGNORE INTO settings (key, value) VALUES 
+  await db.execute({
+    sql: `
+    INSERT OR IGNORE INTO settings (key, value) VALUES
     ('tax_rate', '10'),
     ('iron_price', '5'),
     ('house_name', 'JosephArora'),
-    ('api_key', 'pse_secret_parlamentum_key_2026'),
+    ('api_key', ?),
     ('ipo_listing_fee', '200'),
     ('auto_approve_deposits', 'false');
-  `);
+  `,
+    args: [crypto.randomBytes(24).toString("hex")],
+  });
 
-  // Ensure Exchange Treasury user exists for market-making float orders
+  // The old default webhook key is public (it was committed to the repo and the userscript): replace it
+  await db.execute({
+    sql: "UPDATE settings SET value = ? WHERE key = 'api_key' AND value = ?",
+    args: [crypto.randomBytes(24).toString("hex"), LEAKED_API_KEY],
+  });
+
+  // Ensure Exchange Treasury user exists (trading and buyback fees are credited to it). It starts empty:
+  // the seed no longer wipes admin purses on every cold start, so a starting balance would stay as
+  // gold nobody deposited. Existing databases keep their current treasury row.
   await db.execute(`
     INSERT OR IGNORE INTO users (id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, avatar, is_admin, created_at)
-    VALUES ('usr_treasury', 'ExchangeTreasury', 'none', 'Exchange Treasury', 'ExchangeTreasury', 1000000.0, 0.0, '🏛️', 1, '2026-01-01T00:00:00Z');
+    VALUES ('usr_treasury', 'ExchangeTreasury', 'none', 'Exchange Treasury', 'ExchangeTreasury', 0.0, 0.0, '🏛️', 1, '2026-01-01T00:00:00Z');
   `);
 
   isInitialized = true;

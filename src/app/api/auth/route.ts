@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, loginUser, registerUser, switchDemoUser, depositCash } from "@/lib/auth";
+import { getCurrentUser, loginUser, registerUser } from "@/lib/auth";
 import { seedMarketData } from "@/lib/seed";
 
 
@@ -35,22 +35,6 @@ export async function POST(request: Request) {
       const { logoutUser } = await import("@/lib/auth");
       await logoutUser();
       return NextResponse.json({ success: true, message: "Logged out successfully" });
-    }
-
-    if (action === "switch") {
-      const { userId } = body;
-      await switchDemoUser(userId);
-      const user = await getCurrentUser();
-      return NextResponse.json({ success: true, user });
-    }
-
-    if (action === "deposit") {
-      const user = await getCurrentUser();
-      if (!user) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-      const amount = Number(body.amount) || 5000;
-      await depositCash(user.id, amount);
-      const updated = await getCurrentUser();
-      return NextResponse.json({ success: true, user: updated, message: `Deposited Ᵽ${amount.toLocaleString()} into your treasury account!` });
     }
 
     return NextResponse.json({ success: false, message: "Invalid action" }, { status: 400 });

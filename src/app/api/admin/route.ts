@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, initDb } from "@/lib/db";
+import { getDb, initDb, LEAKED_API_KEY } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { 
   getSetting, 
@@ -21,7 +21,7 @@ export async function GET() {
     const [taxRate, houseName, apiKey, autoApprove, tradeFee, listingFee] = await Promise.all([
       getSetting("tax_rate", "10"),
       getSetting("house_name", "JosephArora"),
-      getSetting("api_key", "pse_secret_parlamentum_key_2026"),
+      getSetting("api_key", ""),
       getSetting("auto_approve_deposits", "true"),
       getSetting("trade_fee_percent", "0.5"),
       getSetting("ipo_listing_fee", "200"),
@@ -136,6 +136,12 @@ export async function GET() {
   }
 }
 
+// Webhook/maintenance actions: the stored key must be set and must not be the old public default
+async function isValidApiKey(apiKey: unknown): Promise<boolean> {
+  const expectedKey = await getSetting("api_key", "");
+  return typeof apiKey === "string" && expectedKey !== "" && expectedKey !== LEAKED_API_KEY && apiKey === expectedKey;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -155,9 +161,7 @@ export async function POST(request: Request) {
     // 1. Direct In-Game Ledger Sync (/trade/ledger)
     if (action === "webhook_ledger_sync") {
       const { apiKey, entries, stats } = body;
-      const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
-
-      if (apiKey !== expectedKey) {
+      if (!(await isValidApiKey(apiKey))) {
         return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
       }
 
@@ -169,9 +173,7 @@ export async function POST(request: Request) {
     // 2. Automated Parlamentum in-game sale event webhook
     if (action === "webhook_credit" || action === "webhook_sale_event") {
       const { apiKey, buyerName, goldAmount, ironUnits, rawNotification } = body;
-      const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
-
-      if (apiKey !== expectedKey) {
+      if (!(await isValidApiKey(apiKey))) {
         return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
       }
 
@@ -179,15 +181,16 @@ export async function POST(request: Request) {
       const units = Number(ironUnits) || (goldAmount ? Math.ceil(Number(goldAmount) / 5) : 0);
       const gold = Number(goldAmount) || (units * 5);
 
-      // 1. If buyerName is specified, find their pending deposit or credit directly
+      // 1. If buyerName is specified, find their pending deposit for this amount or credit what was paid directly
+      // (a pending deposit is only approved when the sale covers its amount, never on the claim alone)
       if (buyerName) {
         const pending = await db.execute({
           sql: `SELECT wt.id FROM wallet_transactions wt
                 JOIN users u ON wt.user_id = u.id
                 WHERE (LOWER(u.username) = ? OR LOWER(wt.parlamentum_name) = ?)
-                AND wt.type = 'DEPOSIT' AND wt.status = 'PENDING'
+                AND wt.type = 'DEPOSIT' AND wt.status = 'PENDING' AND wt.amount = ?
                 ORDER BY wt.created_at DESC LIMIT 1`,
-          args: [buyerName.toLowerCase(), buyerName.toLowerCase()],
+          args: [buyerName.toLowerCase(), buyerName.toLowerCase(), gold],
         });
 
         if (pending.rows.length > 0) {
@@ -232,42 +235,9 @@ export async function POST(request: Request) {
       }, { headers: corsHeaders });
     }
 
-    if (action === "credit_ledger_entry_manual") {
-      const { entryId, username } = body;
-      const db = getDb();
-      const entryRes = await db.execute({
-        sql: "SELECT * FROM parlamentum_ledger_entries WHERE id = ?",
-        args: [entryId],
-      });
-      if (entryRes.rows.length === 0) {
-        return NextResponse.json({ success: false, message: "Ledger transaction entry not found" }, { status: 404 });
-      }
-      const entry = entryRes.rows[0];
-      const targetUser = username || entry.with_user;
-      if (!targetUser) {
-        return NextResponse.json({ success: false, message: "No citizen username specified for credit." }, { status: 400 });
-      }
-      const { manualCreditCitizen } = await import("@/lib/wallet");
-      const res = await manualCreditCitizen(
-        String(targetUser),
-        Number(entry.total_amount),
-        `Manual Ledger Credit for ${entry.quantity}x ${entry.item_name} (Fill: ${entry.trade_date})`
-      );
-      if (res.success) {
-        await db.execute({
-          sql: "UPDATE parlamentum_ledger_entries SET status = 'AUTO_CREDITED', with_user = ? WHERE id = ?",
-          args: [String(targetUser), entryId],
-        });
-        const { scheduleBlobPersist } = await import("@/lib/db");
-        scheduleBlobPersist();
-      }
-      return NextResponse.json(res);
-    }
-
     if (action === "test_blob") {
       const { apiKey } = body;
-      const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
-      if (apiKey !== expectedKey) {
+      if (!(await isValidApiKey(apiKey))) {
         return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
       }
       const { persistDbToBlob, getDbPath, getDb, syncDbFromBlob } = await import("@/lib/db");
@@ -297,9 +267,7 @@ export async function POST(request: Request) {
     // Direct Purge & Admin Setup (secured by API key)
     if (action === "purge_users_and_create_admin") {
       const { apiKey } = body;
-      const expectedKey = await getSetting("api_key", "pse_secret_parlamentum_key_2026");
-
-      if (apiKey !== expectedKey) {
+      if (!(await isValidApiKey(apiKey))) {
         return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
       }
 
@@ -372,6 +340,48 @@ export async function POST(request: Request) {
     const user = await getCurrentUser();
     if (!user || !user.isAdmin) {
       return NextResponse.json({ success: false, message: "Forbidden: Admin access required." }, { status: 403 });
+    }
+
+    if (action === "credit_ledger_entry_manual") {
+      const { entryId, username } = body;
+      const db = getDb();
+      const entryRes = await db.execute({
+        sql: "SELECT * FROM parlamentum_ledger_entries WHERE id = ?",
+        args: [entryId],
+      });
+      if (entryRes.rows.length === 0) {
+        return NextResponse.json({ success: false, message: "Ledger transaction entry not found" }, { status: 404 });
+      }
+      const entry = entryRes.rows[0];
+      const targetUser = username || entry.with_user;
+      if (!targetUser) {
+        return NextResponse.json({ success: false, message: "No citizen username specified for credit." }, { status: 400 });
+      }
+      // Claim the entry before crediting so it can only ever be paid out once
+      const claim = await db.execute({
+        sql: `UPDATE parlamentum_ledger_entries SET status = 'AUTO_CREDITED', with_user = ?
+              WHERE id = ? AND status NOT IN ('AUTO_CREDITED', 'MATCHED_PENDING')`,
+        args: [String(targetUser), entryId],
+      });
+      if (claim.rowsAffected === 0) {
+        return NextResponse.json({ success: false, message: "This ledger entry has already been credited." }, { status: 409 });
+      }
+      const { manualCreditCitizen } = await import("@/lib/wallet");
+      const res = await manualCreditCitizen(
+        String(targetUser),
+        Number(entry.total_amount),
+        `Manual Ledger Credit for ${entry.quantity}x ${entry.item_name} (Fill: ${entry.trade_date})`
+      );
+      if (res.success) {
+        const { scheduleBlobPersist } = await import("@/lib/db");
+        scheduleBlobPersist();
+      } else {
+        await db.execute({
+          sql: "UPDATE parlamentum_ledger_entries SET status = ?, with_user = ? WHERE id = ?",
+          args: [entry.status, entry.with_user, entryId],
+        });
+      }
+      return NextResponse.json(res);
     }
 
     if (action === "approve") {

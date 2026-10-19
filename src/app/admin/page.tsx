@@ -1758,11 +1758,11 @@ export default function AdminPage() {
                 Embedded directly in the script for authenticated webhook callbacks:
               </p>
               <div className="flex items-center justify-between bg-zinc-900 px-2.5 py-1.5 rounded font-mono text-[11px] text-amber-300 border border-zinc-700">
-                <span className="truncate">{apiKey || "pse_secret_parlamentum_key_2026"}</span>
+                <span className="truncate">{apiKey || "not set"}</span>
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText(apiKey || "pse_secret_parlamentum_key_2026");
+                    navigator.clipboard.writeText(apiKey);
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}

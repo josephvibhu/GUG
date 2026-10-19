@@ -831,7 +831,7 @@ function TradeContent({ params }: { params: Promise<{ ticker: string }> }) {
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white font-sans">{report.periodName || "Weekly Earnings Cycle"}</span>
+                        <span className="font-bold text-white font-sans">{report.periodTitle || "Weekly Earnings Cycle"}</span>
                         <span
                           className={`px-1.5 py-0.5 rounded text-[9px] font-bold font-sans ${
                             report.status === "DISTRIBUTED"

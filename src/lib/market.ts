@@ -22,6 +22,7 @@ export interface Company {
   status: "ACTIVE" | "HALTED" | "DEFAULTED";
   sharesBoughtBack: number;
   buybackGoldSpent: number;
+  totalDividendsPaid?: number;
   createdAt: string;
 }
 
@@ -146,6 +147,7 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
     status: (row.status as any) || "ACTIVE",
     sharesBoughtBack: Number(row.shares_bought_back || 0),
     buybackGoldSpent: Number(row.buyback_gold_spent || 0),
+    totalDividendsPaid: Number(row.total_dividends_paid || 0),
     createdAt: String(row.created_at),
   };
 }
@@ -252,10 +254,12 @@ export async function getCandles(companyId: string): Promise<CandleData[]> {
   const db = getDb();
 
   const res = await db.execute({
-    sql: `SELECT * FROM candles 
-          WHERE company_id = ? 
-          ORDER BY time_bucket ASC 
-          LIMIT 50`,
+    sql: `SELECT * FROM (
+            SELECT * FROM candles
+            WHERE company_id = ?
+            ORDER BY time_bucket DESC
+            LIMIT 50
+          ) ORDER BY time_bucket ASC`,
     args: [companyId],
   });
 
@@ -732,16 +736,26 @@ export async function executeShareBuyback(params: {
 
   const companyId = String(company.id);
 
-  // 3. Find open SELL orders on the book, lowest price first
+  // 3. Find open SELL orders on the book, lowest price first (not the buyer's own, e.g. the founder's unsold IPO float)
   const sellOrdersRes = await db.execute({
-    sql: `SELECT * FROM orders 
-          WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND remaining_quantity > 0
+    sql: `SELECT * FROM orders
+          WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND remaining_quantity > 0 AND user_id != ?
           ORDER BY price ASC, created_at ASC`,
-    args: [companyId],
+    args: [companyId, params.founderId],
   });
 
   if (sellOrdersRes.rows.length === 0) {
     return { success: false, message: `No open sell orders available on the book for $${company.ticker} to buy back.` };
+  }
+
+  // Take the whole allocation from the founder's purse up front, only if it is still there
+  // (parallel buybacks must not spend the same gold); the unspent rest is refunded below
+  const escrow = await db.execute({
+    sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ? AND cash_balance >= ?",
+    args: [goldToSpend, params.founderId, goldToSpend],
+  });
+  if (escrow.rowsAffected === 0) {
+    return { success: false, message: `Insufficient gold balance for a ${goldToSpend.toFixed(2)} gold buyback.` };
   }
 
   let remainingGold = goldToSpend;
@@ -763,17 +777,19 @@ export async function executeShareBuyback(params: {
     const fillQty = Math.min(remainingQty, maxSharesAffordable);
     const cost = Math.round(fillQty * askPrice * 100) / 100;
 
+    // Claim those shares on the ask first; skip it if a parallel order already took them
+    const claim = await db.execute({
+      sql: `UPDATE orders SET remaining_quantity = remaining_quantity - ?,
+              status = CASE WHEN remaining_quantity - ? = 0 THEN 'FILLED' ELSE 'PARTIAL' END
+            WHERE id = ? AND status IN ('OPEN', 'PARTIAL') AND remaining_quantity >= ?`,
+      args: [fillQty, fillQty, orderId, fillQty],
+    });
+    if (claim.rowsAffected === 0) continue;
+
     remainingGold -= cost;
     totalGoldSpent += cost;
     totalSharesAcquired += fillQty;
     lastFillPrice = askPrice;
-
-    const newRemaining = remainingQty - fillQty;
-    const newStatus = newRemaining === 0 ? "FILLED" : "PARTIAL";
-    await db.execute({
-      sql: "UPDATE orders SET remaining_quantity = ?, status = ? WHERE id = ?",
-      args: [newRemaining, newStatus, orderId],
-    });
 
     const fee = Math.round(cost * 0.005 * 100) / 100;
     const netSellerProceeds = cost - fee;
@@ -781,6 +797,12 @@ export async function executeShareBuyback(params: {
     await db.execute({
       sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
       args: [netSellerProceeds, sellerId],
+    });
+
+    // The sold shares leave the seller's portfolio (they were escrowed by the sell order)
+    await db.execute({
+      sql: "UPDATE portfolios SET shares = shares - ?, locked_shares = locked_shares - ? WHERE user_id = ? AND company_id = ?",
+      args: [fillQty, fillQty, sellerId, companyId],
     });
 
     if (fee > 0) {
@@ -798,18 +820,21 @@ export async function executeShareBuyback(params: {
     });
   }
 
-  if (totalSharesAcquired === 0) {
-    return { 
-      success: false, 
-      message: `Could not buy any shares. Lowest ask price is higher than allocated gold (${goldToSpend}g).` 
-    };
+  // Return the unspent part of the allocation to the founder's purse
+  const unspentGold = Math.round((goldToSpend - totalGoldSpent) * 100) / 100;
+  if (unspentGold > 0) {
+    await db.execute({
+      sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
+      args: [unspentGold, params.founderId],
+    });
   }
 
-  // Deduct actual total spent from founder's purse
-  await db.execute({
-    sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ?",
-    args: [totalGoldSpent, params.founderId],
-  });
+  if (totalSharesAcquired === 0) {
+    return {
+      success: false,
+      message: `Could not buy any shares. Lowest ask price is higher than allocated gold (${goldToSpend}g).`
+    };
+  }
 
   // Update company metrics (retire shares, update price)
   await db.execute({

@@ -37,6 +37,9 @@ export default function TradeForm({
   const numPrice = orderType === "LIMIT" ? parseFloat(price) || 0 : company.currentPrice;
   const numQty = parseInt(quantity, 10) || 0;
   const totalCost = Math.round(numPrice * numQty * 100) / 100;
+  // The server escrows market buys at the last price + 5%, so size and check them against that
+  const escrowPrice = side === "BUY" && orderType === "MARKET" ? numPrice * 1.05 : numPrice;
+  const requiredCash = Math.round(escrowPrice * numQty * 100) / 100;
 
   const availableShares = userHolding ? userHolding.availableShares : 0;
 
@@ -44,7 +47,7 @@ export default function TradeForm({
   const handlePercentPick = (percent: number) => {
     if (side === "BUY") {
       if (numPrice <= 0) return;
-      const maxAffordable = Math.floor((userCash * (percent / 100)) / numPrice);
+      const maxAffordable = Math.floor((userCash * (percent / 100)) / escrowPrice);
       setQuantity(Math.max(1, maxAffordable).toString());
     } else {
       const sellQty = Math.floor(availableShares * (percent / 100));
@@ -66,8 +69,8 @@ export default function TradeForm({
       return;
     }
 
-    if (side === "BUY" && totalCost > userCash) {
-      setFeedback({ type: "error", message: `Insufficient funds. Required: Ᵽ${totalCost.toFixed(2)}, Available: Ᵽ${userCash.toFixed(2)}` });
+    if (side === "BUY" && requiredCash > userCash) {
+      setFeedback({ type: "error", message: `Insufficient funds. Required: Ᵽ${requiredCash.toFixed(2)}, Available: Ᵽ${userCash.toFixed(2)}` });
       return;
     }
 
@@ -198,7 +201,7 @@ export default function TradeForm({
             <span>Share Quantity</span>
             <span className="font-mono text-zinc-300">
               {side === "BUY" ? (
-                <>Max: {numPrice > 0 ? Math.floor(userCash / numPrice) : 0}</>
+                <>Max: {numPrice > 0 ? Math.floor(userCash / escrowPrice) : 0}</>
               ) : (
                 <>Available: {availableShares}</>
               )}

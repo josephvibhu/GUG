@@ -21,13 +21,43 @@ export interface UserSession {
 }
 
 export const COOKIE_NAME = "parlamentum_session_id";
-export const ADMIN_SECRET_CODE = "parlamentum_admin";
+// Operator sign-up code comes from the environment; with ADMIN_SIGNUP_CODE unset nobody can self-register as admin.
+const ADMIN_SECRET_CODE = process.env.ADMIN_SIGNUP_CODE || "";
+
+// Session cookies are "<userId>.<hmac>" so a user id alone (shown in public shareholder lists) can't be used as a login.
+// Prefer SESSION_SECRET from the environment; otherwise a random secret is generated once and kept in settings.
+async function getSessionSecret(): Promise<string> {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  const db = getDb();
+  const res = await db.execute("SELECT value FROM settings WHERE key = 'session_secret'");
+  if (res.rows.length > 0) return String(res.rows[0].value);
+  await db.execute({
+    sql: "INSERT OR IGNORE INTO settings (key, value) VALUES ('session_secret', ?)",
+    args: [crypto.randomBytes(32).toString("hex")],
+  });
+  const created = await db.execute("SELECT value FROM settings WHERE key = 'session_secret'");
+  return String(created.rows[0].value);
+}
+
+async function signSession(userId: string): Promise<string> {
+  const sig = crypto.createHmac("sha256", await getSessionSecret()).update(userId).digest("hex");
+  return `${userId}.${sig}`;
+}
+
+async function verifySession(value: string): Promise<string | null> {
+  const dot = value.lastIndexOf(".");
+  if (dot <= 0) return null;
+  const userId = value.slice(0, dot);
+  const expected = Buffer.from(await signSession(userId));
+  const given = Buffer.from(value);
+  return given.length === expected.length && crypto.timingSafeEqual(given, expected) ? userId : null;
+}
 
 export async function getCurrentUser(): Promise<UserSession | null> {
   await initDb();
   await syncDbFromBlob(false);
   const db = getDb();
-  let userId: string | undefined;
+  let userId: string | null | undefined;
 
   try {
     const cookieStore = await cookies();
@@ -37,6 +67,11 @@ export async function getCurrentUser(): Promise<UserSession | null> {
   }
 
   // Proper login: if no cookie, user is NOT logged in!
+  if (!userId) {
+    return null;
+  }
+
+  userId = await verifySession(userId);
   if (!userId) {
     return null;
   }
@@ -106,7 +141,7 @@ export async function registerUser(
   const now = new Date().toISOString();
   
   // Admin role granted if secret admin code matches
-  const isAdmin = adminCode && adminCode.trim() === ADMIN_SECRET_CODE ? 1 : 0;
+  const isAdmin = ADMIN_SECRET_CODE && adminCode && adminCode.trim() === ADMIN_SECRET_CODE ? 1 : 0;
   let avatar = isAdmin ? "🏛️" : "🎩";
   let displayName = cleanUser;
 
@@ -142,7 +177,7 @@ export async function registerUser(
 
   try {
     const cookieStore = await cookies();
-    cookieStore.set(COOKIE_NAME, id, {
+    cookieStore.set(COOKIE_NAME, await signSession(id), {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
@@ -206,7 +241,7 @@ export async function loginUser(
 
   try {
     const cookieStore = await cookies();
-    cookieStore.set(COOKIE_NAME, String(u.id), {
+    cookieStore.set(COOKIE_NAME, await signSession(String(u.id)), {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
@@ -241,28 +276,5 @@ export async function logoutUser(): Promise<boolean> {
     cookieStore.delete(COOKIE_NAME);
   } catch {}
   return true;
-}
-
-export async function switchDemoUser(userId: string): Promise<boolean> {
-  try {
-    const cookieStore = await cookies();
-    cookieStore.set(COOKIE_NAME, userId, {
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 30,
-    });
-  } catch {}
-  return true;
-}
-
-export async function depositCash(userId: string, amount: number): Promise<void> {
-  await initDb();
-  const db = getDb();
-  await db.execute({
-    sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
-    args: [amount, userId],
-  });
-  await persistDbToBlob();
 }
 

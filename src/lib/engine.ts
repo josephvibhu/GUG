@@ -38,11 +38,11 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   const quantity = Math.floor(params.quantity);
   const price = Math.round(params.price * 100) / 100;
 
-  if (quantity <= 0) {
+  if (!Number.isFinite(quantity) || quantity <= 0) {
     return { success: false, message: "Quantity must be greater than 0", filledQuantity: 0, remainingQuantity: 0, averageFillPrice: 0, tradesExecuted: [] };
   }
 
-  if (orderType === "LIMIT" && price <= 0) {
+  if (orderType === "LIMIT" && (!Number.isFinite(price) || price <= 0)) {
     return { success: false, message: "Price must be greater than 0 for limit orders", filledQuantity: 0, remainingQuantity: 0, averageFillPrice: 0, tradesExecuted: [] };
   }
 
@@ -115,11 +115,21 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
       };
     }
 
-    // Lock cash
-    await db.execute({
-      sql: "UPDATE users SET cash_balance = cash_balance - ?, locked_cash = locked_cash + ? WHERE id = ?",
-      args: [requiredCash, requiredCash, userId],
+    // Lock cash, only if it is still there (parallel orders must not spend the same gold twice)
+    const lock = await db.execute({
+      sql: "UPDATE users SET cash_balance = cash_balance - ?, locked_cash = locked_cash + ? WHERE id = ? AND cash_balance >= ?",
+      args: [requiredCash, requiredCash, userId, requiredCash],
     });
+    if (lock.rowsAffected === 0) {
+      return {
+        success: false,
+        message: `Insufficient funds. Available: Ᵽ${availableCash.toFixed(2)}, Required: Ᵽ${requiredCash.toFixed(2)}`,
+        filledQuantity: 0,
+        remainingQuantity: 0,
+        averageFillPrice: 0,
+        tradesExecuted: [],
+      };
+    }
   } else {
     // SELL
     const portRes = await db.execute({
@@ -141,11 +151,21 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
       };
     }
 
-    // Lock shares
-    await db.execute({
-      sql: "UPDATE portfolios SET locked_shares = locked_shares + ? WHERE user_id = ? AND company_id = ?",
-      args: [quantity, userId, actualCompanyId],
+    // Lock shares, only if they are still free
+    const lock = await db.execute({
+      sql: "UPDATE portfolios SET locked_shares = locked_shares + ? WHERE user_id = ? AND company_id = ? AND shares - locked_shares >= ?",
+      args: [quantity, userId, actualCompanyId, quantity],
     });
+    if (lock.rowsAffected === 0) {
+      return {
+        success: false,
+        message: `Insufficient shares. Available: ${availableShares}, Required: ${quantity}`,
+        filledQuantity: 0,
+        remainingQuantity: 0,
+        averageFillPrice: 0,
+        tradesExecuted: [],
+      };
+    }
   }
 
   // 3. Match against opposing order book
@@ -158,12 +178,13 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   const now = new Date().toISOString();
 
   if (type === "BUY") {
-    // Fetch Asks (SELL orders) with price <= order.price (or any if MARKET), ordered by price ASC, created_at ASC
-    const matchQuery = orderType === "LIMIT"
-      ? "SELECT * FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND price <= ? AND user_id != ? ORDER BY price ASC, created_at ASC"
-      : "SELECT * FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND user_id != ? ORDER BY price ASC, created_at ASC";
+    // Fetch Asks (SELL orders) with price <= order.price, ordered by price ASC, created_at ASC.
+    // MARKET buys only escrowed current price + 5%, so they can't take asks above that band
+    // (the buyer would be charged the escrow while the seller is paid the full ask).
+    const matchQuery = "SELECT * FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND price <= ? AND user_id != ? ORDER BY price ASC, created_at ASC";
+    const priceCap = orderType === "LIMIT" ? price : Number(company.current_price) * 1.05;
 
-    const matchArgs = orderType === "LIMIT" ? [actualCompanyId, price, userId] : [actualCompanyId, userId];
+    const matchArgs = [actualCompanyId, priceCap, userId];
     const opposingOrders = await db.execute({ sql: matchQuery, args: matchArgs });
 
     for (const ask of opposingOrders.rows) {
@@ -173,6 +194,15 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
       const matchQty = Math.min(remainingQuantity, askRemaining);
       const execPrice = Number(ask.price); // Taker gets maker's posted price!
       const matchCost = Math.round(matchQty * execPrice * 100) / 100;
+
+      // Update Maker Ask Order first, only if those shares are still on it (a parallel order may have taken them)
+      const claim = await db.execute({
+        sql: `UPDATE orders SET remaining_quantity = remaining_quantity - ?,
+                status = CASE WHEN remaining_quantity - ? = 0 THEN 'FILLED' ELSE 'PARTIAL' END
+              WHERE id = ? AND status IN ('OPEN', 'PARTIAL') AND remaining_quantity >= ?`,
+        args: [matchQty, matchQty, ask.id, matchQty],
+      });
+      if (claim.rowsAffected === 0) continue;
 
       // Execute Trade
       const tradeId = `trd_${crypto.randomUUID()}`;
@@ -215,14 +245,6 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
 
       // Add shares to buyer portfolio
       await addSharesToPortfolio(db, userId, actualCompanyId, matchQty, execPrice);
-
-      // Update Maker Ask Order
-      const newAskRemaining = askRemaining - matchQty;
-      const newAskStatus = newAskRemaining === 0 ? "FILLED" : "PARTIAL";
-      await db.execute({
-        sql: "UPDATE orders SET remaining_quantity = ?, status = ? WHERE id = ?",
-        args: [newAskRemaining, newAskStatus, ask.id],
-      });
 
       remainingQuantity -= matchQty;
       filledQuantity += matchQty;
@@ -275,6 +297,15 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
       const execPrice = Number(bid.price); // Execution is at resting bid price!
       const matchCost = Math.round(matchQty * execPrice * 100) / 100;
 
+      // Update Maker Bid Order first, only if those shares are still wanted (a parallel order may have filled it)
+      const claim = await db.execute({
+        sql: `UPDATE orders SET remaining_quantity = remaining_quantity - ?,
+                status = CASE WHEN remaining_quantity - ? = 0 THEN 'FILLED' ELSE 'PARTIAL' END
+              WHERE id = ? AND status IN ('OPEN', 'PARTIAL') AND remaining_quantity >= ?`,
+        args: [matchQty, matchQty, bid.id, matchQty],
+      });
+      if (claim.rowsAffected === 0) continue;
+
       // Execute Trade
       const tradeId = `trd_${crypto.randomUUID()}`;
       await db.execute({
@@ -312,14 +343,6 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
           args: [tradeFee],
         });
       }
-
-      // Update Maker Bid Order
-      const newBidRemaining = bidRemaining - matchQty;
-      const newBidStatus = newBidRemaining === 0 ? "FILLED" : "PARTIAL";
-      await db.execute({
-        sql: "UPDATE orders SET remaining_quantity = ?, status = ? WHERE id = ?",
-        args: [newBidRemaining, newBidStatus, bid.id],
-      });
 
       remainingQuantity -= matchQty;
       filledQuantity += matchQty;
@@ -359,8 +382,10 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   return {
     success: true,
     orderId: newOrderId,
-    message: filledQuantity === quantity 
+    message: filledQuantity === quantity
       ? `Order fully executed (${filledQuantity} shares @ avg Ᵽ${avgFillPrice})`
+      : orderType === "MARKET"
+      ? `Market order filled ${filledQuantity}/${quantity} shares${filledQuantity > 0 ? ` @ avg Ᵽ${avgFillPrice}` : ""}; no more matching orders${type === "BUY" ? " within 5% of the last price" : ""}, the rest was cancelled.`
       : filledQuantity > 0
       ? `Order partially filled (${filledQuantity}/${quantity} shares @ avg Ᵽ${avgFillPrice}, remaining open)`
       : `Limit order placed successfully on the order book.`,
@@ -389,6 +414,15 @@ export async function cancelOrder(userId: string, orderId: string): Promise<{ su
   const remainingQty = Number(order.remaining_quantity);
   const orderPrice = Number(order.price);
 
+  // Mark it cancelled before refunding, and only if nothing filled it meanwhile, so the escrow comes back once
+  const claim = await db.execute({
+    sql: "UPDATE orders SET status = 'CANCELLED' WHERE id = ? AND user_id = ? AND status IN ('OPEN', 'PARTIAL') AND remaining_quantity = ?",
+    args: [orderId, userId, remainingQty],
+  });
+  if (claim.rowsAffected === 0) {
+    return { success: false, message: "This order was just filled or cancelled. Refresh and try again." };
+  }
+
   if (order.type === "BUY") {
     const refundAmount = Math.round(remainingQty * orderPrice * 100) / 100;
     await db.execute({
@@ -402,11 +436,6 @@ export async function cancelOrder(userId: string, orderId: string): Promise<{ su
       args: [remainingQty, userId, order.company_id],
     });
   }
-
-  await db.execute({
-    sql: "UPDATE orders SET status = 'CANCELLED' WHERE id = ?",
-    args: [orderId],
-  });
 
   return { success: true, message: "Order cancelled and escrow returned to your balance." };
 }
