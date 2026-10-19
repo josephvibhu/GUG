@@ -13,11 +13,6 @@ export interface UserSession {
   avatar: string;
   isAdmin: boolean;
   isFrozen: boolean;
-  accountType?: "CITIZEN" | "STATE";
-  stateRealmName?: string;
-  stateMotto?: string;
-  stateDelegateName?: string;
-  stateCrest?: string;
 }
 
 export const COOKIE_NAME = "parlamentum_session_id";
@@ -96,25 +91,13 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     avatar: String(u.avatar || "👤"),
     isAdmin: Number(u.is_admin) === 1,
     isFrozen: Number(u.is_frozen || 0) === 1,
-    accountType: (u.account_type as "CITIZEN" | "STATE") || "CITIZEN",
-    stateRealmName: u.state_realm_name ? String(u.state_realm_name) : undefined,
-    stateMotto: u.state_motto ? String(u.state_motto) : undefined,
-    stateDelegateName: u.state_delegate_name ? String(u.state_delegate_name) : undefined,
-    stateCrest: u.state_crest ? String(u.state_crest) : "🏛️",
   };
 }
 
 export async function registerUser(
   username: string, 
   password: string, 
-  adminCode?: string,
-  accountType: "CITIZEN" | "STATE" = "CITIZEN",
-  stateInfo?: {
-    realmName?: string;
-    motto?: string;
-    delegateName?: string;
-    crest?: string;
-  }
+  adminCode?: string
 ): Promise<{ success: boolean; message?: string; user?: UserSession }> {
   await initDb();
   const db = getDb();
@@ -133,7 +116,7 @@ export async function registerUser(
   });
 
   if (existing.rows.length > 0) {
-    return { success: false, message: "A citizen or sovereign state with this name is already registered." };
+    return { success: false, message: "A citizen with this name is already registered." };
   }
 
   const id = `usr_${crypto.randomUUID().slice(0, 8)}`;
@@ -142,33 +125,23 @@ export async function registerUser(
   
   // Admin role granted if secret admin code matches
   const isAdmin = ADMIN_SECRET_CODE && adminCode && adminCode.trim() === ADMIN_SECRET_CODE ? 1 : 0;
-  let avatar = isAdmin ? "🏛️" : "🎩";
-  let displayName = cleanUser;
-
-  if (accountType === "STATE") {
-    avatar = stateInfo?.crest || "🏛️";
-    displayName = stateInfo?.realmName?.trim() || cleanUser;
-  }
+  const avatar = isAdmin ? "🏛️" : "🎩";
+  const displayName = cleanUser;
 
   // Balance starts at strictly 0.0 gold
   await db.execute({
     sql: `INSERT INTO users (
             id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, 
-            avatar, is_admin, account_type, state_realm_name, state_motto, state_delegate_name, state_crest, created_at
-          ) VALUES (?, ?, ?, ?, ?, 0.0, 0.0, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            avatar, is_admin, account_type, created_at
+          ) VALUES (?, ?, ?, ?, ?, 0.0, 0.0, ?, ?, 'CITIZEN', ?)`,
     args: [
       id, 
       cleanUser, 
       passwordHash, 
       displayName, 
-      stateInfo?.delegateName?.trim() || cleanUser, 
+      cleanUser, 
       avatar, 
       isAdmin,
-      accountType,
-      stateInfo?.realmName?.trim() || (accountType === "STATE" ? cleanUser : null),
-      stateInfo?.motto?.trim() || null,
-      stateInfo?.delegateName?.trim() || cleanUser,
-      stateInfo?.crest || (accountType === "STATE" ? "🏛️" : null),
       now
     ],
   });
@@ -191,17 +164,12 @@ export async function registerUser(
       id,
       username: cleanUser,
       displayName,
-      parlamentumName: stateInfo?.delegateName?.trim() || cleanUser,
+      parlamentumName: cleanUser,
       cashBalance: 0.0,
       lockedCash: 0.0,
       avatar,
       isAdmin: isAdmin === 1,
       isFrozen: false,
-      accountType,
-      stateRealmName: stateInfo?.realmName?.trim() || (accountType === "STATE" ? cleanUser : undefined),
-      stateMotto: stateInfo?.motto?.trim() || undefined,
-      stateDelegateName: stateInfo?.delegateName?.trim() || cleanUser,
-      stateCrest: stateInfo?.crest || (accountType === "STATE" ? "🏛️" : undefined),
     },
   };
 }
@@ -230,13 +198,13 @@ export async function loginUser(
   }
 
   if (res.rows.length === 0) {
-    return { success: false, message: "Invalid citizen or state name, or password." };
+    return { success: false, message: "Invalid citizen name or password." };
   }
 
   const u = res.rows[0];
   const valid = await bcrypt.compare(password, String(u.password_hash));
   if (!valid) {
-    return { success: false, message: "Invalid citizen or state name, or password." };
+    return { success: false, message: "Invalid citizen name or password." };
   }
 
   try {
@@ -261,11 +229,6 @@ export async function loginUser(
       avatar: String(u.avatar || "👤"),
       isAdmin: Number(u.is_admin) === 1,
       isFrozen: Number(u.is_frozen || 0) === 1,
-      accountType: (u.account_type as "CITIZEN" | "STATE") || "CITIZEN",
-      stateRealmName: u.state_realm_name ? String(u.state_realm_name) : undefined,
-      stateMotto: u.state_motto ? String(u.state_motto) : undefined,
-      stateDelegateName: u.state_delegate_name ? String(u.state_delegate_name) : undefined,
-      stateCrest: u.state_crest ? String(u.state_crest) : "🏛️",
     },
   };
 }

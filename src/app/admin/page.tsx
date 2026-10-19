@@ -61,11 +61,6 @@ interface Citizen {
   holdings?: CitizenHolding[];
   is_admin: number;
   is_frozen?: number;
-  account_type?: "CITIZEN" | "STATE";
-  state_realm_name?: string;
-  state_motto?: string;
-  state_delegate_name?: string;
-  state_crest?: string;
   created_at: string;
 }
 
@@ -125,17 +120,9 @@ export default function AdminPage() {
   const [divSubmitting, setDivSubmitting] = useState<boolean>(false);
   const [processScheduledLoading, setProcessScheduledLoading] = useState<boolean>(false);
 
-  // Sovereign State Management Modal
-  const [editingUserState, setEditingUserState] = useState<Citizen | null>(null);
-  const [editAccountType, setEditAccountType] = useState<"CITIZEN" | "STATE">("STATE");
-  const [editRealmName, setEditRealmName] = useState<string>("");
-  const [editMotto, setEditMotto] = useState<string>("");
-  const [editCrest, setEditCrest] = useState<string>("🏛️");
-  const [editStateLoading, setEditStateLoading] = useState<boolean>(false);
-
-  // Citizen & Sovereign State Wealth Inspector
+  // Citizen Wealth Inspector
   const [citizenSearch, setCitizenSearch] = useState<string>("");
-  const [citizenFilter, setCitizenFilter] = useState<"ALL" | "CITIZEN" | "STATE" | "WEALTHY">("ALL");
+  const [citizenFilter, setCitizenFilter] = useState<"ALL" | "WEALTHY" | "ADMIN">("ALL");
   const [adjustingCitizen, setAdjustingCitizen] = useState<Citizen | null>(null);
   const [adjustBalanceValue, setAdjustBalanceValue] = useState<string>("");
   const [adjustReason, setAdjustReason] = useState<string>("Operator purse adjustment");
@@ -316,37 +303,6 @@ export default function AdminPage() {
     }
   };
 
-  const handleSaveUserState = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingUserState) return;
-    setEditStateLoading(true);
-    try {
-      const res = await fetch("/api/admin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "update_user_state",
-          userId: editingUserState.id,
-          accountType: editAccountType,
-          stateRealmName: editAccountType === "STATE" ? editRealmName : null,
-          stateMotto: editAccountType === "STATE" ? editMotto : null,
-          stateCrest: editAccountType === "STATE" ? editCrest : null,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFeedback({ type: "success", message: data.message });
-        setEditingUserState(null);
-        fetchAdminData();
-      } else {
-        setFeedback({ type: "error", message: data.message || "Failed to update sovereign state profile." });
-      }
-    } catch (err: any) {
-      setFeedback({ type: "error", message: err.message || "Network error" });
-    } finally {
-      setEditStateLoading(false);
-    }
-  };
 
   const handleCreditLedgerEntry = async (entryId: string, defaultUsername: string) => {
     let userToCredit = manualCreditUser[entryId] || defaultUsername;
@@ -2152,21 +2108,18 @@ export default function AdminPage() {
           const totalNetWorth = citizens.reduce((sum, c) => sum + (Number(c.total_net_worth) || ((Number(c.cash_balance) || 0) + (Number(c.locked_cash) || 0))), 0);
 
           const filteredCitizens = citizens.filter((c) => {
-            if (citizenFilter === "CITIZEN" && c.account_type === "STATE") return false;
-            if (citizenFilter === "STATE" && c.account_type !== "STATE") return false;
             if (citizenFilter === "WEALTHY" && ((Number(c.cash_balance) || 0) <= 0 && (!c.portfolio_value || c.portfolio_value <= 0))) return false;
+            if (citizenFilter === "ADMIN" && !c.is_admin) return false;
 
             if (citizenSearch.trim()) {
               const q = citizenSearch.toLowerCase().trim();
               const matchName = c.username.toLowerCase().includes(q);
               const matchDisplay = (c.display_name || "").toLowerCase().includes(q);
               const matchParlamentum = (c.parlamentum_name || "").toLowerCase().includes(q);
-              const matchRealm = (c.state_realm_name || "").toLowerCase().includes(q);
-              const matchMotto = (c.state_motto || "").toLowerCase().includes(q);
               const matchHoldings = (c.holdings || []).some((h) => 
                 h.ticker.toLowerCase().includes(q) || h.companyName.toLowerCase().includes(q)
               );
-              if (!matchName && !matchDisplay && !matchParlamentum && !matchRealm && !matchMotto && !matchHoldings) {
+              if (!matchName && !matchDisplay && !matchParlamentum && !matchHoldings) {
                 return false;
               }
             }
@@ -2181,7 +2134,7 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     <Wallet className="w-5 h-5 text-amber-400" />
                     <h3 className="font-bold text-white text-base flex items-center gap-2">
-                      Citizen & Sovereign State Wealth Inspector
+                      Citizen Wealth Inspector
                     </h3>
                     <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
                       LIVE PURSE & EQUITY BALANCES
@@ -2215,7 +2168,7 @@ export default function AdminPage() {
                     {citizens.length}
                   </div>
                   <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
-                    {citizens.filter(c => c.account_type === "STATE").length} Sovereign Realms
+                    Individual Player Purses
                   </div>
                 </div>
 
@@ -2309,28 +2262,6 @@ export default function AdminPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCitizenFilter("CITIZEN")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                      citizenFilter === "CITIZEN"
-                        ? "bg-amber-500 text-black font-bold"
-                        : "bg-zinc-800 text-zinc-400 hover:text-white"
-                    }`}
-                  >
-                    Citizens ({citizens.filter(c => c.account_type !== 'STATE').length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCitizenFilter("STATE")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                      citizenFilter === "STATE"
-                        ? "bg-amber-500 text-black font-bold"
-                        : "bg-zinc-800 text-zinc-400 hover:text-white"
-                    }`}
-                  >
-                    Sovereign States ({citizens.filter(c => c.account_type === 'STATE').length})
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setCitizenFilter("WEALTHY")}
                     className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                       citizenFilter === "WEALTHY"
@@ -2340,6 +2271,17 @@ export default function AdminPage() {
                   >
                     With Wealth &gt; 0g ({citizens.filter(c => (Number(c.cash_balance) || 0) > 0 || (c.portfolio_value && c.portfolio_value > 0)).length})
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setCitizenFilter("ADMIN")}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                      citizenFilter === "ADMIN"
+                        ? "bg-amber-500 text-black font-bold"
+                        : "bg-zinc-800 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    Operators ({citizens.filter(c => !!c.is_admin).length})
+                  </button>
                 </div>
               </div>
 
@@ -2348,8 +2290,8 @@ export default function AdminPage() {
                 <table className="w-full text-left font-mono text-xs">
                   <thead>
                     <tr className="bg-zinc-900/90 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
-                      <th className="py-3 px-4">Citizen / Sovereign Realm</th>
-                      <th className="py-3 px-3">Classification</th>
+                      <th className="py-3 px-4">Citizen</th>
+                      <th className="py-3 px-3">Role</th>
                       <th className="py-3 px-3 text-right">Purse Gold (Cash)</th>
                       <th className="py-3 px-3 text-right">Locked in Orders</th>
                       <th className="py-3 px-3">Stock Holdings &amp; Equities</th>
@@ -2367,7 +2309,6 @@ export default function AdminPage() {
                       </tr>
                     ) : (
                       filteredCitizens.map((c) => {
-                        const isState = c.account_type === "STATE";
                         const purseCash = Number(c.cash_balance || 0);
                         const lockedCash = Number(c.locked_cash || 0);
                         const portVal = Number(c.portfolio_value || 0);
@@ -2378,23 +2319,20 @@ export default function AdminPage() {
                           <tr key={c.id} className="hover:bg-zinc-800/30 transition">
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-2.5">
-                                <span className="text-xl shrink-0">{isState ? (c.state_crest || "🏛️") : "👤"}</span>
+                                <span className="text-xl shrink-0">👤</span>
                                 <div>
                                   <div className="text-white font-bold font-sans flex items-center gap-1.5">
-                                    <span>{isState ? (c.state_realm_name || c.display_name || c.username) : c.display_name || c.username}</span>
-                                    {isState && (
-                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                                        👑 STATE
+                                    <span>{c.display_name || c.username}</span>
+                                    {c.is_admin ? (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                                        🛡️ ADMIN
                                       </span>
-                                    )}
+                                    ) : null}
                                   </div>
                                   <div className="text-[10px] text-zinc-400 font-sans flex items-center gap-1.5 mt-0.5">
                                     <span className="font-mono text-zinc-300">@{c.username}</span>
                                     {c.parlamentum_name && c.parlamentum_name !== c.username && (
                                       <span className="text-zinc-500">· Game: {c.parlamentum_name}</span>
-                                    )}
-                                    {c.state_motto && (
-                                      <span className="text-amber-400/80 italic">&ldquo;{c.state_motto}&rdquo;</span>
                                     )}
                                   </div>
                                 </div>
@@ -2405,10 +2343,6 @@ export default function AdminPage() {
                               {c.is_admin ? (
                                 <span className="px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold whitespace-nowrap inline-flex items-center gap-1">
                                   🛡️ Operator
-                                </span>
-                              ) : isState ? (
-                                <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold whitespace-nowrap inline-flex items-center gap-1">
-                                  🏛️ Sovereign Realm
                                 </span>
                               ) : (
                                 <span className="text-zinc-400 whitespace-nowrap inline-flex items-center gap-1">
@@ -2532,20 +2466,6 @@ export default function AdminPage() {
                                     Freeze
                                   </button>
                                 )}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingUserState(c);
-                                    setEditAccountType(c.account_type || "STATE");
-                                    setEditRealmName(c.state_realm_name || (c.account_type === "STATE" ? c.display_name : "Republic of Milan"));
-                                    setEditMotto(c.state_motto || "Scuto et Glodio");
-                                    setEditCrest(c.state_crest || "🏛️");
-                                  }}
-                                  className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-[10px] transition cursor-pointer"
-                                  title="Configure Sovereign State Realm"
-                                >
-                                  🏛️
-                                </button>
                               </div>
                             </td>
                           </tr>
@@ -2573,7 +2493,7 @@ export default function AdminPage() {
 
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl">
-                  {adjustingCitizen.account_type === "STATE" ? (adjustingCitizen.state_crest || "🏛️") : "💰"}
+                  💰
                 </div>
                 <div>
                   <h3 className="font-bold text-white text-base">
@@ -2658,160 +2578,6 @@ export default function AdminPage() {
                     className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
                   >
                     {adjustLoading ? "Saving Balance..." : "Save Purse Balance"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Sovereign State Configuration Modal */}
-        {editingUserState && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-              <button
-                onClick={() => setEditingUserState(null)}
-                className="absolute right-4 top-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl">
-                  {editCrest || "🏛️"}
-                </div>
-                <div>
-                  <h3 className="font-bold text-white text-base">
-                    Sovereign State & Realm Status
-                  </h3>
-                  <p className="text-zinc-400 text-xs">
-                    Target: @{editingUserState.username} ({editingUserState.display_name})
-                  </p>
-                </div>
-              </div>
-
-              <form onSubmit={handleSaveUserState} className="space-y-4 text-xs font-sans">
-                {/* Account Type Toggle */}
-                <div>
-                  <label className="font-semibold text-zinc-300 block mb-1">
-                    Account Classification
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setEditAccountType("CITIZEN")}
-                      className={`p-2.5 rounded-xl border text-left font-medium transition cursor-pointer ${
-                        editAccountType === "CITIZEN"
-                          ? "bg-amber-500/15 border-amber-500 text-amber-300"
-                          : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700"
-                      }`}
-                    >
-                      <div className="font-bold text-white text-xs">👤 Citizen Wallet</div>
-                      <div className="text-[10px] text-zinc-400 mt-0.5">Individual trader account</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditAccountType("STATE")}
-                      className={`p-2.5 rounded-xl border text-left font-medium transition cursor-pointer ${
-                        editAccountType === "STATE"
-                          ? "bg-amber-500/15 border-amber-500 text-amber-300"
-                          : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700"
-                      }`}
-                    >
-                      <div className="font-bold text-amber-400 text-xs">🏛️ Sovereign State</div>
-                      <div className="text-[10px] text-zinc-400 mt-0.5">Republic / State Treasury</div>
-                    </button>
-                  </div>
-                </div>
-
-                {editAccountType === "STATE" && (
-                  <>
-                    <div>
-                      <label className="font-semibold text-zinc-300 block mb-1">
-                        Sovereign Realm Title
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={editRealmName}
-                        onChange={(e) => setEditRealmName(e.target.value)}
-                        placeholder="e.g. Republic of Milan"
-                        className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-
-                    {/* Quick State Presets */}
-                    <div>
-                      <span className="text-[10px] text-zinc-400 block mb-1">Historical Realm Presets:</span>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {[
-                          { name: "Republic of Milan", crest: "🏛️", motto: "Scuto et Glodio" },
-                          { name: "Republic of Venice", crest: "🦁", motto: "Pax Tibi Marce" },
-                          { name: "Florentine Republic", crest: "⚜️", motto: "Libertas" },
-                          { name: "Kingdom of France", crest: "👑", motto: "Montjoie Saint Denis" },
-                          { name: "Holy Roman Empire", crest: "🦅", motto: "A.E.I.O.U." },
-                          { name: "Republic of Genoa", crest: "⚓", motto: "Respublica Ianuensis" },
-                        ].map((preset) => (
-                          <button
-                            key={preset.name}
-                            type="button"
-                            onClick={() => {
-                              setEditRealmName(preset.name);
-                              setEditCrest(preset.crest);
-                              setEditMotto(preset.motto);
-                            }}
-                            className="p-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 hover:border-amber-500/40 text-[10px] text-zinc-300 flex items-center gap-1 transition text-left cursor-pointer truncate"
-                          >
-                            <span>{preset.crest}</span>
-                            <span className="truncate">{preset.name.replace("Republic of ", "Rep. ")}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="font-semibold text-zinc-300 block mb-1">
-                          Heraldic Crest
-                        </label>
-                        <input
-                          type="text"
-                          value={editCrest}
-                          onChange={(e) => setEditCrest(e.target.value)}
-                          placeholder="🏛️"
-                          className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white text-center text-lg focus:outline-none focus:border-amber-400"
-                        />
-                      </div>
-                      <div>
-                        <label className="font-semibold text-zinc-300 block mb-1">
-                          State Motto
-                        </label>
-                        <input
-                          type="text"
-                          value={editMotto}
-                          onChange={(e) => setEditMotto(e.target.value)}
-                          placeholder="Scuto et Glodio"
-                          className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white text-xs font-mono focus:outline-none focus:border-amber-400"
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
-                  <button
-                    type="button"
-                    onClick={() => setEditingUserState(null)}
-                    className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={editStateLoading}
-                    className="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold transition shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
-                  >
-                    {editStateLoading ? "Saving State..." : "Save Classification"}
                   </button>
                 </div>
               </form>

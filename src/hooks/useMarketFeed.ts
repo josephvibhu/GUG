@@ -14,9 +14,6 @@ export interface FeedUser {
   lockedCash: number;
   avatar: string;
   isAdmin?: boolean;
-  accountType?: "CITIZEN" | "STATE";
-  stateRealmName?: string;
-  stateCrest?: string;
 }
 
 export interface MarketFeed {

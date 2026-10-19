@@ -482,6 +482,43 @@ export async function initDb(): Promise<void> {
     );
   `);
 
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS stock_gifts (
+      id TEXT PRIMARY KEY,
+      code TEXT UNIQUE NOT NULL,
+      sender_id TEXT NOT NULL,
+      sender_name TEXT NOT NULL,
+      company_id TEXT NOT NULL,
+      ticker TEXT NOT NULL,
+      company_name TEXT NOT NULL,
+      shares INTEGER NOT NULL,
+      note TEXT,
+      status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'REDEEMED', 'CANCELLED')),
+      recipient_id TEXT,
+      recipient_name TEXT,
+      redeemed_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (sender_id) REFERENCES users(id),
+      FOREIGN KEY (company_id) REFERENCES companies(id)
+    );
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS company_ledger (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      entry_type TEXT NOT NULL CHECK(entry_type IN ('INCOME', 'EXPENSE')),
+      category TEXT NOT NULL,
+      amount REAL NOT NULL,
+      description TEXT NOT NULL,
+      entry_date TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (company_id) REFERENCES companies(id),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+  `);
+
   // Indexes for the queries every poll runs (order book, trade tape and charts, holders, purses)
   for (const ddl of [
     "CREATE INDEX IF NOT EXISTS idx_orders_book ON orders(company_id, type, status, price)",
@@ -494,6 +531,9 @@ export async function initDb(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_earnings_company ON earnings_reports(company_id, created_at)",
     "CREATE INDEX IF NOT EXISTS idx_earnings_due ON earnings_reports(status, scheduled_for)",
     "CREATE INDEX IF NOT EXISTS idx_payouts_user ON dividend_payouts(user_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_stock_gifts_code ON stock_gifts(code)",
+    "CREATE INDEX IF NOT EXISTS idx_stock_gifts_sender ON stock_gifts(sender_id)",
+    "CREATE INDEX IF NOT EXISTS idx_company_ledger_company ON company_ledger(company_id, entry_date)",
   ]) {
     await db.execute(ddl);
   }

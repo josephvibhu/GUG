@@ -557,23 +557,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: "Market schedule updated successfully!", schedule: updatedSchedule });
     }
 
-    if (action === "update_user_state") {
-      const { userId, accountType, stateRealmName, stateMotto, stateCrest } = body;
-      const db = getDb();
-      await db.execute({
-        sql: "UPDATE users SET account_type = ?, state_realm_name = ?, state_motto = ?, state_crest = ? WHERE id = ?",
-        args: [
-          accountType || "STATE", 
-          stateRealmName || null, 
-          stateMotto || null, 
-          stateCrest || (accountType === "STATE" ? "🏛️" : null), 
-          userId
-        ],
-      });
-      const { scheduleBlobPersist } = await import("@/lib/db");
-      scheduleBlobPersist();
-      return NextResponse.json({ success: true, message: `Account type and sovereign realm title updated successfully!` });
-    }
 
     if (action === "report_earnings") {
       const { companyId, grossRevenue, operatingExpenses, netProfit, periodTitle, notes, distributeImmediately, scheduledFor } = body;

@@ -26,8 +26,8 @@ export async function POST(request: Request) {
     }
 
     if (action === "register") {
-      const { username, password, adminCode, accountType, stateInfo } = body;
-      const res = await registerUser(username, password, adminCode, accountType, stateInfo);
+      const { username, password, adminCode } = body;
+      const res = await registerUser(username, password, adminCode);
       return NextResponse.json(res);
     }
 

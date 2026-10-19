@@ -34,8 +34,6 @@ export interface DividendPayoutItem {
   userId: string;
   username?: string;
   displayName?: string;
-  accountType?: string;
-  stateRealmName?: string;
   sharesCount: number;
   dividendPerShare: number;
   payoutAmount: number;
@@ -301,7 +299,7 @@ export async function executeDividendPayout(reportId: string): Promise<{
   // Find all shareholders holding at least 1 share
   const holdersRes = await db.execute({
     sql: `
-      SELECT p.user_id, p.shares, u.username, u.display_name, u.account_type, u.state_realm_name
+      SELECT p.user_id, p.shares, u.username, u.display_name
       FROM portfolios p
       JOIN users u ON p.user_id = u.id
       WHERE p.company_id = ? AND p.shares > 0
@@ -408,7 +406,7 @@ export async function executeDividendPayout(reportId: string): Promise<{
       annId,
       companyId,
       `🪙 50% PROFIT DIVIDEND: ${totalPaid.toLocaleString()} gold distributed!`,
-      `Official Earnings & 50% Profit Dividend Distribution for period "${report.period_title}". Enterprise net profit: ${Number(report.net_profit).toLocaleString()} gold. A total of ${totalPaid.toLocaleString()} gold was allocated and deposited into the purses of ${shareholdersPaid} shareholder citizens & sovereign state treasuries (${dividendPerShare.toFixed(4)} gold per share).`,
+      `Official Earnings & 50% Profit Dividend Distribution for period "${report.period_title}". Enterprise net profit: ${Number(report.net_profit).toLocaleString()} gold. A total of ${totalPaid.toLocaleString()} gold was allocated and deposited into the purses of ${shareholdersPaid} shareholder citizens (${dividendPerShare.toFixed(4)} gold per share).`,
       String(report.reporter_id),
       now,
     ],

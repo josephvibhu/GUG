@@ -11,6 +11,7 @@ import TradeForm from "@/components/TradeForm";
 import RecentTrades from "@/components/RecentTrades";
 import OpenOrdersTable, { type OpenOrder } from "@/components/OpenOrdersTable";
 import { BuybackDialog, EarningsDialog } from "@/components/FounderTools";
+import CompanyLedger from "@/components/CompanyLedger";
 import { Company, OrderBookData, TradeItem, PortfolioPosition } from "@/lib/market";
 import { usePoll, stableBody } from "@/hooks/usePoll";
 import { useMarketFeed, type FeedUser } from "@/hooks/useMarketFeed";
@@ -27,9 +28,6 @@ interface Holder {
   userId: string;
   username: string;
   displayName: string;
-  accountType: "CITIZEN" | "STATE";
-  stateRealmName?: string;
-  stateCrest?: string;
   shares: number;
   equityPercent: number;
 }
@@ -62,7 +60,7 @@ interface TerminalData {
   shareholders: Holder[];
 }
 
-type Tab = "book" | "trades" | "orders" | "position" | "holders" | "dividends" | "about" | "founder";
+type Tab = "book" | "trades" | "orders" | "position" | "holders" | "dividends" | "ledger" | "about" | "founder";
 
 // Desktop layout switch read from CSS media, so the default tab suits the screen (false on the server)
 const LG = "(min-width: 1024px)";
@@ -158,6 +156,7 @@ function Terminal({ ticker }: { ticker: string }) {
     { id: "position", label: "Position" },
     { id: "holders", label: "Holders" },
     { id: "dividends", label: "Dividends" },
+    { id: "ledger", label: "Ledger" },
     { id: "about", label: "About" },
     ...(canFound ? [{ id: "founder" as Tab, label: "Founder" }] : []),
   ];
@@ -311,23 +310,19 @@ function Terminal({ ticker }: { ticker: string }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.shareholders.map((h) => {
-                    const state = h.accountType === "STATE";
-                    return (
-                      <tr key={h.userId} className="border-t border-rule">
-                        <td className="py-2 pl-4 pr-2">
-                          <span className="text-paper">{state ? h.stateRealmName || h.displayName : h.displayName}</span>
-                          {state && <span className="ml-2 text-[11px] text-ash">state</span>}
-                          {h.userId === c.creatorId && <span className="ml-2 text-[11px] text-bullion">founder</span>}
-                        </td>
-                        <td className="py-2 px-2 text-right text-zinc-50">{fmtQty(h.shares)}</td>
-                        <td className="py-2 px-2 text-right text-paper">{h.equityPercent.toFixed(2)}%</td>
-                        <td className="py-2 pl-2 pr-4 text-right text-ash hidden sm:table-cell">
-                          {latestReport ? `${fmtPrice(h.shares * latestReport.dividendPerShare)} gold` : "–"}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {data.shareholders.map((h) => (
+                    <tr key={h.userId} className="border-t border-rule">
+                      <td className="py-2 pl-4 pr-2">
+                        <span className="text-paper">{h.displayName}</span>
+                        {h.userId === c.creatorId && <span className="ml-2 text-[11px] text-bullion">founder</span>}
+                      </td>
+                      <td className="py-2 px-2 text-right text-zinc-50">{fmtQty(h.shares)}</td>
+                      <td className="py-2 px-2 text-right text-paper">{h.equityPercent.toFixed(2)}%</td>
+                      <td className="py-2 pl-2 pr-4 text-right text-ash hidden sm:table-cell">
+                        {latestReport ? `${fmtPrice(h.shares * latestReport.dividendPerShare)} gold` : "–"}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}
@@ -372,6 +367,10 @@ function Terminal({ ticker }: { ticker: string }) {
                   </table>
                 )}
               </div>
+            )}
+
+            {active === "ledger" && (
+              <CompanyLedger ticker={c.ticker} isFounderOrAdmin={canFound} />
             )}
 
             {active === "about" && (

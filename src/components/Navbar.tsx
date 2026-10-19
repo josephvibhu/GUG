@@ -89,7 +89,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
     { href: "/portfolio", label: "Portfolio", icon: Briefcase, active: pathname === "/portfolio" },
     { href: "/ipo", label: "List a company", short: "List", icon: CirclePlus, active: pathname === "/ipo" },
   ];
-  const name = user ? (user.accountType === "STATE" ? user.stateRealmName || user.displayName : user.displayName) : "";
+  const name = user ? (user.displayName || user.username) : "";
 
   return (
     <>
@@ -152,7 +152,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                     className="h-8 pl-1.5 pr-2 rounded-[4px] hover:bg-pane flex items-center gap-1.5 text-[13px] text-paper"
                   >
                     <span className="h-6 w-6 rounded-full bg-pane border border-rule flex items-center justify-center text-[13px] leading-none">
-                      {user.accountType === "STATE" ? user.stateCrest || "🏛️" : name.slice(0, 1).toUpperCase()}
+                      {name.slice(0, 1).toUpperCase()}
                     </span>
                     <span className="hidden lg:inline max-w-[140px] truncate">{name}</span>
                     <ChevronDown className="h-3.5 w-3.5 text-ash" />
@@ -163,7 +163,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                       <div className="px-3 py-2 border-b border-rule">
                         <div className="text-zinc-50 font-semibold truncate">{name}</div>
                         <div className="text-[12px] text-ash truncate">
-                          {user.accountType === "STATE" ? `State account, delegate ${user.username}` : `In game as ${user.parlamentumName || user.username}`}
+                          In game as {user.parlamentumName || user.username}
                         </div>
                       </div>
                       <button role="menuitem" onClick={() => openWallet("deposit")} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">

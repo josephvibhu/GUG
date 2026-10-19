@@ -16,13 +16,6 @@ export default function LoginPage() {
   const [adminCode, setAdminCode] = useState("");
   const [showAdminField, setShowAdminField] = useState(false);
 
-  // Sovereign State account fields
-  const [accountType, setAccountType] = useState<"CITIZEN" | "STATE">("CITIZEN");
-  const [realmName, setRealmName] = useState("");
-  const [delegateName, setDelegateName] = useState("");
-  const [stateMotto, setStateMotto] = useState("");
-  const [stateCrest, setStateCrest] = useState("🏛️");
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +25,7 @@ export default function LoginPage() {
 
     const cleanUser = username.trim();
     if (cleanUser.length < 3) {
-      setError(accountType === "STATE" ? "State username handle must be at least 3 characters." : "Your Parlamentum name must be at least 3 characters.");
+      setError("Your Parlamentum character name must be at least 3 characters.");
       return;
     }
     if (password.length < 6) {
@@ -41,11 +34,6 @@ export default function LoginPage() {
     }
     if (tab === "register" && password !== repeatPassword) {
       setError("Passwords do not match.");
-      return;
-    }
-
-    if (tab === "register" && accountType === "STATE" && !realmName.trim()) {
-      setError("Please specify the Official Realm or Republic Name (e.g. Republic of Milan).");
       return;
     }
 
@@ -60,13 +48,6 @@ export default function LoginPage() {
             username: cleanUser, 
             password, 
             adminCode: adminCode.trim(),
-            accountType,
-            stateInfo: accountType === "STATE" ? {
-              realmName: realmName.trim() || cleanUser,
-              delegateName: delegateName.trim() || cleanUser,
-              motto: stateMotto.trim() || undefined,
-              crest: stateCrest,
-            } : undefined
           };
 
       const res = await fetch(endpoint, {
@@ -146,149 +127,10 @@ export default function LoginPage() {
           onSubmit={handleSubmit}
           className="w-full bg-zinc-900/70 border border-zinc-800 rounded-2xl p-6 shadow-2xl flex flex-col gap-4 text-left"
         >
-          {/* Account Classification: Citizen vs Sovereign State */}
-          {tab === "register" && (
-            <div className="space-y-3 pb-2 border-b border-zinc-800">
-              <label className="text-[12px] font-medium text-zinc-300 block">
-                Account Classification
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAccountType("CITIZEN")}
-                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
-                    accountType === "CITIZEN"
-                      ? "bg-amber-500/10 border-amber-500/50 text-white"
-                      : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:text-zinc-200"
-                  }`}
-                >
-                  <span className="text-xl">👤</span>
-                  <div>
-                    <div className="text-xs font-bold">Citizen Wallet</div>
-                    <div className="text-[10px] text-zinc-400">Individual Merchant</div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setAccountType("STATE")}
-                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
-                    accountType === "STATE"
-                      ? "bg-purple-500/20 border-purple-500/60 text-white"
-                      : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:text-zinc-200"
-                  }`}
-                >
-                  <span className="text-xl">🏛️</span>
-                  <div>
-                    <div className="text-xs font-bold text-purple-300">Sovereign State</div>
-                    <div className="text-[10px] text-zinc-400">Republic / Realm</div>
-                  </div>
-                </button>
-              </div>
-
-              {accountType === "STATE" && (
-                <div className="p-3 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-3 mt-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase font-bold text-purple-300 tracking-wider">
-                      👑 Realm & State Credentials
-                    </span>
-                    <span className="text-[10px] text-zinc-400">Institutional Status</span>
-                  </div>
-
-                  {/* Preset Buttons for famous realms */}
-                  <div className="flex flex-wrap gap-1">
-                    <span className="text-[10px] text-zinc-400 mr-1 self-center">Presets:</span>
-                    {[
-                      { name: "Republic of Milan", crest: "🏛️", motto: "Visconti-Sforza Sovereign Realm" },
-                      { name: "Republic of Venice", crest: "🦁", motto: "Serenissima Repubblica" },
-                      { name: "Florentine Republic", crest: "⚜️", motto: "Repubblica Fiorentina" },
-                      { name: "Kingdom of France", crest: "👑", motto: "Montjoie Saint Denis" },
-                    ].map((preset) => (
-                      <button
-                        key={preset.name}
-                        type="button"
-                        onClick={() => {
-                          setRealmName(preset.name);
-                          setStateCrest(preset.crest);
-                          setStateMotto(preset.motto);
-                          if (!username) setUsername(preset.name.replace(/\s+/g, ""));
-                        }}
-                        className="px-2 py-0.5 rounded bg-zinc-900 border border-purple-500/40 text-[10px] text-purple-200 hover:bg-purple-900/40 transition cursor-pointer"
-                      >
-                        {preset.crest} {preset.name}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div>
-                    <label className="text-[12px] font-medium text-zinc-300 block mb-1">
-                      Official State / Realm Title
-                    </label>
-                    <input
-                      type="text"
-                      required={accountType === "STATE"}
-                      value={realmName}
-                      onChange={(e) => setRealmName(e.target.value)}
-                      placeholder="e.g. Republic of Milan"
-                      className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="col-span-2">
-                      <label className="text-[12px] font-medium text-zinc-300 block mb-1">
-                        Delegate / Chancellor in Game
-                      </label>
-                      <input
-                        type="text"
-                        value={delegateName}
-                        onChange={(e) => setDelegateName(e.target.value)}
-                        placeholder="In-game character name"
-                        className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[12px] font-medium text-zinc-300 block mb-1">
-                        State Crest
-                      </label>
-                      <select
-                        value={stateCrest}
-                        onChange={(e) => setStateCrest(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-2 py-2 text-xs text-white focus:outline-none focus:border-purple-400"
-                      >
-                        <option value="🏛️">🏛️ Republic</option>
-                        <option value="👑">👑 Kingdom</option>
-                        <option value="🦁">🦁 Venice Lion</option>
-                        <option value="🦅">🦅 Imperial Eagle</option>
-                        <option value="⚜️">⚜️ Fleur-de-lis</option>
-                        <option value="🛡️">🛡️ Duchy</option>
-                        <option value="⚔️">⚔️ Knightly Order</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[12px] font-medium text-zinc-300 block mb-1">
-                      State Motto / Lore (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={stateMotto}
-                      onChange={(e) => setStateMotto(e.target.value)}
-                      placeholder="e.g. Visconti-Sforza Sovereign Realm"
-                      className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-purple-400"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Parlamentum Character Name */}
           <div>
             <label className="text-[12px] font-medium text-zinc-300 block mb-1">
-              {accountType === "STATE" && tab === "register" ? "State Treasury Login Handle" : "Your Parlamentum Name"}
+              Your In-Game Character Name
             </label>
             <input
               type="text"
@@ -297,7 +139,7 @@ export default function LoginPage() {
               maxLength={24}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder={accountType === "STATE" && tab === "register" ? "e.g. RepublicOfMilan" : "Exactly as in the game"}
+              placeholder="Exact Parlamentum character name"
               className="w-full bg-zinc-950 border border-zinc-700/80 rounded-xl px-3.5 py-2.5 font-mono text-sm text-white focus:outline-none focus:border-amber-400 transition"
             />
           </div>

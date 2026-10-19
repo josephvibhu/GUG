@@ -33,7 +33,7 @@ export async function GET(
       getEarningsReports(company.id),
       db.execute({
         sql: `
-          SELECT p.shares, u.id as user_id, u.username, u.display_name, u.account_type, u.state_realm_name, u.state_crest
+          SELECT p.shares, u.id as user_id, u.username, u.display_name
           FROM portfolios p
           JOIN users u ON p.user_id = u.id
           WHERE p.company_id = ? AND p.shares > 0 AND u.id NOT IN ('usr_treasury', 'usr_house')
@@ -48,9 +48,6 @@ export async function GET(
       userId: String(r.user_id),
       username: String(r.username),
       displayName: String(r.display_name),
-      accountType: (r.account_type as "CITIZEN" | "STATE") || "CITIZEN",
-      stateRealmName: r.state_realm_name ? String(r.state_realm_name) : undefined,
-      stateCrest: r.state_crest ? String(r.state_crest) : undefined,
       shares: Number(r.shares),
       equityPercent: Number(company.totalShares) > 0 ? Math.round((Number(r.shares) / Number(company.totalShares)) * 10000) / 100 : 0,
     }));

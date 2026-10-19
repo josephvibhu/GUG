@@ -4,11 +4,14 @@ import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import WalletModal from "@/components/WalletModal";
+import StockGiftModal from "@/components/StockGiftModal";
+import StockGiftsSection from "@/components/StockGiftsSection";
 import OpenOrdersTable, { type OpenOrder } from "@/components/OpenOrdersTable";
 import { PortfolioPosition } from "@/lib/market";
 import { usePoll, stableBody } from "@/hooks/usePoll";
 import type { FeedUser } from "@/hooks/useMarketFeed";
 import { fmtGold, fmtPrice, fmtQty, fmtPct, fmtSigned, fmtUtcDate, moveColor } from "@/lib/format";
+import { Gift } from "lucide-react";
 
 interface PortfolioResponse {
   positions: PortfolioPosition[];
@@ -52,6 +55,8 @@ export default function PortfolioPage() {
   const [data, setData] = useState<PortfolioData | null>(null);
   const [loggedOut, setLoggedOut] = useState(false);
   const [wallet, setWallet] = useState<"deposit" | "withdraw" | null>(null);
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [giftModalCompany, setGiftModalCompany] = useState<string | undefined>(undefined);
   const lastBody = useRef("");
 
   const load = useCallback(async (signal?: AbortSignal) => {
@@ -80,7 +85,6 @@ export default function PortfolioPage() {
   const costBasis = positions.reduce((sum, x) => sum + x.costBasis, 0);
   const unrealized = (p?.totalStockValue || 0) - costBasis;
   const unrealizedPct = costBasis > 0 ? (unrealized / costBasis) * 100 : 0;
-  const isState = user?.accountType === "STATE";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -100,13 +104,24 @@ export default function PortfolioPage() {
             <header className="flex flex-wrap items-end justify-between gap-4">
               <div className="min-w-0">
                 <h1 className="condensed text-[28px] font-extrabold text-zinc-50 leading-none tracking-tight truncate">
-                  {user ? (isState ? user.stateRealmName || user.displayName : "Portfolio") : " "}
+                  Portfolio
                 </h1>
                 <p className="mt-1.5 text-[13px] text-ash">
-                  {user ? (isState ? `State account, delegate ${user.username}` : `In game as ${user.parlamentumName || user.username}`) : " "}
+                  {user ? `${user.displayName || user.username} • In game as ${user.parlamentumName || user.username}` : " "}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGiftModalCompany(undefined);
+                    setShowGiftModal(true);
+                  }}
+                  className="h-9 px-3.5 rounded-[4px] border border-bullion/50 hover:bg-bullion/10 text-[13px] text-bullion font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Gift className="w-3.5 h-3.5" />
+                  Gift stock
+                </button>
                 <button type="button" onClick={() => setWallet("deposit")} className="h-9 px-4 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold">
                   Deposit gold
                 </button>
@@ -143,7 +158,8 @@ export default function PortfolioPage() {
                         <th scope="col" className="font-normal py-2.5 px-2 text-right hidden sm:table-cell">Average</th>
                         <th scope="col" className="font-normal py-2.5 px-2 text-right">Last</th>
                         <th scope="col" className="font-normal py-2.5 px-2 text-right hidden md:table-cell">Value</th>
-                        <th scope="col" className="font-normal py-2.5 pl-2 pr-4 text-right">Unrealized</th>
+                        <th scope="col" className="font-normal py-2.5 px-2 text-right">Unrealized</th>
+                        <th scope="col" className="font-normal py-2.5 pl-2 pr-4 text-right">Gift</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -162,9 +178,27 @@ export default function PortfolioPage() {
                           <td className="py-2.5 px-2 text-right text-paper hidden sm:table-cell">{fmtPrice(pos.avgBuyPrice)}</td>
                           <td className="py-2.5 px-2 text-right text-zinc-50">{fmtPrice(pos.currentPrice)}</td>
                           <td className="py-2.5 px-2 text-right text-paper hidden md:table-cell">{fmtGold(pos.marketValue)}</td>
-                          <td className={`py-2.5 pl-2 pr-4 text-right ${moveColor(pos.pnl)}`}>
+                          <td className={`py-2.5 px-2 text-right ${moveColor(pos.pnl)}`}>
                             {fmtSigned(pos.pnl)}
                             <span className="block text-[11px]">{fmtPct(pos.pnlPercent)}</span>
+                          </td>
+                          <td className="py-2.5 pl-2 pr-4 text-right">
+                            {pos.availableShares > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setGiftModalCompany(pos.companyId);
+                                  setShowGiftModal(true);
+                                }}
+                                className="px-2 py-0.5 rounded-[3px] bg-pane border border-rule hover:border-bullion/60 text-[11px] text-paper hover:text-bullion transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                title="Create a gift coupon code from these shares"
+                              >
+                                <Gift className="w-3 h-3 text-bullion" />
+                                Gift
+                              </button>
+                            ) : (
+                              <span className="text-[11px] text-ash">–</span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -173,6 +207,14 @@ export default function PortfolioPage() {
                 )}
               </div>
             </section>
+
+            <StockGiftsSection
+              onPortfolioRefresh={refresh}
+              openCreateModal={() => {
+                setGiftModalCompany(undefined);
+                setShowGiftModal(true);
+              }}
+            />
 
             <section aria-labelledby="orders" className="flex flex-col gap-3">
               <h2 id="orders" className="text-[15px] font-semibold text-zinc-50">
@@ -224,6 +266,16 @@ export default function PortfolioPage() {
 
       {wallet && (
         <WalletModal key={wallet} isOpen initialTab={wallet} onClose={() => setWallet(null)} onBalanceUpdated={refresh} />
+      )}
+
+      {showGiftModal && (
+        <StockGiftModal
+          isOpen={showGiftModal}
+          onClose={() => setShowGiftModal(false)}
+          positions={positions}
+          initialCompanyId={giftModalCompany}
+          onGiftCreated={refresh}
+        />
       )}
     </div>
   );
