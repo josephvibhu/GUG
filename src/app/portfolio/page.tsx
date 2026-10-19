@@ -1,23 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import WalletModal from "@/components/WalletModal";
-import Link from "next/link";
-import { 
-  Wallet, 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Coins, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Lock, 
-  XCircle, 
-  PieChart,
-  PlusCircle 
-} from "lucide-react";
+import OpenOrdersTable, { type OpenOrder } from "@/components/OpenOrdersTable";
 import { PortfolioPosition } from "@/lib/market";
+import { usePoll, stableBody } from "@/hooks/usePoll";
+import type { FeedUser } from "@/hooks/useMarketFeed";
+import { fmtGold, fmtPrice, fmtQty, fmtPct, fmtSigned, fmtUtcDate, moveColor } from "@/lib/format";
 
 interface PortfolioResponse {
   positions: PortfolioPosition[];
@@ -27,455 +18,213 @@ interface PortfolioResponse {
   lockedCash: number;
 }
 
+interface Payout {
+  id: string;
+  ticker: string;
+  companyName: string;
+  sharesCount: number;
+  dividendPerShare: number;
+  payoutAmount: number;
+  createdAt: string;
+}
+
+interface PortfolioData {
+  user: FeedUser;
+  portfolio: PortfolioResponse;
+  openOrders: OpenOrder[];
+  dividendHistory: Payout[];
+  totalDividendsEarned: number;
+}
+
+function Figure({ label, value, sub, tone = "text-zinc-50" }: { label: string; value: string; sub?: string; tone?: string }) {
+  return (
+    <div className="px-4 py-3 flex flex-col gap-0.5 min-w-0">
+      <dt className="text-[12px] text-ash">{label}</dt>
+      <dd className={`text-[17px] font-semibold truncate ${tone}`}>
+        {value}
+        {sub && <span className="ml-1.5 text-[12px] font-normal">{sub}</span>}
+      </dd>
+    </div>
+  );
+}
+
 export default function PortfolioPage() {
-  const [data, setData] = useState<PortfolioResponse | null>(null);
-  const [openOrders, setOpenOrders] = useState<any[]>([]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [dividendHistory, setDividendHistory] = useState<any[]>([]);
-  const [totalDividendsEarned, setTotalDividendsEarned] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [isWalletOpen, setIsWalletOpen] = useState(false);
-  const [walletTab, setWalletTab] = useState<"deposit" | "withdraw" | "history">("deposit");
+  const [data, setData] = useState<PortfolioData | null>(null);
+  const [loggedOut, setLoggedOut] = useState(false);
+  const [wallet, setWallet] = useState<"deposit" | "withdraw" | null>(null);
+  const lastBody = useRef("");
 
-  const fetchPortfolio = async () => {
-    try {
-      const res = await fetch("/api/portfolio", { cache: "no-store" });
-      const json = await res.json();
-      if (json.success) {
-        setData(json.portfolio);
-        setOpenOrders(json.openOrders || []);
-        setCurrentUser(json.user || null);
-        setDividendHistory(json.dividendHistory || []);
-        setTotalDividendsEarned(json.totalDividendsEarned || 0);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
+  const load = useCallback(async (signal?: AbortSignal) => {
+    const res = await fetch("/api/portfolio", { cache: "no-store", signal });
+    if (res.status === 401) {
+      setLoggedOut(true);
+      return;
     }
-  };
-
-  useEffect(() => {
-    fetchPortfolio();
-
-    const handleSync = () => {
-      fetchPortfolio();
-    };
-
-    window.addEventListener("wallet_updated", handleSync);
-    window.addEventListener("focus", handleSync);
-
-    const interval = setInterval(fetchPortfolio, 2500);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("wallet_updated", handleSync);
-      window.removeEventListener("focus", handleSync);
-    };
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || "portfolio failed");
+    const body = stableBody(json);
+    if (body !== lastBody.current) {
+      lastBody.current = body;
+      setLoggedOut(false);
+      setData(json);
+    }
   }, []);
 
-  const handleCancelOrder = async (orderId: string) => {
-    setCancellingId(orderId);
-    try {
-      const res = await fetch("/api/orders/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
-      });
-      const resJson = await res.json();
-      if (resJson.success) {
-        fetchPortfolio();
-      } else {
-        alert(resJson.message || "Failed to cancel order");
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setCancellingId(null);
-    }
-  };
+  // Holdings only change when you trade or a dividend lands; trades and deposits refresh it at once
+  usePoll(load, 10000);
+  const refresh = useCallback(() => window.dispatchEvent(new Event("wallet_updated")), []);
 
-  const totalCostBasis = (data?.positions || []).reduce((sum, p) => sum + p.costBasis, 0);
-  const totalPnl = (data?.totalStockValue || 0) - totalCostBasis;
-  const totalPnlPercent = totalCostBasis > 0 ? Math.round((totalPnl / totalCostBasis) * 10000) / 100 : 0;
+  const p = data?.portfolio;
+  const user = data?.user;
+  const positions = p?.positions || [];
+  const costBasis = positions.reduce((sum, x) => sum + x.costBasis, 0);
+  const unrealized = (p?.totalStockValue || 0) - costBasis;
+  const unrealizedPct = costBasis > 0 ? (unrealized / costBasis) * 100 : 0;
+  const isState = user?.accountType === "STATE";
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
-      <Navbar onUserRefresh={fetchPortfolio} />
+    <div className="min-h-screen flex flex-col">
+      <Navbar onUserRefresh={refresh} />
 
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6 flex-1">
-        {/* Title & Quick Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl p-2 bg-zinc-900 border border-zinc-800 rounded-xl">
-              {currentUser?.accountType === "STATE" ? (currentUser?.stateCrest || "🏛️") : "👤"}
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-bold text-white">
-                  {currentUser?.accountType === "STATE"
-                    ? `${currentUser?.stateRealmName || currentUser?.displayName} Treasury & Reserves`
-                    : "Citizen Investment Portfolio"}
+      <main className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-8">
+        {loggedOut ? (
+          <div className="flex flex-col items-start gap-3 py-10">
+            <h1 className="condensed text-[28px] font-extrabold text-zinc-50 leading-none">Portfolio</h1>
+            <p className="text-sm text-ash">Log in to see your shares, open orders and dividends.</p>
+            <Link href="/login" className="h-9 px-4 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold flex items-center">
+              Log in
+            </Link>
+          </div>
+        ) : (
+          <>
+            <header className="flex flex-wrap items-end justify-between gap-4">
+              <div className="min-w-0">
+                <h1 className="condensed text-[28px] font-extrabold text-zinc-50 leading-none tracking-tight truncate">
+                  {user ? (isState ? user.stateRealmName || user.displayName : "Portfolio") : " "}
                 </h1>
-                {currentUser?.accountType === "STATE" && (
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded font-mono font-bold">
-                    👑 SOVEREIGN STATE
-                  </span>
+                <p className="mt-1.5 text-[13px] text-ash">
+                  {user ? (isState ? `State account, delegate ${user.username}` : `In game as ${user.parlamentumName || user.username}`) : " "}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setWallet("deposit")} className="h-9 px-4 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold">
+                  Deposit gold
+                </button>
+                <button type="button" onClick={() => setWallet("withdraw")} className="h-9 px-4 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper">
+                  Withdraw gold
+                </button>
+              </div>
+            </header>
+
+            <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border border-rule rounded-[4px] divide-x divide-y lg:divide-y-0 divide-rule [&>*]:border-rule">
+              <Figure label="Net worth" value={p ? `${fmtGold(p.totalNetWorth)} gold` : "–"} />
+              <Figure label="Purse" value={p ? `${fmtGold(p.cashBalance)} gold` : "–"} tone="text-bullion" />
+              <Figure label="In buy orders" value={p ? `${fmtGold(p.lockedCash)} gold` : "–"} tone="text-paper" />
+              <Figure label="Shares value" value={p ? `${fmtGold(p.totalStockValue)} gold` : "–"} tone="text-paper" />
+              <Figure label="Unrealized" value={p ? `${unrealized >= 0 ? "+" : "−"}${fmtGold(Math.abs(unrealized))}` : "–"} sub={p ? fmtPct(unrealizedPct) : undefined} tone={moveColor(unrealized)} />
+              <Figure label="Dividends received" value={data ? `${fmtPrice(data.totalDividendsEarned)} gold` : "–"} tone="text-paper" />
+            </dl>
+
+            <section aria-labelledby="holdings" className="flex flex-col gap-3">
+              <h2 id="holdings" className="text-[15px] font-semibold text-zinc-50">
+                Holdings <span className="text-ash font-normal">{data ? positions.length : ""}</span>
+              </h2>
+              <div className="border border-rule rounded-[4px] overflow-x-auto">
+                {data && positions.length === 0 ? (
+                  <p className="px-4 py-6 text-[13px] text-ash">
+                    You don&apos;t hold any shares yet. <Link href="/" className="text-paper underline underline-offset-4">Browse the market</Link> to buy some.
+                  </p>
+                ) : (
+                  <table className="w-full text-[13px]">
+                    <thead>
+                      <tr className="text-[12px] text-ash text-left border-b border-rule">
+                        <th scope="col" className="font-normal py-2.5 pl-4 pr-2">Company</th>
+                        <th scope="col" className="font-normal py-2.5 px-2 text-right">Shares</th>
+                        <th scope="col" className="font-normal py-2.5 px-2 text-right hidden sm:table-cell">Average</th>
+                        <th scope="col" className="font-normal py-2.5 px-2 text-right">Last</th>
+                        <th scope="col" className="font-normal py-2.5 px-2 text-right hidden md:table-cell">Value</th>
+                        <th scope="col" className="font-normal py-2.5 pl-2 pr-4 text-right">Unrealized</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {positions.map((pos) => (
+                        <tr key={pos.companyId} className="border-b border-rule last:border-0 hover:bg-pane">
+                          <td className="py-2.5 pl-4 pr-2">
+                            <Link href={`/trade/${pos.ticker}`} className="flex flex-col">
+                              <span className="condensed font-bold text-[15px] text-zinc-50">{pos.ticker}</span>
+                              <span className="text-[12px] text-ash truncate max-w-[200px]">{pos.name}</span>
+                            </Link>
+                          </td>
+                          <td className="py-2.5 px-2 text-right text-zinc-50">
+                            {fmtQty(pos.shares)}
+                            {pos.lockedShares > 0 && <span className="block text-[11px] text-ash">{fmtQty(pos.lockedShares)} in sell orders</span>}
+                          </td>
+                          <td className="py-2.5 px-2 text-right text-paper hidden sm:table-cell">{fmtPrice(pos.avgBuyPrice)}</td>
+                          <td className="py-2.5 px-2 text-right text-zinc-50">{fmtPrice(pos.currentPrice)}</td>
+                          <td className="py-2.5 px-2 text-right text-paper hidden md:table-cell">{fmtGold(pos.marketValue)}</td>
+                          <td className={`py-2.5 pl-2 pr-4 text-right ${moveColor(pos.pnl)}`}>
+                            {fmtSigned(pos.pnl)}
+                            <span className="block text-[11px]">{fmtPct(pos.pnlPercent)}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </div>
-              <p className="text-xs text-zinc-400 mt-1">
-                {currentUser?.accountType === "STATE"
-                  ? `Managing state sovereign equity reserves, bourse holdings, and collecting 50% weekly corporate dividends.`
-                  : "Track your asset holdings, net worth valuation, and manage your gold purse."}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setWalletTab("deposit");
-                setIsWalletOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition cursor-pointer"
-            >
-              <ArrowDownLeft className="w-4 h-4" />
-              Put Gold In
-            </button>
-            <button
-              onClick={() => {
-                setWalletTab("withdraw");
-                setIsWalletOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-amber-300 font-bold text-xs transition cursor-pointer"
-            >
-              <ArrowUpRight className="w-4 h-4" />
-              Take Gold Out
-            </button>
-          </div>
-        </div>
+            </section>
 
-        {/* Financial Net Worth Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* Total Net Worth */}
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
-            <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
-              <span>Total Net Worth</span>
-              <PieChart className="w-4 h-4 text-amber-400" />
-            </div>
-            <div className="text-2xl font-bold font-mono text-white">
-              {loading && !data ? (
-                <span className="text-zinc-500 animate-pulse">-- gold</span>
-              ) : (
-                <>
-                  {(data?.totalNetWorth || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span className="text-xs font-sans text-zinc-400">gold</span>
-                </>
-              )}
-            </div>
-            <div className="text-[11px] text-zinc-400 mt-1">Cash + Stock Holdings</div>
-          </div>
-
-          {/* Liquid Cash */}
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
-            <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
-              <span>Purse Gold</span>
-              <Coins className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="text-2xl font-bold font-mono text-emerald-400">
-              {loading && !data ? (
-                <span className="text-zinc-500 animate-pulse">-- gold</span>
-              ) : (
-                <>
-                  {(data?.cashBalance || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span className="text-xs font-sans text-zinc-400">gold</span>
-                </>
-              )}
-            </div>
-            <div className="text-[11px] text-zinc-400 mt-1 flex items-center gap-1">
-              <Lock className="w-3 h-3 text-zinc-500" />
-              {(data?.lockedCash || 0).toFixed(0)} gold locked in bids
-            </div>
-          </div>
-
-          {/* Stock Holdings Value */}
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
-            <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
-              <span>Equities Valuation</span>
-              <DollarSign className="w-4 h-4 text-blue-400" />
-            </div>
-            <div className="text-2xl font-bold font-mono text-blue-400">
-              {(data?.totalStockValue || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span className="text-xs font-sans text-zinc-400">gold</span>
-            </div>
-            <div className="text-[11px] text-zinc-400 mt-1">
-              {(data?.positions || []).length} chartered companies held
-            </div>
-          </div>
-
-          {/* Total Unrealized P&L */}
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
-            <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
-              <span>Unrealized Return</span>
-              {totalPnl >= 0 ? (
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
-              ) : (
-                <TrendingDown className="w-4 h-4 text-rose-400" />
-              )}
-            </div>
-            <div
-              className={`text-2xl font-bold font-mono ${
-                totalPnl >= 0 ? "text-emerald-400" : "text-rose-400"
-              }`}
-            >
-              {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(0)} gold
-            </div>
-            <div className="text-[11px] font-mono text-zinc-400 mt-1">
-              {totalPnl >= 0 ? "+" : ""}{totalPnlPercent}% overall return
-            </div>
-          </div>
-
-          {/* Dividend Earnings */}
-          <div className="bg-zinc-900/60 border border-amber-500/30 rounded-xl p-4">
-            <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
-              <span>Dividends Collected</span>
-              <Coins className="w-4 h-4 text-amber-400" />
-            </div>
-            <div className="text-2xl font-bold font-mono text-amber-400">
-              {totalDividendsEarned.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} <span className="text-xs font-sans text-zinc-400">gold</span>
-            </div>
-            <div className="text-[11px] text-zinc-400 mt-1">50% Net Profit Friday Payouts</div>
-          </div>
-        </div>
-
-        {/* Owned Positions Table */}
-        <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-            <h3 className="font-bold text-white text-sm">Your Stock Holdings</h3>
-            <span className="text-zinc-400 text-xs font-mono">
-              {(data?.positions || []).length} assets held
-            </span>
-          </div>
-
-          {(data?.positions || []).length === 0 ? (
-            <div className="p-12 text-center text-zinc-400 text-xs flex flex-col items-center gap-3">
-              <p>You do not hold any company shares yet.</p>
-              <div className="flex gap-2">
-                <Link
-                  href="/ipo"
-                  className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs"
-                >
-                  <PlusCircle className="w-3.5 h-3.5 inline mr-1" />
-                  Launch an IPO
-                </Link>
-                <Link
-                  href="/"
-                  className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs"
-                >
-                  View Markets Floor
-                </Link>
+            <section aria-labelledby="orders" className="flex flex-col gap-3">
+              <h2 id="orders" className="text-[15px] font-semibold text-zinc-50">
+                Open orders <span className="text-ash font-normal">{data ? data.openOrders.length : ""}</span>
+              </h2>
+              <div className="border border-rule rounded-[4px]">
+                {data && <OpenOrdersTable orders={data.openOrders} onOrderCancelled={refresh} showTicker />}
               </div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left font-sans text-xs">
-                <thead>
-                  <tr className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800">
-                    <th className="py-3 px-4">Ticker / Company</th>
-                    <th className="py-3 px-4 text-right">Shares (Avail / Locked)</th>
-                    <th className="py-3 px-4 text-right">Avg Entry Price</th>
-                    <th className="py-3 px-4 text-right">Current Price</th>
-                    <th className="py-3 px-4 text-right">Market Value</th>
-                    <th className="py-3 px-4 text-right">Unrealized P&L</th>
-                    <th className="py-3 px-4 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/60 font-mono">
-                  {(data?.positions || []).map((pos) => {
-                    const isProfit = pos.pnl >= 0;
-                    return (
-                      <tr key={pos.companyId} className="hover:bg-zinc-800/30">
-                        <td className="py-3.5 px-4 font-sans">
-                          <div className="font-bold text-white flex items-center gap-2">
-                            <span>${pos.ticker}</span>
-                            <span className="text-zinc-400 text-xs font-normal font-sans">
-                              {pos.name}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-right text-zinc-200">
-                          <span className="font-bold">{pos.availableShares}</span>{" "}
-                          <span className="text-zinc-400 text-[11px]">/ {pos.shares}</span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right text-zinc-300">
-                          {pos.avgBuyPrice.toFixed(2)} gold
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-bold text-white">
-                          {pos.currentPrice.toFixed(2)} gold
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-bold text-zinc-100">
-                          {pos.marketValue.toLocaleString("en-US", { minimumFractionDigits: 0 })} gold
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <span
-                            className={`font-bold ${
-                              isProfit ? "text-emerald-400" : "text-rose-400"
-                            }`}
-                          >
-                            {isProfit ? "+" : ""}{pos.pnl.toFixed(0)} gold ({isProfit ? "+" : ""}
-                            {pos.pnlPercent}%)
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-sans">
-                          <Link
-                            href={`/trade/${pos.ticker}`}
-                            className="inline-block px-3 py-1 rounded bg-zinc-800 hover:bg-amber-500 hover:text-black text-zinc-200 font-semibold text-xs transition"
-                          >
-                            Trade
-                          </Link>
-                        </td>
+            </section>
+
+            <section aria-labelledby="payouts" className="flex flex-col gap-3">
+              <h2 id="payouts" className="text-[15px] font-semibold text-zinc-50">Dividends received</h2>
+              <div className="border border-rule rounded-[4px] overflow-x-auto">
+                {data && data.dividendHistory.length === 0 ? (
+                  <p className="px-4 py-6 text-[13px] text-ash">
+                    None yet. Companies pay their dividends on Fridays at 00:00 UTC to whoever holds shares then.
+                  </p>
+                ) : (
+                  <table className="w-full text-[13px]">
+                    <thead>
+                      <tr className="text-[12px] text-ash text-left border-b border-rule">
+                        <th scope="col" className="font-normal py-2.5 pl-4 pr-2">Paid</th>
+                        <th scope="col" className="font-normal py-2.5 px-2">Company</th>
+                        <th scope="col" className="font-normal py-2.5 px-2 text-right hidden sm:table-cell">Shares</th>
+                        <th scope="col" className="font-normal py-2.5 px-2 text-right hidden sm:table-cell">Per share</th>
+                        <th scope="col" className="font-normal py-2.5 pl-2 pr-4 text-right">Amount</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Open Orders Section */}
-        <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-            <h3 className="font-bold text-white text-sm">Active Orders on the Exchange</h3>
-            <span className="text-zinc-400 text-xs font-mono">{openOrders.length} orders</span>
-          </div>
-
-          {openOrders.length === 0 ? (
-            <div className="p-8 text-center text-zinc-400 text-xs">
-              No active open orders in the book.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left font-mono text-xs">
-                <thead>
-                  <tr className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
-                    <th className="py-3 px-4">Side</th>
-                    <th className="py-3 px-4">Ticker</th>
-                    <th className="py-3 px-4 text-right">Price</th>
-                    <th className="py-3 px-4 text-right">Filled / Total</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4 text-right">Cancel Order</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/60 text-[11px]">
-                  {openOrders.map((ord) => {
-                    const isBuy = ord.type === "BUY";
-                    return (
-                      <tr key={ord.id} className="hover:bg-zinc-800/30">
-                        <td className="py-3 px-4">
-                          <span
-                            className={`font-bold px-2 py-0.5 rounded text-[10px] ${
-                              isBuy
-                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                                : "bg-rose-500/10 text-rose-400 border border-rose-500/30"
-                            }`}
-                          >
-                            {ord.type}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-bold text-white">${ord.ticker}</td>
-                        <td className="py-3 px-4 text-right text-zinc-200">{ord.price.toFixed(2)} gold</td>
-                        <td className="py-3 px-4 text-right text-zinc-300">
-                          {ord.filledQuantity} / {ord.initialQuantity}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="text-[10px] bg-zinc-800 text-amber-300 px-2 py-0.5 rounded">
-                            {ord.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => handleCancelOrder(ord.id)}
-                            disabled={cancellingId === ord.id}
-                            className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded transition cursor-pointer"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            {cancellingId === ord.id ? "Cancelling..." : "Cancel"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Friday Profit Dividend Payouts Received */}
-        <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Coins className="w-4 h-4 text-amber-400" />
-              <h3 className="font-bold text-white text-sm">Friday Profit Dividend Payouts Received</h3>
-            </div>
-            <span className="text-zinc-400 text-xs font-mono">
-              {dividendHistory.length} payout{dividendHistory.length !== 1 ? "s" : ""} · {totalDividendsEarned.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} gold total
-            </span>
-          </div>
-
-          {dividendHistory.length === 0 ? (
-            <div className="p-8 text-center text-zinc-400 text-xs flex flex-col items-center gap-2">
-              <span>No dividend distributions collected yet.</span>
-              <span className="text-[11px] text-zinc-500">
-                Hold shares in companies on Friday at 00:00 UTC to automatically receive 50% net profit payouts deposited directly to your purse!
-              </span>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left font-mono text-xs">
-                <thead>
-                  <tr className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
-                    <th className="py-3 px-4">Payout Date</th>
-                    <th className="py-3 px-4">Company</th>
-                    <th className="py-3 px-4 text-right">Shares Held</th>
-                    <th className="py-3 px-4 text-right">Dividend / Share</th>
-                    <th className="py-3 px-4 text-right">Gold Deposited</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/60 text-[11px]">
-                  {dividendHistory.map((d) => (
-                    <tr key={d.id} className="hover:bg-zinc-800/30">
-                      <td className="py-3 px-4 text-zinc-400">
-                        {new Date(d.createdAt).toLocaleDateString()} {new Date(d.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td className="py-3 px-4 font-bold text-white">
-                        <Link href={`/trade/${d.ticker}`} className="hover:text-amber-400 transition">
-                          ${d.ticker} ({d.companyName})
-                        </Link>
-                      </td>
-                      <td className="py-3 px-4 text-right text-zinc-300">
-                        {d.sharesCount.toLocaleString()} shares
-                      </td>
-                      <td className="py-3 px-4 text-right text-zinc-300">
-                        {d.dividendPerShare.toFixed(4)} gold
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-400">
-                        +{d.payoutAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                    </thead>
+                    <tbody>
+                      {(data?.dividendHistory || []).map((d) => (
+                        <tr key={d.id} className="border-b border-rule last:border-0">
+                          <td className="py-2.5 pl-4 pr-2 text-ash whitespace-nowrap">{fmtUtcDate(d.createdAt)}</td>
+                          <td className="py-2.5 px-2">
+                            <Link href={`/trade/${d.ticker}`} className="condensed font-bold text-zinc-50">{d.ticker}</Link>
+                          </td>
+                          <td className="py-2.5 px-2 text-right text-paper hidden sm:table-cell">{fmtQty(d.sharesCount)}</td>
+                          <td className="py-2.5 px-2 text-right text-paper hidden sm:table-cell">{d.dividendPerShare.toFixed(4)}</td>
+                          <td className="py-2.5 pl-2 pr-4 text-right text-bullion">{fmtPrice(d.payoutAmount)} gold</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+          </>
+        )}
       </main>
 
-      {/* Wallet Modal */}
-      <WalletModal
-        isOpen={isWalletOpen}
-        initialTab={walletTab}
-        onClose={() => setIsWalletOpen(false)}
-        onBalanceUpdated={fetchPortfolio}
-      />
+      {wallet && (
+        <WalletModal key={wallet} isOpen initialTab={wallet} onClose={() => setWallet(null)} onBalanceUpdated={refresh} />
+      )}
     </div>
   );
 }

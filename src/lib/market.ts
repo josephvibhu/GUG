@@ -75,18 +75,71 @@ export interface PortfolioPosition {
   pnlPercent: number;
 }
 
+interface DayStats {
+  high: number;
+  low: number;
+  volume: number; // gold traded
+  prevClose: number | null; // last price before the 24h window
+}
+
+// Real 24h figures from the trades table. The change_24h / volume_24h / high_24h / low_24h columns
+// are never reset (change is even measured against the IPO price), so they can't be shown as "24h".
+async function getDayStats(companyId?: string): Promise<Record<string, DayStats>> {
+  const db = getDb();
+  const since = new Date(Date.now() - 86400000).toISOString();
+  const only = companyId ? " AND company_id = ?" : "";
+  const args = companyId ? [since, companyId] : [since];
+  const [windowRes, prevRes] = await Promise.all([
+    db.execute({
+      sql: `SELECT company_id, MIN(price) AS lo, MAX(price) AS hi, SUM(total) AS vol
+            FROM trades WHERE created_at >= ?${only} GROUP BY company_id`,
+      args,
+    }),
+    db.execute({
+      sql: `SELECT t.company_id, t.price FROM trades t
+            JOIN (SELECT company_id, MAX(created_at) AS mx FROM trades WHERE created_at < ?${only} GROUP BY company_id) m
+              ON t.company_id = m.company_id AND t.created_at = m.mx`,
+      args,
+    }),
+  ]);
+  const stats: Record<string, DayStats> = {};
+  for (const r of windowRes.rows as any[]) {
+    stats[String(r.company_id)] = { high: Number(r.hi), low: Number(r.lo), volume: Number(r.vol), prevClose: null };
+  }
+  for (const r of prevRes.rows as any[]) {
+    const cid = String(r.company_id);
+    stats[cid] = { ...(stats[cid] || { high: NaN, low: NaN, volume: 0 }), prevClose: Number(r.price) };
+  }
+  return stats;
+}
+
+function withDayStats(company: Company, s: DayStats | undefined): Company {
+  const cur = company.currentPrice;
+  const ref = s?.prevClose ?? company.ipoPrice; // no earlier trade: compare with the listing price
+  return {
+    ...company,
+    change24h: ref > 0 ? Math.round(((cur - ref) / ref) * 10000) / 100 : 0,
+    high24h: s && Number.isFinite(s.high) ? s.high : cur,
+    low24h: s && Number.isFinite(s.low) ? s.low : cur,
+    volume24h: s ? Math.round(s.volume * 100) / 100 : 0,
+  };
+}
+
 export async function getAllCompanies(): Promise<Company[]> {
   await initDb();
   const db = getDb();
 
-  const res = await db.execute(`
-    SELECT c.*, u.display_name as creator_name 
-    FROM companies c
-    LEFT JOIN users u ON c.creator_id = u.id
-    ORDER BY (c.current_price * c.total_shares) DESC
-  `);
+  const [res, dayStats] = await Promise.all([
+    db.execute(`
+      SELECT c.*, u.display_name as creator_name
+      FROM companies c
+      LEFT JOIN users u ON c.creator_id = u.id
+      ORDER BY (c.current_price * c.total_shares) DESC
+    `),
+    getDayStats(),
+  ]);
 
-  return res.rows.map((row: any) => ({
+  return res.rows.map((row: any) => withDayStats({
     id: String(row.id),
     ticker: String(row.ticker),
     name: String(row.name),
@@ -108,7 +161,7 @@ export async function getAllCompanies(): Promise<Company[]> {
     sharesBoughtBack: Number(row.shares_bought_back || 0),
     buybackGoldSpent: Number(row.buyback_gold_spent || 0),
     createdAt: String(row.created_at),
-  }));
+  }, dayStats[String(row.id)]));
 }
 
 export async function getCompanyByTicker(ticker: string): Promise<Company | null> {
@@ -125,8 +178,9 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
 
   if (res.rows.length === 0) return null;
   const row = res.rows[0];
+  const dayStats = await getDayStats(String(row.id));
 
-  return {
+  return withDayStats({
     id: String(row.id),
     ticker: String(row.ticker),
     name: String(row.name),
@@ -149,7 +203,7 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
     buybackGoldSpent: Number(row.buyback_gold_spent || 0),
     totalDividendsPaid: Number(row.total_dividends_paid || 0),
     createdAt: String(row.created_at),
-  };
+  }, dayStats[String(row.id)]);
 }
 
 export async function getOrderBook(companyId: string): Promise<OrderBookData> {
@@ -227,11 +281,18 @@ export async function getRecentTrades(companyId: string, limit = 20): Promise<Tr
   await initDb();
   const db = getDb();
 
+  // Side = the aggressor. The resting (maker) order was created before the trade; the taker's order row,
+  // if any, carries the trade's own timestamp. Joining on buy_order_id alone made every trade a "BUY".
   const res = await db.execute({
-    sql: `SELECT t.*, 
-            CASE WHEN o.type IS NOT NULL THEN o.type ELSE 'BUY' END as side
+    sql: `SELECT t.*,
+            CASE
+              WHEN so.created_at IS NOT NULL AND so.created_at < t.created_at THEN 'BUY'
+              WHEN bo.created_at IS NOT NULL AND bo.created_at < t.created_at THEN 'SELL'
+              ELSE 'BUY'
+            END as side
           FROM trades t
-          LEFT JOIN orders o ON t.buy_order_id = o.id
+          LEFT JOIN orders so ON t.sell_order_id = so.id
+          LEFT JOIN orders bo ON t.buy_order_id = bo.id
           WHERE t.company_id = ?
           ORDER BY t.created_at DESC
           LIMIT ?`,
@@ -247,6 +308,117 @@ export async function getRecentTrades(companyId: string, limit = 20): Promise<Tr
     type: r.side === "SELL" ? "SELL" : "BUY",
     timestamp: String(r.created_at),
   }));
+}
+
+// Chart intervals: candles are built from the trades table, so any resolution works (the hourly
+// candles table only has hours that traded). Lookback keeps each response to a few hundred bars.
+export const CANDLE_INTERVALS: Record<string, { seconds: number; lookbackDays: number }> = {
+  "1m": { seconds: 60, lookbackDays: 3 },
+  "5m": { seconds: 300, lookbackDays: 10 },
+  "15m": { seconds: 900, lookbackDays: 30 },
+  "1h": { seconds: 3600, lookbackDays: 120 },
+  "4h": { seconds: 14400, lookbackDays: 365 },
+  "1D": { seconds: 86400, lookbackDays: 1825 },
+};
+
+export interface OhlcvBar {
+  time: number; // bucket start, unix seconds UTC
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number; // shares
+}
+
+export async function getTradeCandles(companyId: string, interval: string): Promise<OhlcvBar[]> {
+  await initDb();
+  const db = getDb();
+  const spec = CANDLE_INTERVALS[interval] || CANDLE_INTERVALS["1h"];
+  const since = new Date(Date.now() - spec.lookbackDays * 86400000).toISOString();
+
+  const res = await db.execute({
+    sql: `SELECT price, quantity, created_at FROM trades
+          WHERE company_id = ? AND created_at >= ?
+          ORDER BY created_at DESC, rowid DESC
+          LIMIT 50000`,
+    args: [companyId, since],
+  });
+
+  const bars: OhlcvBar[] = [];
+  for (let i = res.rows.length - 1; i >= 0; i--) {
+    const r: any = res.rows[i];
+    const price = Number(r.price);
+    const qty = Number(r.quantity);
+    const t = Math.floor(Date.parse(String(r.created_at)) / 1000 / spec.seconds) * spec.seconds;
+    const last = bars[bars.length - 1];
+    if (last && last.time === t) {
+      last.high = Math.max(last.high, price);
+      last.low = Math.min(last.low, price);
+      last.close = price;
+      last.volume += qty;
+    } else {
+      bars.push({ time: t, open: price, high: price, low: price, close: price, volume: qty });
+    }
+  }
+  return bars.slice(-1500);
+}
+
+// Daily closes for the last two weeks per company (market list sparklines); cached for a minute
+let sparklineCache: { at: number; data: Record<string, number[]> } | null = null;
+
+export async function getSparklines(): Promise<Record<string, number[]>> {
+  if (sparklineCache && Date.now() - sparklineCache.at < 60000) return sparklineCache.data;
+  await initDb();
+  const db = getDb();
+  const since = new Date(Date.now() - 14 * 86400000).toISOString();
+  const res = await db.execute({
+    sql: `SELECT company_id, substr(created_at, 1, 10) AS day, price FROM trades
+          WHERE created_at >= ? ORDER BY created_at ASC, rowid ASC`,
+    args: [since],
+  });
+  const byCompany: Record<string, Map<string, number>> = {};
+  for (const r of res.rows as any[]) {
+    const cid = String(r.company_id);
+    (byCompany[cid] ??= new Map()).set(String(r.day), Number(r.price));
+  }
+  const data: Record<string, number[]> = {};
+  for (const [cid, days] of Object.entries(byCompany)) data[cid] = [...days.values()];
+  sparklineCache = { at: Date.now(), data };
+  return data;
+}
+
+// One position (instead of loading the whole portfolio to find it)
+export async function getUserHolding(userId: string, companyId: string): Promise<PortfolioPosition | null> {
+  await initDb();
+  const db = getDb();
+  const res = await db.execute({
+    sql: `SELECT p.*, c.ticker, c.name, c.current_price
+          FROM portfolios p JOIN companies c ON p.company_id = c.id
+          WHERE p.user_id = ? AND p.company_id = ? AND (p.shares > 0 OR p.locked_shares > 0)`,
+    args: [userId, companyId],
+  });
+  if (res.rows.length === 0) return null;
+  const r: any = res.rows[0];
+  const shares = Number(r.shares);
+  const lockedShares = Number(r.locked_shares);
+  const avgBuyPrice = Number(r.avg_buy_price);
+  const currentPrice = Number(r.current_price);
+  const marketValue = Math.round(shares * currentPrice * 100) / 100;
+  const costBasis = Math.round(shares * avgBuyPrice * 100) / 100;
+  return {
+    companyId: String(r.company_id),
+    ticker: String(r.ticker),
+    name: String(r.name),
+    shares,
+    lockedShares,
+    availableShares: shares - lockedShares,
+    avgBuyPrice,
+    currentPrice,
+    marketValue,
+    costBasis,
+    pnl: Math.round((marketValue - costBasis) * 100) / 100,
+    pnlPercent: costBasis > 0 ? Math.round(((marketValue - costBasis) / costBasis) * 10000) / 100 : 0,
+  };
 }
 
 export async function getCandles(companyId: string): Promise<CandleData[]> {

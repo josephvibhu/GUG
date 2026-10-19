@@ -1,130 +1,80 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { OrderBookData } from "@/lib/market";
+import { fmtPrice, fmtQty } from "@/lib/format";
 
 interface OrderBookProps {
   orderBook: OrderBookData;
   ticker: string;
+  lastDirection: "up" | "down" | "flat";
   onSelectPrice: (price: number) => void;
+  showTitle?: boolean;
 }
 
-export default function OrderBook({ orderBook, ticker, onSelectPrice }: OrderBookProps) {
+const LEVELS = 9;
+
+function OrderBookImpl({ orderBook, lastDirection, onSelectPrice, showTitle = true }: OrderBookProps) {
   const { bids = [], asks = [], spread = 0, spreadPercent = 0, lastPrice = 0 } = orderBook || {};
 
-  // For visual depth bars
-  const maxCumVolume = useMemo(() => {
-    const maxBid = bids.length > 0 ? bids[bids.length - 1].cumulativeTotal : 0;
-    const maxAsk = asks.length > 0 ? asks[asks.length - 1].cumulativeTotal : 0;
-    return Math.max(maxBid, maxAsk, 100);
-  }, [bids, asks]);
+  const maxCum = useMemo(
+    () => Math.max(bids[Math.min(bids.length, LEVELS) - 1]?.cumulativeTotal || 0, asks[Math.min(asks.length, LEVELS) - 1]?.cumulativeTotal || 0, 1),
+    [bids, asks]
+  );
+  // Best ask sits next to the spread, so asks are listed highest first
+  const shownAsks = useMemo(() => asks.slice(0, LEVELS).reverse(), [asks]);
+  const shownBids = useMemo(() => bids.slice(0, LEVELS), [bids]);
 
-  // Display top 8 asks in reversed order (highest price at top, lowest ask near the spread)
-  const displayAsks = useMemo(() => {
-    return [...asks].slice(0, 8).reverse();
-  }, [asks]);
-
-  // Display top 8 bids
-  const displayBids = useMemo(() => {
-    return [...bids].slice(0, 8);
-  }, [bids]);
+  const row = (level: { price: number; quantity: number; cumulativeTotal: number }, side: "ask" | "bid") => (
+    <button
+      key={`${side}-${level.price}`}
+      type="button"
+      onClick={() => onSelectPrice(level.price)}
+      title={`Use ${fmtPrice(level.price)} as the order price`}
+      className="relative w-full grid grid-cols-[1fr_1fr_1fr] h-[22px] items-center px-3 text-[12px] hover:bg-pane text-left"
+    >
+      <span
+        className={`absolute inset-y-[2px] right-0 ${side === "ask" ? "bg-bear/12" : "bg-bull/12"}`}
+        style={{ width: `${Math.min(100, (level.cumulativeTotal / maxCum) * 100)}%` }}
+        aria-hidden
+      />
+      <span className={`relative ${side === "ask" ? "text-bear" : "text-bull"}`}>{fmtPrice(level.price)}</span>
+      <span className="relative text-right text-paper">{fmtQty(level.quantity)}</span>
+      <span className="relative text-right text-ash">{fmtQty(level.cumulativeTotal)}</span>
+    </button>
+  );
 
   return (
-    <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 flex flex-col text-xs font-mono select-none">
-      <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80 text-[11px] font-sans font-semibold text-zinc-400">
-        <span>Order Book</span>
-        <span className="text-[10px] text-zinc-400 font-mono">Depth (Total)</span>
-      </div>
-
-      {/* Table Headers */}
-      <div className="grid grid-cols-3 text-[10px] text-zinc-400 font-sans py-1.5 border-b border-zinc-800/40">
-        <span className="text-left">Price (Gold)</span>
-        <span className="text-right">Size</span>
+    <div className="flex flex-col h-full min-h-0">
+      {showTitle && (
+        <div className="h-9 shrink-0 px-3 flex items-center justify-between border-b border-rule">
+          <h2 className="text-[13px] font-semibold text-zinc-50">Order book</h2>
+        </div>
+      )}
+      <div className="grid grid-cols-[1fr_1fr_1fr] px-3 h-7 items-center text-[11px] text-ash">
+        <span>Price</span>
+        <span className="text-right">Shares</span>
         <span className="text-right">Total</span>
       </div>
 
-      {/* Asks (Sells) */}
-      <div className="flex flex-col gap-0.5 py-1 min-h-[160px] justify-end">
-        {displayAsks.length === 0 ? (
-          <div className="text-center py-4 text-zinc-400 text-[11px] font-sans">
-            No active ask orders
-          </div>
-        ) : (
-          displayAsks.map((ask, i) => {
-            const depthPercent = Math.min(100, Math.round((ask.cumulativeTotal / maxCumVolume) * 100));
-            return (
-              <div
-                key={`ask-${i}`}
-                onClick={() => onSelectPrice(ask.price)}
-                className="relative grid grid-cols-3 py-0.5 px-1 rounded hover:bg-rose-500/10 cursor-pointer group transition"
-              >
-                {/* Red Depth Bar Background */}
-                <div
-                  className="absolute right-0 top-0 bottom-0 bg-rose-500/15 rounded-r pointer-events-none transition-all duration-300"
-                  style={{ width: `${depthPercent}%` }}
-                />
-                <span className="relative text-rose-400 font-bold group-hover:underline">
-                  {ask.price.toFixed(2)}
-                </span>
-                <span className="relative text-right text-zinc-300">
-                  {ask.quantity.toLocaleString()}
-                </span>
-                <span className="relative text-right text-zinc-400">
-                  {ask.cumulativeTotal.toLocaleString()}
-                </span>
-              </div>
-            );
-          })
-        )}
+      <div className="flex flex-col justify-end min-h-[198px]">
+        {shownAsks.length === 0 ? <p className="px-3 py-3 text-[12px] text-ash">No sell orders.</p> : shownAsks.map((a) => row(a, "ask"))}
       </div>
 
-      {/* Spread & Last Price Bar */}
-      <div className="my-1.5 py-1.5 px-2 bg-zinc-950/80 border-y border-zinc-800 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-white">
-            {lastPrice.toFixed(2)} <span className="text-[10px] font-normal text-zinc-400">gold</span>
-          </span>
-          <span className="text-[10px] text-zinc-400 uppercase font-sans">Market</span>
-        </div>
-        <div className="text-[11px] text-zinc-400">
-          Spread: <span className="text-zinc-300">{spread.toFixed(2)} gold</span> ({spreadPercent}%)
-        </div>
+      <div className="h-10 px-3 flex items-center justify-between border-y border-rule">
+        <span className={`condensed text-[17px] font-bold ${lastDirection === "up" ? "text-bull" : lastDirection === "down" ? "text-bear" : "text-zinc-50"}`}>
+          {fmtPrice(lastPrice)}
+        </span>
+        <span className="text-[11px] text-ash">
+          Spread {fmtPrice(spread)} <span className="text-zinc-500">({spreadPercent}%)</span>
+        </span>
       </div>
 
-      {/* Bids (Buys) */}
-      <div className="flex flex-col gap-0.5 py-1 min-h-[160px]">
-        {displayBids.length === 0 ? (
-          <div className="text-center py-4 text-zinc-400 text-[11px] font-sans">
-            No active bid orders
-          </div>
-        ) : (
-          displayBids.map((bid, i) => {
-            const depthPercent = Math.min(100, Math.round((bid.cumulativeTotal / maxCumVolume) * 100));
-            return (
-              <div
-                key={`bid-${i}`}
-                onClick={() => onSelectPrice(bid.price)}
-                className="relative grid grid-cols-3 py-0.5 px-1 rounded hover:bg-emerald-500/10 cursor-pointer group transition"
-              >
-                {/* Green Depth Bar Background */}
-                <div
-                  className="absolute right-0 top-0 bottom-0 bg-emerald-500/15 rounded-r pointer-events-none transition-all duration-300"
-                  style={{ width: `${depthPercent}%` }}
-                />
-                <span className="relative text-emerald-400 font-bold group-hover:underline">
-                  {bid.price.toFixed(2)}
-                </span>
-                <span className="relative text-right text-zinc-300">
-                  {bid.quantity.toLocaleString()}
-                </span>
-                <span className="relative text-right text-zinc-400">
-                  {bid.cumulativeTotal.toLocaleString()}
-                </span>
-              </div>
-            );
-          })
-        )}
+      <div className="flex flex-col min-h-[198px]">
+        {shownBids.length === 0 ? <p className="px-3 py-3 text-[12px] text-ash">No buy orders.</p> : shownBids.map((b) => row(b, "bid"))}
       </div>
     </div>
   );
 }
+
+export default memo(OrderBookImpl);

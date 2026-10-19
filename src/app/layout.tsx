@@ -1,20 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Archivo } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+// One variable family: normal width for the interface, condensed for symbols and prices (see globals.css)
+const archivo = Archivo({
+  variable: "--font-archivo",
+  subsets: ["latin", "latin-ext"],
+  axes: ["wdth"],
 });
 
 export const metadata: Metadata = {
-  title: "Grow Ur Gold - Parlamentum | Sovereign Stock Exchange",
-  description: "Real-time order-book stock market exchange for the Realm of Parlamentum. Trade public company shares, launch IPOs, and grow your gold.",
+  title: "Grow Ur Gold",
+  description: "The player-run stock exchange of Parlamentum. Trade company shares for in-game gold, list your company, collect Friday dividends.",
 };
 
 export default function RootLayout({
@@ -25,7 +22,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${archivo.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100 selection:bg-amber-500 selection:text-black">
         {children}
