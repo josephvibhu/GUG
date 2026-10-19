@@ -47,6 +47,7 @@ interface CitizenHolding {
   currentPrice: number;
   holdingValue: number;
   avgBuyPrice: number;
+  isCreator?: boolean;
 }
 
 interface Citizen {
@@ -57,6 +58,8 @@ interface Citizen {
   cash_balance: number;
   locked_cash: number;
   portfolio_value?: number;
+  trading_value?: number;
+  founder_value?: number;
   total_net_worth?: number;
   holdings?: CitizenHolding[];
   is_admin: number;
@@ -2685,15 +2688,29 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                   {holdings.map((h, idx) => (
                                     <span
                                       key={idx}
-                                      className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/30 text-[10px] font-mono text-purple-300 whitespace-nowrap inline-flex items-center gap-1"
-                                      title={`${h.companyName} (${h.totalShares.toLocaleString()} shares @ ${h.currentPrice.toFixed(2)}g)`}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-mono whitespace-nowrap inline-flex items-center gap-1 ${
+                                        h.isCreator
+                                          ? "bg-amber-500/15 border border-amber-500/40 text-amber-300"
+                                          : "bg-purple-500/10 border border-purple-500/30 text-purple-300"
+                                      }`}
+                                      title={`${h.isCreator ? "👑 Founder Stake: " : ""}${h.companyName} (${h.totalShares.toLocaleString()} shares @ ${h.currentPrice.toFixed(2)}g)`}
                                     >
-                                      <b className="text-amber-400">${h.ticker}</b>: {h.totalShares.toLocaleString()} sh
+                                      {h.isCreator ? <span>👑</span> : null}
+                                      <b className={h.isCreator ? "text-amber-300" : "text-amber-400"}>${h.ticker}</b>: {h.totalShares.toLocaleString()} sh
                                       <span className="text-zinc-400">({h.holdingValue.toFixed(1)}g)</span>
                                     </span>
                                   ))}
                                   <div className="w-full text-[10px] text-zinc-400 font-mono mt-0.5">
-                                    Valuation: {portVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                                    {c.founder_value && c.founder_value > 0 ? (
+                                      <span>
+                                        Valuation: <b className="text-zinc-200">{portVal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}g</b>
+                                        <span className="text-zinc-500 ml-1">
+                                          (Trading: {(c.trading_value || 0).toFixed(1)}g · 👑 Founder: {(c.founder_value || 0).toFixed(1)}g)
+                                        </span>
+                                      </span>
+                                    ) : (
+                                      <span>Valuation: {portVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g</span>
+                                    )}
                                   </div>
                                 </div>
                               )}

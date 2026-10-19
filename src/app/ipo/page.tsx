@@ -238,6 +238,24 @@ export default function IpoPage() {
           </div>
         </div>
 
+        {/* IPO Charter Underwriting Policy Banner */}
+        <div className="bg-gradient-to-r from-amber-500/15 via-zinc-900 to-emerald-500/10 border border-amber-500/40 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-lg">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
+              <Coins className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-bold text-amber-300 text-sm flex items-center gap-2">
+                <span>Zero Upfront Listing Fee • Underwritten From Float Proceeds</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">0g Out-Of-Pocket</span>
+              </div>
+              <p className="text-zinc-300 text-[12px] mt-1 leading-relaxed max-w-3xl">
+                Founders do not need gold in advance to list a company. The exchange&apos;s standard 200 gold IPO charter underwriting fee is <strong>automatically deducted from the funds raised</strong> as citizens buy your initial public float on the trading floor.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Existing Applications Section */}
         {applications.length > 0 && (
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3">
@@ -892,8 +910,26 @@ export default function IpoPage() {
               </div>
 
               <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
-                <span className="text-zinc-400 font-sans">Capital To Be Raised:</span>
+                <span className="text-zinc-400 font-sans">Gross Capital To Be Raised:</span>
                 <span className="font-bold text-amber-300">{publicFloatVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold</span>
+              </div>
+
+              <div className="flex justify-between p-2 rounded bg-amber-500/5 border border-amber-500/30">
+                <div className="flex flex-col">
+                  <span className="text-amber-300 font-sans font-semibold">Less: IPO Charter Fee:</span>
+                  <span className="text-[10px] text-zinc-400">Deducted from float sales (0g upfront)</span>
+                </div>
+                <span className="font-mono font-bold text-rose-400">-200.00 gold</span>
+              </div>
+
+              <div className="flex justify-between p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30">
+                <div className="flex flex-col">
+                  <span className="text-emerald-300 font-sans font-bold">Est. Net Disbursed to Founder:</span>
+                  <span className="text-[10px] text-emerald-400/80">Capital into your purse as shares sell</span>
+                </div>
+                <span className="font-mono font-black text-emerald-400 text-sm">
+                  {Math.max(0, publicFloatVal - 200).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold
+                </span>
               </div>
 
               <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">

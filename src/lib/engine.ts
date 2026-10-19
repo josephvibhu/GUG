@@ -215,22 +215,57 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
       const tradeFee = Math.round(matchCost * feeRate * 100) / 100;
       const sellerProceeds = Math.max(0, Math.round((matchCost - tradeFee) * 100) / 100);
 
+      // Underwrite / Listing Fee check: If this is the company's primary float offering,
+      // recover the IPO charter fee directly from the capital raised.
+      const isIpoOrder = String(ask.id).startsWith("ord_ipo_");
+      let ipoFeeDeducted = 0;
+
+      if (isIpoOrder) {
+        try {
+          const compRow = await db.execute({
+            sql: "SELECT ipo_fee_collected FROM companies WHERE id = ? LIMIT 1",
+            args: [actualCompanyId],
+          });
+          const collected = compRow.rows.length > 0 ? Number(compRow.rows[0].ipo_fee_collected || 0) : 0;
+          const listingSetting = await db.execute({
+            sql: "SELECT value FROM settings WHERE key = 'ipo_listing_fee' LIMIT 1",
+          });
+          const targetListingFee = listingSetting.rows.length > 0 ? Number(listingSetting.rows[0].value) : 200;
+          const remainingListingFee = Math.max(0, Math.round((targetListingFee - collected) * 100) / 100);
+
+          if (remainingListingFee > 0 && sellerProceeds > 0) {
+            ipoFeeDeducted = Math.min(sellerProceeds, remainingListingFee);
+            await db.execute({
+              sql: "UPDATE companies SET ipo_fee_collected = ipo_fee_collected + ? WHERE id = ?",
+              args: [ipoFeeDeducted, actualCompanyId],
+            });
+          }
+        } catch (e) {
+          console.warn("Error calculating IPO fee deduction in engine:", e);
+        }
+      }
+
+      const netSellerProceeds = Math.max(0, Math.round((sellerProceeds - ipoFeeDeducted) * 100) / 100);
+
       // Update Seller: unlock shares and give seller net cash
       await db.execute({
         sql: `UPDATE portfolios SET shares = shares - ?, locked_shares = locked_shares - ? 
               WHERE user_id = ? AND company_id = ?`,
         args: [matchQty, matchQty, ask.user_id, actualCompanyId],
       });
-      await db.execute({
-        sql: `UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?`,
-        args: [sellerProceeds, ask.user_id],
-      });
+      if (netSellerProceeds > 0) {
+        await db.execute({
+          sql: `UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?`,
+          args: [netSellerProceeds, ask.user_id],
+        });
+      }
 
-      // Credit fee to Treasury
-      if (tradeFee > 0) {
+      // Credit fee to Treasury (Brokerage Fee + IPO Underwriting Fee)
+      const totalTreasuryInflow = Math.round((tradeFee + ipoFeeDeducted) * 100) / 100;
+      if (totalTreasuryInflow > 0) {
         await db.execute({
           sql: `UPDATE users SET cash_balance = cash_balance + ? WHERE id = 'usr_treasury'`,
-          args: [tradeFee],
+          args: [totalTreasuryInflow],
         });
       }
 

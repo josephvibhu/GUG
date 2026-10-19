@@ -58,22 +58,30 @@ export async function GET() {
     // Fetch user portfolios with company tickers and current prices
     const portfoliosRes = await db.execute(`
       SELECT p.user_id, p.company_id, p.shares, p.locked_shares, p.avg_buy_price,
-             c.ticker, c.name as company_name, c.current_price
+             c.ticker, c.name as company_name, c.current_price, c.creator_id
       FROM portfolios p
       JOIN companies c ON p.company_id = c.id
       WHERE (p.shares + p.locked_shares) > 0
     `);
 
-    const userPortfoliosMap: { [userId: string]: { holdings: any[]; portfolioValue: number } } = {};
+    const userPortfoliosMap: { [userId: string]: { holdings: any[]; portfolioValue: number; tradingValue: number; founderValue: number } } = {};
     for (const row of portfoliosRes.rows as any[]) {
       const uId = String(row.user_id);
       if (!userPortfoliosMap[uId]) {
-        userPortfoliosMap[uId] = { holdings: [], portfolioValue: 0 };
+        userPortfoliosMap[uId] = { holdings: [], portfolioValue: 0, tradingValue: 0, founderValue: 0 };
       }
       const totalShares = Number(row.shares || 0) + Number(row.locked_shares || 0);
       const curPrice = Number(row.current_price || 0);
       const val = totalShares * curPrice;
+      const isCreator = String(row.creator_id) === uId;
+
       userPortfoliosMap[uId].portfolioValue += val;
+      if (isCreator) {
+        userPortfoliosMap[uId].founderValue += val;
+      } else {
+        userPortfoliosMap[uId].tradingValue += val;
+      }
+
       userPortfoliosMap[uId].holdings.push({
         companyId: row.company_id,
         ticker: row.ticker,
@@ -84,21 +92,26 @@ export async function GET() {
         currentPrice: curPrice,
         holdingValue: val,
         avgBuyPrice: Number(row.avg_buy_price || 0),
+        isCreator,
       });
     }
 
     const enrichedCitizens = (citizensRes.rows as any[]).map((c) => {
       const uId = String(c.id);
-      const port = userPortfoliosMap[uId] || { holdings: [], portfolioValue: 0 };
+      const port = userPortfoliosMap[uId] || { holdings: [], portfolioValue: 0, tradingValue: 0, founderValue: 0 };
       const cash = Number(c.cash_balance || 0);
       const lockedCash = Number(c.locked_cash || 0);
       const portfolioValue = port.portfolioValue;
+      const tradingValue = port.tradingValue;
+      const founderValue = port.founderValue;
       const totalNetWorth = cash + lockedCash + portfolioValue;
       return {
         ...c,
         cash_balance: cash,
         locked_cash: lockedCash,
         portfolio_value: portfolioValue,
+        trading_value: tradingValue,
+        founder_value: founderValue,
         total_net_worth: totalNetWorth,
         holdings: port.holdings,
       };

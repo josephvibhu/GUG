@@ -74,6 +74,12 @@ export interface PortfolioPosition {
   costBasis: number;
   pnl: number;
   pnlPercent: number;
+  creatorId?: string;
+  isCreator?: boolean;
+  totalCompanyShares?: number;
+  floatShares?: number;
+  ownershipPercent?: number;
+  ipoFeeCollected?: number;
 }
 
 interface DayStats {
@@ -449,7 +455,18 @@ export async function getCandles(companyId: string): Promise<CandleData[]> {
   }));
 }
 
-export async function getUserPortfolio(userId: string): Promise<{ positions: PortfolioPosition[]; totalNetWorth: number; totalStockValue: number; cashBalance: number; lockedCash: number }> {
+export async function getUserPortfolio(userId: string): Promise<{
+  positions: PortfolioPosition[];
+  tradingPositions: PortfolioPosition[];
+  founderPositions: PortfolioPosition[];
+  totalNetWorth: number;
+  tradingNetWorth: number;
+  totalStockValue: number;
+  tradingStockValue: number;
+  founderStockValue: number;
+  cashBalance: number;
+  lockedCash: number;
+}> {
   await initDb();
   const db = getDb();
 
@@ -461,7 +478,7 @@ export async function getUserPortfolio(userId: string): Promise<{ positions: Por
   const lockedCash = userRes.rows.length > 0 ? Number(userRes.rows[0].locked_cash) : 0;
 
   const res = await db.execute({
-    sql: `SELECT p.*, c.ticker, c.name, c.current_price 
+    sql: `SELECT p.*, c.ticker, c.name, c.current_price, c.creator_id, c.total_shares, c.float_shares, c.ipo_fee_collected 
           FROM portfolios p
           JOIN companies c ON p.company_id = c.id
           WHERE p.user_id = ? AND (p.shares > 0 OR p.locked_shares > 0)
@@ -470,6 +487,11 @@ export async function getUserPortfolio(userId: string): Promise<{ positions: Por
   });
 
   let totalStockValue = 0;
+  let tradingStockValue = 0;
+  let founderStockValue = 0;
+  const tradingPositions: PortfolioPosition[] = [];
+  const founderPositions: PortfolioPosition[] = [];
+
   const positions: PortfolioPosition[] = res.rows.map((r: any) => {
     const shares = Number(r.shares);
     const lockedShares = Number(r.locked_shares);
@@ -480,10 +502,15 @@ export async function getUserPortfolio(userId: string): Promise<{ positions: Por
     const costBasis = Math.round(shares * avgBuyPrice * 100) / 100;
     const pnl = Math.round((marketValue - costBasis) * 100) / 100;
     const pnlPercent = costBasis > 0 ? Math.round(((marketValue - costBasis) / costBasis) * 10000) / 100 : 0;
+    const isCreator = String(r.creator_id) === String(userId);
+    const totalCompanyShares = Number(r.total_shares || 0);
+    const floatShares = Number(r.float_shares || 0);
+    const ownershipPercent = totalCompanyShares > 0 ? Math.round((shares / totalCompanyShares) * 10000) / 100 : 0;
+    const ipoFeeCollected = Number(r.ipo_fee_collected || 0);
 
     totalStockValue += marketValue;
 
-    return {
+    const pos: PortfolioPosition = {
       companyId: String(r.company_id),
       ticker: String(r.ticker),
       name: String(r.name),
@@ -496,15 +523,37 @@ export async function getUserPortfolio(userId: string): Promise<{ positions: Por
       costBasis,
       pnl,
       pnlPercent,
+      creatorId: String(r.creator_id),
+      isCreator,
+      totalCompanyShares,
+      floatShares,
+      ownershipPercent,
+      ipoFeeCollected,
     };
+
+    if (isCreator) {
+      founderPositions.push(pos);
+      founderStockValue += marketValue;
+    } else {
+      tradingPositions.push(pos);
+      tradingStockValue += marketValue;
+    }
+
+    return pos;
   });
 
   const totalNetWorth = Math.round((cashBalance + lockedCash + totalStockValue) * 100) / 100;
+  const tradingNetWorth = Math.round((cashBalance + lockedCash + tradingStockValue) * 100) / 100;
 
   return {
     positions,
+    tradingPositions,
+    founderPositions,
     totalNetWorth,
+    tradingNetWorth,
     totalStockValue: Math.round(totalStockValue * 100) / 100,
+    tradingStockValue: Math.round(tradingStockValue * 100) / 100,
+    founderStockValue: Math.round(founderStockValue * 100) / 100,
     cashBalance,
     lockedCash,
   };
