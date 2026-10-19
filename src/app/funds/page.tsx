@@ -6,64 +6,56 @@ import {
   ShieldAlert, 
   ArrowLeft, 
   PieChart, 
-  TrendingUp, 
   ShieldCheck, 
   Percent, 
   Briefcase, 
   Clock, 
-  CheckCircle2, 
-  Users 
+  Swords, 
+  Dices, 
+  Shield 
 } from "lucide-react";
 
 export const metadata = {
   title: "Mutual Funds & Indexes (Coming Soon) — Grow Ur Gold",
-  description: "Season 2 preview: Diversified syndicate funds, industry indexes, and automated Friday dividend trusts on Grow Ur Gold.",
+  description: "Season 2 preview: GUG-Gurantee, GUG-Luck, and GUG-WarBased diversified syndicate funds on Grow Ur Gold.",
 };
 
 const UPCOMING_FUNDS = [
   {
-    ticker: "HISF",
-    name: "Heavy Industry Syndicate Fund",
-    category: "Sector Index",
-    objective: "Capital Growth & Tooling Reserves",
-    holdings: ["Mines (40%)", "Foundries (35%)", "Toolmakers (25%)"],
-    targetYield: "8.5% weekly",
-    minimumEntry: "50 gold",
-    color: "from-amber-500/20 to-stone-500/20 text-amber-400 border-amber-500/30",
-    description: "Bundles top iron mines, tool workshops, and foundries into a single liquid ticket. Ideal for citizens wanting exposure to heavy realm production without picking individual companies.",
-  },
-  {
-    ticker: "FAT",
-    name: "Food & Agriculture Trust",
-    category: "Commodity Index",
-    objective: "Consistent Breadbasket Yield",
-    holdings: ["Wheat Farms (50%)", "Bakeries (30%)", "Millers (20%)"],
-    targetYield: "11.2% weekly",
+    ticker: "GUG-Gurantee",
+    name: "GUG-Gurantee Fund",
+    category: "Capital Protection",
+    objective: "Guaranteed Weekly Returns & Zero Default Risk",
+    holdings: ["Operator Vault Reserve (60%)", "Tier-1 Tool Foundries (40%)"],
+    targetYield: "7.5% weekly guaranteed",
     minimumEntry: "25 gold",
-    color: "from-emerald-500/20 to-lime-500/20 text-emerald-400 border-emerald-500/30",
-    description: "Invests in breadbasket grain producers and bakeries feeding active realm populations. Produces dependable cash flow regardless of war cycles.",
+    icon: "🛡️",
+    color: "from-amber-500/25 to-yellow-500/20 text-amber-400 border-amber-500/35",
+    description: "100% underwritten by the High Operator Treasury. Guaranteed weekly dividend payouts regardless of realm market fluctuations or military upheaval. Built for cautious citizens who demand rock-solid gold security.",
   },
   {
-    ticker: "PHYD",
-    name: "Parlamentum High-Yield Dividend Fund",
-    category: "Dividend Focus",
-    objective: "Maximized Friday Payouts",
-    holdings: ["Top 5 Dividend Equities (Weighted)"],
-    targetYield: "14.8% weekly",
+    ticker: "GUG-Luck",
+    name: "GUG-Luck High-Roller Trust",
+    category: "Speculative High-Beta",
+    objective: "Maximum Jackpot Dividend Windfalls",
+    holdings: ["Deep-Mine Prospectors (50%)", "Frontier Caravans (30%)", "Speculative Startups (20%)"],
+    targetYield: "0% - 35% jackpot yield",
+    minimumEntry: "50 gold",
+    icon: "🎲",
+    color: "from-purple-500/25 to-pink-500/20 text-purple-400 border-purple-500/35",
+    description: "Invests in unpredictable, high-variance expeditions and speculative mineral discoveries. When fortune strikes, shareholders feast on massive Friday jackpot dividend distributions.",
+  },
+  {
+    ticker: "GUG-WarBased",
+    name: "GUG-WarBased Logistics Fund",
+    category: "Military & Defense Industry",
+    objective: "War-Cycle Hedging & Weaponry Production",
+    holdings: ["Weaponsmith Forges (45%)", "Iron Armor Foundries (35%)", "Warship Shipyards (20%)"],
+    targetYield: "15% - 25% conflict yield",
     minimumEntry: "100 gold",
-    color: "from-cyan-500/20 to-teal-500/20 text-cyan-400 border-cyan-500/30",
-    description: "Continuously aggregates the highest weekly dividend payers on Grow Ur Gold. Every Friday at market close, collective gold dividends are split pro-rata to fund unit holders.",
-  },
-  {
-    ticker: "FMCS",
-    name: "Founders & Merchant Syndicate Fund",
-    category: "Guild Managed",
-    objective: "Balanced Blue-Chip Growth",
-    holdings: ["Tier-1 Sovereign Companies", "Liquid Vault Reserves"],
-    targetYield: "9.0% weekly",
-    minimumEntry: "200 gold",
-    color: "from-purple-500/20 to-pink-500/20 text-purple-400 border-purple-500/30",
-    description: "Governed by veteran merchant houses with verified company accounting ledgers. Maintains conservative reserves and low risk exposure across multiple sovereign borders.",
+    icon: "⚔️",
+    color: "from-rose-500/25 to-red-500/20 text-rose-400 border-rose-500/35",
+    description: "Allocated strictly across arms manufacturers, armor smelters, and war fleets. As sovereign nations wage battle, munitions consumption surges and fund dividends skyrocket.",
   },
 ];
 
@@ -98,7 +90,7 @@ export default function FundsPage() {
             Mutual Funds & Syndicate Trusts
           </h1>
           <p className="text-sm sm:text-base text-ash max-w-2xl leading-relaxed">
-            One-click diversification across dozens of player businesses. Reduce single-company risk and automate your weekly Friday dividend income.
+            Three tailored institutional funds for every investor archetype: Guaranteed income, Fortune high-rolling, and War-cycle profiteering.
           </p>
         </div>
 
@@ -115,12 +107,12 @@ export default function FundsPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-zinc-100 flex items-center gap-2">
               <Landmark className="w-4 h-4 text-cyan-400" />
-              Upcoming Funds in Pipeline
+              The Three Official GUG Funds
             </h2>
             <span className="text-xs text-ash">Q4 2026 Launch Window</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {UPCOMING_FUNDS.map((fund) => (
               <div
                 key={fund.ticker}
@@ -129,35 +121,36 @@ export default function FundsPage() {
                 <div className="flex flex-col gap-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">
-                      <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${fund.color} flex items-center justify-center font-mono font-extrabold text-sm`}>
-                        {fund.ticker}
+                      <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${fund.color} flex items-center justify-center font-mono font-extrabold text-xl`}>
+                        {fund.icon}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-base text-zinc-100">{fund.ticker}</span>
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
-                            {fund.category}
-                          </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-sm text-zinc-100">{fund.ticker}</span>
                         </div>
-                        <span className="text-xs text-ash">{fund.name}</span>
+                        <span className="text-[11px] text-ash">{fund.name}</span>
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <span className="text-[10px] text-zinc-500 block">Est. Yield</span>
-                      <span className="font-mono font-bold text-xs text-emerald-400">{fund.targetYield}</span>
-                    </div>
+                    <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
+                      {fund.category}
+                    </span>
+                  </div>
+
+                  <div className="text-left pt-1">
+                    <span className="text-[10px] text-zinc-500 block uppercase font-mono">Target Return</span>
+                    <span className="font-mono font-bold text-sm text-emerald-400">{fund.targetYield}</span>
                   </div>
 
                   <p className="text-xs text-paper leading-relaxed mt-1">
                     {fund.description}
                   </p>
 
-                  <div className="flex flex-wrap gap-1.5 mt-1">
+                  <div className="flex flex-wrap gap-1 mt-1">
                     {fund.holdings.map((h) => (
                       <span
                         key={h}
-                        className="text-[10px] px-2 py-0.5 rounded bg-zinc-900 border border-rule text-zinc-300 font-mono"
+                        className="text-[9px] px-2 py-0.5 rounded bg-zinc-900 border border-rule text-zinc-300 font-mono"
                       >
                         {h}
                       </span>
@@ -167,13 +160,10 @@ export default function FundsPage() {
 
                 <div className="border-t border-rule/60 pt-3 flex items-center justify-between text-[11px] text-ash">
                   <div>
-                    <span className="text-zinc-500">Objective:</span>{" "}
-                    <strong className="text-zinc-300 font-medium">{fund.objective}</strong>
+                    <span className="text-zinc-500">Min Entry:</span>{" "}
+                    <strong className="text-zinc-200 font-mono">{fund.minimumEntry}</strong>
                   </div>
-                  <div className="text-right">
-                    <span className="text-zinc-500">Min. Entry:</span>{" "}
-                    <span className="font-mono text-zinc-300">{fund.minimumEntry}</span>
-                  </div>
+                  <span className="text-[10px] text-cyan-400 font-semibold">Audited Ledger</span>
                 </div>
               </div>
             ))}
@@ -184,37 +174,37 @@ export default function FundsPage() {
         <section className="bg-zinc-900/40 border border-rule rounded-2xl p-6 sm:p-8 flex flex-col gap-6">
           <h2 className="text-base sm:text-lg font-bold text-zinc-50 flex items-center gap-2">
             <PieChart className="w-5 h-5 text-bullion" />
-            Why Invest via Mutual Funds?
+            Why Invest in GUG Mutual Funds?
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-xs">
             <div className="flex flex-col gap-2">
               <div className="h-8 w-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                <Briefcase className="w-4 h-4" />
+                <ShieldCheck className="w-4 h-4" />
               </div>
-              <h3 className="font-bold text-zinc-200 text-sm">Instant Risk Spread</h3>
+              <h3 className="font-bold text-zinc-200 text-sm">GUG-Gurantee Reliability</h3>
               <p className="text-ash leading-relaxed">
-                If an individual mine halts production or runs low on materials, your other holdings in the basket offset the variance.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                <Percent className="w-4 h-4" />
-              </div>
-              <h3 className="font-bold text-zinc-200 text-sm">Automated Friday Payouts</h3>
-              <p className="text-ash leading-relaxed">
-                Fund dividends are automatically harvested from all held enterprises every Friday and deposited directly to your gold purse.
+                Guaranteed yield backed by the High Operator vault without the risk of single factory insolvencies.
               </p>
             </div>
 
             <div className="flex flex-col gap-2">
               <div className="h-8 w-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
-                <Users className="w-4 h-4" />
+                <Dices className="w-4 h-4" />
               </div>
-              <h3 className="font-bold text-zinc-200 text-sm">Guild Audited Ledgers</h3>
+              <h3 className="font-bold text-zinc-200 text-sm">GUG-Luck Jackpot Payouts</h3>
               <p className="text-ash leading-relaxed">
-                Fund custodians regularly audit underlying company ledgers so passive investors never have to micromanage reports.
+                For citizens seeking asymmetric upside and fortune windfalls from high-risk expeditions.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div className="h-8 w-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                <Swords className="w-4 h-4" />
+              </div>
+              <h3 className="font-bold text-zinc-200 text-sm">GUG-WarBased Military Hedge</h3>
+              <p className="text-ash leading-relaxed">
+                Turn sovereign conflict into weekly gold dividends as weapons and armor demand reaches peak levels.
               </p>
             </div>
           </div>
@@ -224,17 +214,17 @@ export default function FundsPage() {
         <div className="border border-cyan-500/30 bg-cyan-950/20 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex flex-col gap-1.5 text-center sm:text-left">
             <h3 className="font-bold text-base text-zinc-100">
-              Want to list a Syndicate Fund for your Guild?
+              Ready to invest when funds launch?
             </h3>
             <p className="text-xs text-ash max-w-md">
-              High-ranking guild masters can propose custom multi-company funds to the High Registrar.
+              Keep gold in your purse to be among the first unit holders on opening bell day.
             </p>
           </div>
           <Link
-            href="/ipo"
+            href="/trade"
             className="h-10 px-6 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center transition shrink-0 shadow-lg shadow-cyan-600/20"
           >
-            Apply for Fund Charter
+            Explore Active Stocks Now
           </Link>
         </div>
       </main>

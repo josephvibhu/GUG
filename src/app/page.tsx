@@ -215,82 +215,87 @@ export default function HomePage() {
         {/* TAB 2: CRYPTO & TOKENS (COMING SOON) */}
         {tab === "CRYPTO" && (
           <section className="flex flex-col gap-6 animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-purple-950/20 border border-purple-500/30 rounded-2xl p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-950/20 border border-amber-500/30 rounded-2xl p-5">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 shrink-0">
-                  <Coins className="w-5 h-5" />
+                <div className="h-10 w-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0 text-xl">
+                  🍞
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-zinc-100 text-base">Crypto & Commodity Tokens</h3>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    <h3 className="font-bold text-zinc-100 text-base">Crypto: BREADCOIN ($BREADCOIN)</h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
                       COMING SOON
                     </span>
                   </div>
                   <p className="text-xs text-ash mt-0.5">
-                    Automated market makers (AMM), wrapped iron ore, and decentralized commodity reserves for Parlamentum.
+                    The premier decentralized carbohydrate asset of Parlamentum, backed by sovereign realm bakeries and grain reserves.
                   </p>
                 </div>
               </div>
               <Link
                 href="/crypto"
-                className="h-8 px-4 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shrink-0"
+                className="h-8 px-4 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs flex items-center gap-1.5 transition shrink-0"
               >
-                Full Details <ArrowRight className="w-3.5 h-3.5" />
+                Whitepaper <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                {
-                  ticker: "$wIRON",
-                  name: "Wrapped Raw Iron",
-                  tag: "Commodity",
-                  desc: "1:1 physical iron ore backed in vault reserves. Enables zero-tax instant resource swaps.",
-                  yield: "Zero slippage",
-                },
-                {
-                  ticker: "$GRAINX",
-                  name: "Grain & Crop Index",
-                  tag: "Synthetic",
-                  desc: "Tracks multi-realm farm harvest outputs and food prices algorithmically.",
-                  yield: "Variable yield",
-                },
-                {
-                  ticker: "$GUILD",
-                  name: "Merchant Governance",
-                  tag: "Governance",
-                  desc: "Vote on exchange listing standards and collect 35% of platform transaction fees.",
-                  yield: "Weekly dividend",
-                },
-                {
-                  ticker: "$GOLDX",
-                  name: "Liquid Gold Vault",
-                  tag: "Reserve",
-                  desc: "Fractionalized sovereign gold treasury notes for automated micro-investments.",
-                  yield: "100% Backed",
-                },
-              ].map((token) => (
-                <div
-                  key={token.ticker}
-                  className="bg-pane border border-rule hover:border-zinc-700 rounded-xl p-4 flex flex-col justify-between gap-3 shadow-md"
-                >
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-base text-purple-300">{token.ticker}</span>
-                      <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-zinc-900 border border-rule text-zinc-400">
-                        {token.tag}
-                      </span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2 bg-pane border border-amber-500/30 rounded-2xl p-6 flex flex-col justify-between gap-4 shadow-lg">
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">🍞</span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-xl text-amber-300">$BREADCOIN</span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/40">
+                            Freshly Baked
+                          </span>
+                        </div>
+                        <span className="text-xs text-ash">The Holy Grain of Parlamentum</span>
+                      </div>
                     </div>
-                    <div className="text-xs font-semibold text-zinc-200">{token.name}</div>
-                    <p className="text-[11px] text-ash leading-relaxed">{token.desc}</p>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-amber-950/60 border border-amber-800/40 text-amber-300">
+                      Decentralized Reserve
+                    </span>
                   </div>
-                  <div className="border-t border-rule/60 pt-2.5 flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-500">Feature:</span>
-                    <span className="font-mono text-zinc-300">{token.yield}</span>
+                  <p className="text-xs text-paper leading-relaxed mt-1">
+                    Backed 1:1 by grain reserves and bakery production across the sovereign realms. Stakable in registered realm bakeries for fresh daily loaf yields, zero inflation, and 100% wholesome nutrition.
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2 border-t border-rule/60 pt-3 text-[11px] font-mono">
+                  <div>
+                    <span className="text-zinc-500 block font-sans text-[10px]">Supply Cap</span>
+                    <span className="text-zinc-200 font-bold">1,000,000 BREAD</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500 block font-sans text-[10px]">Backing</span>
+                    <span className="text-zinc-200 font-bold">Realm Bakeries</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500 block font-sans text-[10px]">Feature</span>
+                    <span className="text-amber-400 font-bold">Daily Loaf Staking</span>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="bg-pane/40 border border-rule rounded-2xl p-5 flex flex-col justify-between gap-3">
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+                    <RefreshCw className="w-3.5 h-3.5 text-bullion" /> 24/7 Liquidity Swaps
+                  </span>
+                  <p className="text-[11px] text-ash leading-relaxed">
+                    Swap gold directly for BREADCOIN with automated market maker (AMM) pricing without having to wait for the trading floor bells.
+                  </p>
+                </div>
+                <Link
+                  href="/crypto"
+                  className="w-full py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs text-center transition border border-rule"
+                >
+                  Explore BREADCOIN Details
+                </Link>
+              </div>
             </div>
           </section>
         )}
@@ -311,7 +316,7 @@ export default function HomePage() {
                     </span>
                   </div>
                   <p className="text-xs text-ash mt-0.5">
-                    Invest in baskets of companies with automated Friday dividend distributions and guild-backed ledgers.
+                    Three official syndicate funds: Guaranteed yield, High-Roller luck, and Military war logistics.
                   </p>
                 </div>
               </div>
@@ -319,48 +324,53 @@ export default function HomePage() {
                 href="/funds"
                 className="h-8 px-4 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shrink-0"
               >
-                Full Details <ArrowRight className="w-3.5 h-3.5" />
+                Prospectus <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 {
-                  ticker: "HISF",
-                  name: "Heavy Industry Index",
-                  tag: "Industrial",
-                  desc: "Basket of top iron mines, toolworks, and smelting foundries across all realms.",
-                  yield: "8.5% weekly target",
+                  ticker: "GUG-Gurantee",
+                  name: "GUG-Gurantee Fund",
+                  tag: "Capital Protection",
+                  icon: "🛡️",
+                  desc: "100% underwritten by the High Operator Treasury. Zero risk of default with guaranteed weekly gold dividends.",
+                  yield: "7.5% weekly guaranteed",
+                  border: "border-amber-500/30",
+                  text: "text-amber-300",
                 },
                 {
-                  ticker: "FAT",
-                  name: "Food & Agriculture Trust",
-                  tag: "Commodity",
-                  desc: "Invests in grain farms, bakeries, and food distribution networks.",
-                  yield: "11.2% weekly target",
+                  ticker: "GUG-Luck",
+                  name: "GUG-Luck High-Roller",
+                  tag: "Speculative Growth",
+                  icon: "🎲",
+                  desc: "High-variance basket investing in deep-mine expeditions and frontier exploration for jackpot dividend windfalls.",
+                  yield: "0% - 35% jackpot yield",
+                  border: "border-purple-500/30",
+                  text: "text-purple-300",
                 },
                 {
-                  ticker: "PHYD",
-                  name: "High-Yield Dividend Fund",
-                  tag: "Income",
-                  desc: "Aggregates the top 5 dividend-paying companies for automated Friday payouts.",
-                  yield: "14.8% weekly target",
-                },
-                {
-                  ticker: "FMCS",
-                  name: "Founders Syndicate Trust",
-                  tag: "Blue-Chip",
-                  desc: "Conservative multi-sector holding syndicate managed by certified patriarchs.",
-                  yield: "9.0% weekly target",
+                  ticker: "GUG-WarBased",
+                  name: "GUG-WarBased Logistics",
+                  tag: "War Commodities",
+                  icon: "⚔️",
+                  desc: "Allocated strictly across weaponsmith forges, armor smelters, and war fleets to profit from realm military battles.",
+                  yield: "15% - 25% conflict yield",
+                  border: "border-rose-500/30",
+                  text: "text-rose-300",
                 },
               ].map((fund) => (
                 <div
                   key={fund.ticker}
-                  className="bg-pane border border-rule hover:border-zinc-700 rounded-xl p-4 flex flex-col justify-between gap-3 shadow-md"
+                  className={`bg-pane border ${fund.border} hover:border-zinc-500 rounded-xl p-5 flex flex-col justify-between gap-3 shadow-md`}
                 >
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-base text-cyan-300">{fund.ticker}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{fund.icon}</span>
+                        <span className={`font-mono font-bold text-base ${fund.text}`}>{fund.ticker}</span>
+                      </div>
                       <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-zinc-900 border border-rule text-zinc-400">
                         {fund.tag}
                       </span>
@@ -369,8 +379,8 @@ export default function HomePage() {
                     <p className="text-[11px] text-ash leading-relaxed">{fund.desc}</p>
                   </div>
                   <div className="border-t border-rule/60 pt-2.5 flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-500">Yield Goal:</span>
-                    <span className="font-mono text-emerald-400 font-semibold">{fund.yield}</span>
+                    <span className="text-zinc-500">Target Return:</span>
+                    <span className="font-mono text-emerald-400 font-bold">{fund.yield}</span>
                   </div>
                 </div>
               ))}

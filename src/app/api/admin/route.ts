@@ -110,6 +110,65 @@ export async function GET() {
     const ledgerEntries = await getLedgerEntries(60);
     const tradeInsights = await getTradeInsights();
 
+    // Financial & Treasury Metrics for the Operator
+    const [treasuryRes, operatorRes, tradeStatsRes, walletStatsRes] = await Promise.all([
+      db.execute("SELECT cash_balance, locked_cash FROM users WHERE id = 'usr_treasury'"),
+      db.execute({ sql: "SELECT cash_balance, locked_cash FROM users WHERE id = ?", args: [user.id] }),
+      db.execute("SELECT COUNT(*) as trade_count, COALESCE(SUM(total), 0) as total_volume FROM trades"),
+      db.execute(`
+        SELECT 
+          COALESCE(SUM(CASE WHEN type = 'DEPOSIT' AND status IN ('CREDITED', 'COMPLETED') THEN amount ELSE 0 END), 0) as total_deposits,
+          COALESCE(SUM(CASE WHEN type = 'DEPOSIT' AND status IN ('CREDITED', 'COMPLETED') THEN iron_units ELSE 0 END), 0) as total_iron_deposited,
+          COALESCE(SUM(CASE WHEN type = 'WITHDRAWAL' AND status = 'COMPLETED' THEN amount ELSE 0 END), 0) as total_withdrawals,
+          COALESCE(SUM(CASE WHEN type = 'WITHDRAWAL' AND status = 'PENDING' THEN amount ELSE 0 END), 0) as pending_withdrawals
+        FROM wallet_transactions
+      `),
+    ]);
+
+    const treasuryRow: any = treasuryRes.rows[0] || { cash_balance: 0, locked_cash: 0 };
+    const operatorRow: any = operatorRes.rows[0] || { cash_balance: user.cashBalance || 0, locked_cash: user.lockedCash || 0 };
+    const tradeStatsRow: any = tradeStatsRes.rows[0] || { trade_count: 0, total_volume: 0 };
+    const walletStatsRow: any = walletStatsRes.rows[0] || { total_deposits: 0, total_iron_deposited: 0, total_withdrawals: 0, pending_withdrawals: 0 };
+
+    const operatorCash = Number(operatorRow.cash_balance || 0);
+    const operatorLocked = Number(operatorRow.locked_cash || 0);
+    const treasuryCash = Number(treasuryRow.cash_balance || 0);
+
+    let totalCitizenCash = 0;
+    let totalCitizenLocked = 0;
+    for (const c of enrichedCitizens) {
+      totalCitizenCash += Number(c.cash_balance || 0);
+      totalCitizenLocked += Number(c.locked_cash || 0);
+    }
+
+    const tradeVolume = Number(tradeStatsRow.total_volume || 0);
+    const tradeFeeRate = (Number(tradeFee) || 0.5) / 100;
+    const totalTradeFees = Math.round(tradeVolume * tradeFeeRate * 100) / 100;
+    const totalListingFees = companies.length * (Number(listingFee) || 200);
+    const totalPlatformProfit = Math.round((treasuryCash + totalTradeFees + totalListingFees) * 100) / 100;
+
+    const financialSummary = {
+      operatorName: user.displayName || user.username,
+      operatorCash,
+      operatorLocked,
+      operatorTotal: Math.round((operatorCash + operatorLocked) * 100) / 100,
+      treasuryBalance: treasuryCash,
+      totalCitizenGold: Math.round((totalCitizenCash + totalCitizenLocked) * 100) / 100,
+      totalCitizenCash: Math.round(totalCitizenCash * 100) / 100,
+      totalCitizenLocked: Math.round(totalCitizenLocked * 100) / 100,
+      citizenCount: enrichedCitizens.length,
+      totalTradeVolume: tradeVolume,
+      tradeCount: Number(tradeStatsRow.trade_count || 0),
+      totalTradeFees,
+      totalListingFees,
+      totalPlatformProfit,
+      totalDepositedGold: Number(walletStatsRow.total_deposits || 0),
+      totalIronUnitsDeposited: Number(walletStatsRow.total_iron_deposited || 0),
+      totalWithdrawnGold: Number(walletStatsRow.total_withdrawals || 0),
+      pendingWithdrawalsGold: Number(walletStatsRow.pending_withdrawals || 0),
+      netGoldInCustody: Math.round((Number(walletStatsRow.total_deposits || 0) - Number(walletStatsRow.total_withdrawals || 0)) * 100) / 100,
+    };
+
     return NextResponse.json({
       success: true,
       settings: {
@@ -129,6 +188,7 @@ export async function GET() {
       nextFriday: nextFriday.toISOString(),
       ledgerEntries,
       tradeInsights,
+      financialSummary,
     });
   } catch (error: any) {
     console.error("GET /api/admin error:", error);

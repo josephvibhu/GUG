@@ -133,6 +133,7 @@ export default function AdminPage() {
   const [tradeInsights, setTradeInsights] = useState<any | null>(null);
   const [ledgerCreditingId, setLedgerCreditingId] = useState<string | null>(null);
   const [manualCreditUser, setManualCreditUser] = useState<{ [id: string]: string }>({});
+  const [financialSummary, setFinancialSummary] = useState<any | null>(null);
   
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -151,6 +152,7 @@ export default function AdminPage() {
         if (data.nextFriday) setNextFriday(data.nextFriday);
         if (data.ledgerEntries) setLedgerEntries(data.ledgerEntries);
         if (data.tradeInsights) setTradeInsights(data.tradeInsights);
+        if (data.financialSummary) setFinancialSummary(data.financialSummary);
         if (data.companies && data.companies.length > 0 && !divCompanyId) {
           setDivCompanyId(data.companies[0].id);
         }
@@ -665,6 +667,145 @@ export default function AdminPage() {
           >
             {feedback.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
             <span>{feedback.message}</span>
+          </div>
+        )}
+
+        {/* Operator Financial Ledger & Vault Profits */}
+        {financialSummary && (
+          <div className="bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-amber-950/20 border border-amber-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/80 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                  <Coins className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-extrabold text-white text-lg tracking-tight">
+                      Operator Vault & Exchange Profit Ledger
+                    </h2>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      LIVE AUDIT
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Real-time balances of operator purse, platform treasury revenue, and total gold in custody.
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[10px] font-sans text-zinc-400 uppercase tracking-wider block">
+                  Total Platform Net Profit
+                </span>
+                <span className="font-mono text-xl sm:text-2xl font-black text-emerald-400">
+                  +{financialSummary.totalPlatformProfit.toLocaleString()} gold
+                </span>
+              </div>
+            </div>
+
+            {/* Key Metric Pillars */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 font-mono">
+              {/* Operator Personal Purse */}
+              <div className="p-4 bg-zinc-950/90 border border-amber-500/30 rounded-xl flex flex-col justify-between gap-1 shadow-inner">
+                <div className="flex items-center justify-between text-[11px] font-sans text-amber-300 font-semibold">
+                  <span>Your Operator Purse</span>
+                  <Wallet className="w-3.5 h-3.5 text-amber-400" />
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-amber-400 mt-1">
+                  {financialSummary.operatorCash.toLocaleString()} <span className="text-xs text-amber-300/80 font-normal">gold</span>
+                </div>
+                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
+                  <span>In Open Orders:</span>
+                  <span className="text-zinc-300 font-mono">{financialSummary.operatorLocked.toLocaleString()} gold</span>
+                </div>
+              </div>
+
+              {/* Exchange Treasury Vault */}
+              <div className="p-4 bg-zinc-950/90 border border-zinc-800 rounded-xl flex flex-col justify-between gap-1 shadow-inner">
+                <div className="flex items-center justify-between text-[11px] font-sans text-zinc-300 font-semibold">
+                  <span>Exchange Treasury</span>
+                  <Landmark className="w-3.5 h-3.5 text-cyan-400" />
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-cyan-300 mt-1">
+                  {financialSummary.treasuryBalance.toLocaleString()} <span className="text-xs text-cyan-400/80 font-normal">gold</span>
+                </div>
+                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
+                  <span>Vault Account:</span>
+                  <span className="text-zinc-400 font-mono">usr_treasury</span>
+                </div>
+              </div>
+
+              {/* Trade Fees Earned */}
+              <div className="p-4 bg-zinc-950/90 border border-zinc-800 rounded-xl flex flex-col justify-between gap-1 shadow-inner">
+                <div className="flex items-center justify-between text-[11px] font-sans text-zinc-300 font-semibold">
+                  <span>Trading Fees (0.5%)</span>
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
+                  +{financialSummary.totalTradeFees.toLocaleString()} <span className="text-xs text-emerald-300/80 font-normal">gold</span>
+                </div>
+                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
+                  <span>Vol: {financialSummary.totalTradeVolume.toLocaleString()}g</span>
+                  <span className="text-zinc-300">{financialSummary.tradeCount} trades</span>
+                </div>
+              </div>
+
+              {/* Citizen Gold Liabilities */}
+              <div className="p-4 bg-zinc-950/90 border border-zinc-800 rounded-xl flex flex-col justify-between gap-1 shadow-inner">
+                <div className="flex items-center justify-between text-[11px] font-sans text-zinc-300 font-semibold">
+                  <span>Total Citizen Gold</span>
+                  <Users className="w-3.5 h-3.5 text-purple-400" />
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-purple-300 mt-1">
+                  {financialSummary.totalCitizenGold.toLocaleString()} <span className="text-xs text-purple-300/80 font-normal">gold</span>
+                </div>
+                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
+                  <span>Circulating Supply</span>
+                  <span className="text-zinc-300">{financialSummary.citizenCount} citizens</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Inflow vs Outflow Ledger Breakdown */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+              <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase text-zinc-400 font-sans block">Total Gold Deposited (Inflow)</span>
+                  <span className="font-mono text-sm font-bold text-emerald-400">
+                    +{financialSummary.totalDepositedGold.toLocaleString()} gold
+                  </span>
+                </div>
+                <span className="text-[10px] text-zinc-500 font-mono bg-zinc-900 px-2 py-1 rounded border border-rule">
+                  {financialSummary.totalIronUnitsDeposited.toLocaleString()} Raw Iron
+                </span>
+              </div>
+
+              <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase text-zinc-400 font-sans block">Total Gold Withdrawn (Outflow)</span>
+                  <span className="font-mono text-sm font-bold text-rose-400">
+                    -{financialSummary.totalWithdrawnGold.toLocaleString()} gold
+                  </span>
+                </div>
+                {financialSummary.pendingWithdrawalsGold > 0 && (
+                  <span className="text-[10px] text-amber-300 font-mono bg-amber-500/10 px-2 py-1 rounded border border-amber-500/30">
+                    {financialSummary.pendingWithdrawalsGold}g pending
+                  </span>
+                )}
+              </div>
+
+              <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase text-zinc-400 font-sans block">Net Gold Held Under Custody</span>
+                  <span className="font-mono text-sm font-bold text-zinc-100">
+                    {financialSummary.netGoldInCustody.toLocaleString()} gold
+                  </span>
+                </div>
+                <span className="text-[10px] text-bullion font-mono bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
+                  IPO Fees: +{financialSummary.totalIpoFees.toLocaleString()}g
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
