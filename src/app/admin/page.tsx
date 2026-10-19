@@ -1359,16 +1359,46 @@ export default function AdminPage() {
                             <span>{app.name}</span>
                             <span className="font-mono text-amber-400 font-bold">(${app.ticker})</span>
                           </div>
-                          <div className="text-[11px] text-zinc-400 mt-0.5 flex items-center gap-2">
+                          <div className="text-[11px] text-zinc-400 mt-0.5 flex flex-wrap items-center gap-2">
                             <span>Sector: <strong className="text-zinc-300">{app.sector}</strong></span>
                             <span>·</span>
                             <span>Applicant: <strong className="text-purple-300">@{app.parlamentumName}</strong></span>
+                            <span>·</span>
+                            <span className="px-2 py-0.5 rounded bg-indigo-950/60 border border-indigo-500/40 text-indigo-300 font-mono font-bold text-[10px]">
+                              💬 Discord: {app.discordId ? `@${app.discordId}` : "None"}
+                            </span>
                           </div>
                         </div>
                       </div>
 
                       <div className="text-right font-mono text-[11px] text-zinc-400">
                         <div>Submitted: {new Date(app.createdAt).toLocaleDateString()} {new Date(app.createdAt).toLocaleTimeString()}</div>
+                      </div>
+                    </div>
+
+                    {/* Rich Metrics & Backing Assets Breakdown */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 bg-zinc-900/80 rounded-lg border border-zinc-800 text-[11px]">
+                      <div>
+                        <span className="text-zinc-500 text-[10px] uppercase font-bold block">Model & Classification</span>
+                        <span className="text-amber-400 font-semibold flex items-center gap-1 mt-0.5">
+                          {app.businessType === "FACTORY" ? "🏭 Industrial / Factory" : app.businessType === "PRESS" ? "📰 Newspaper & Press" : "⚜️ Special Enterprise"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500 text-[10px] uppercase font-bold block">Est. Weekly Revenue</span>
+                        <span className="font-mono text-emerald-400 font-bold text-xs mt-0.5 block">
+                          {app.weeklyRevenue ? `${Number(app.weeklyRevenue).toLocaleString()} gold / wk` : "0 gold"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500 text-[10px] uppercase font-bold block">Specific Production / Metrics</span>
+                        <span className="font-mono text-zinc-300 text-xs mt-0.5 block truncate">
+                          {app.businessType === "FACTORY" 
+                            ? `Lvl ${app.factoryLevel || 1} · ${app.workersCount || 0} workers · ${app.productionOutput || "Standard"}`
+                            : app.businessType === "PRESS"
+                            ? `${app.pressViewers || "General"} readers (${app.pressFrequency || "Weekly"})`
+                            : (app.specialNotes || "Special Lore")}
+                        </span>
                       </div>
                     </div>
 

@@ -34,11 +34,24 @@ export async function POST(request: Request) {
       proposedIpoPrice, 
       proposedFounderRetainPercent, 
       logoUrl, 
-      parlamentumName 
+      parlamentumName,
+      discordId,
+      businessType,
+      weeklyRevenue,
+      factoryLevel,
+      workersCount,
+      productionOutput,
+      pressViewers,
+      pressFrequency,
+      specialNotes,
     } = body;
 
     if (!ticker || !name || !description || !sector || !proposedTotalShares || !proposedIpoPrice) {
-      return NextResponse.json({ success: false, message: "All IPO charter request fields are required" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "All IPO charter core fields are required." }, { status: 400 });
+    }
+
+    if (!discordId || !discordId.trim()) {
+      return NextResponse.json({ success: false, message: "Please provide your Discord ID (e.g. username) so the High Registrar can coordinate your listing." }, { status: 400 });
     }
 
     let retainPercent = 50;
@@ -59,6 +72,15 @@ export async function POST(request: Request) {
       proposedIpoPrice: Number(proposedIpoPrice),
       proposedFounderRetainPercent: retainPercent,
       logoUrl: logoUrl || "🏛️",
+      discordId: discordId.trim(),
+      businessType: businessType || "FACTORY",
+      weeklyRevenue: weeklyRevenue !== undefined && !isNaN(Number(weeklyRevenue)) ? Math.max(0, Number(weeklyRevenue)) : 0,
+      factoryLevel: factoryLevel !== undefined && !isNaN(Number(factoryLevel)) ? Number(factoryLevel) : undefined,
+      workersCount: workersCount !== undefined && !isNaN(Number(workersCount)) ? Number(workersCount) : undefined,
+      productionOutput: productionOutput ? String(productionOutput).trim() : undefined,
+      pressViewers: pressViewers ? String(pressViewers).trim() : undefined,
+      pressFrequency: pressFrequency ? String(pressFrequency).trim() : undefined,
+      specialNotes: specialNotes ? String(specialNotes).trim() : undefined,
     });
 
     return NextResponse.json(res);

@@ -659,6 +659,15 @@ export interface IPOApplication {
   operatorNotes?: string;
   finalPrice?: number;
   createdAt: string;
+  discordId?: string;
+  businessType?: "FACTORY" | "PRESS" | "SPECIAL";
+  weeklyRevenue?: number;
+  factoryLevel?: number;
+  workersCount?: number;
+  productionOutput?: string;
+  pressViewers?: string;
+  pressFrequency?: string;
+  specialNotes?: string;
 }
 
 export async function submitIPOApplication(params: {
@@ -672,6 +681,15 @@ export async function submitIPOApplication(params: {
   proposedIpoPrice: number;
   proposedFounderRetainPercent: number;
   logoUrl?: string;
+  discordId?: string;
+  businessType?: "FACTORY" | "PRESS" | "SPECIAL";
+  weeklyRevenue?: number;
+  factoryLevel?: number;
+  workersCount?: number;
+  productionOutput?: string;
+  pressViewers?: string;
+  pressFrequency?: string;
+  specialNotes?: string;
 }): Promise<{ success: boolean; message: string; applicationId?: string }> {
   await initDb();
   const db = getDb();
@@ -703,8 +721,13 @@ export async function submitIPOApplication(params: {
   const now = new Date().toISOString();
 
   await db.execute({
-    sql: `INSERT INTO ipo_applications (id, user_id, parlamentum_name, ticker, name, description, sector, proposed_total_shares, proposed_ipo_price, proposed_founder_retain_percent, logo_url, status, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)`,
+    sql: `INSERT INTO ipo_applications (
+            id, user_id, parlamentum_name, ticker, name, description, sector,
+            proposed_total_shares, proposed_ipo_price, proposed_founder_retain_percent,
+            logo_url, status, created_at,
+            discord_id, business_type, weekly_revenue, factory_level, workers_count,
+            production_output, press_viewers, press_frequency, special_notes
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       appId,
       params.userId,
@@ -718,6 +741,15 @@ export async function submitIPOApplication(params: {
       Math.min(99.9, Math.max(0.1, Math.round(params.proposedFounderRetainPercent * 100) / 100)),
       params.logoUrl || "🏛️",
       now,
+      params.discordId ? params.discordId.trim() : null,
+      params.businessType || "FACTORY",
+      params.weeklyRevenue ? Number(params.weeklyRevenue) : 0,
+      params.factoryLevel ? Number(params.factoryLevel) : null,
+      params.workersCount ? Number(params.workersCount) : null,
+      params.productionOutput ? params.productionOutput.trim() : null,
+      params.pressViewers ? params.pressViewers.trim() : null,
+      params.pressFrequency ? params.pressFrequency.trim() : null,
+      params.specialNotes ? params.specialNotes.trim() : null,
     ],
   });
 
@@ -755,6 +787,15 @@ export async function getIPOApplications(status?: string): Promise<IPOApplicatio
     operatorNotes: r.operator_notes ? String(r.operator_notes) : undefined,
     finalPrice: r.final_price ? Number(r.final_price) : undefined,
     createdAt: String(r.created_at),
+    discordId: r.discord_id ? String(r.discord_id) : undefined,
+    businessType: (r.business_type as any) || "FACTORY",
+    weeklyRevenue: r.weekly_revenue != null ? Number(r.weekly_revenue) : 0,
+    factoryLevel: r.factory_level != null ? Number(r.factory_level) : undefined,
+    workersCount: r.workers_count != null ? Number(r.workers_count) : undefined,
+    productionOutput: r.production_output ? String(r.production_output) : undefined,
+    pressViewers: r.press_viewers ? String(r.press_viewers) : undefined,
+    pressFrequency: r.press_frequency ? String(r.press_frequency) : undefined,
+    specialNotes: r.special_notes ? String(r.special_notes) : undefined,
   }));
 }
 
@@ -783,6 +824,15 @@ export async function getUserIPOApplications(userId: string): Promise<IPOApplica
     operatorNotes: r.operator_notes ? String(r.operator_notes) : undefined,
     finalPrice: r.final_price ? Number(r.final_price) : undefined,
     createdAt: String(r.created_at),
+    discordId: r.discord_id ? String(r.discord_id) : undefined,
+    businessType: (r.business_type as any) || "FACTORY",
+    weeklyRevenue: r.weekly_revenue != null ? Number(r.weekly_revenue) : 0,
+    factoryLevel: r.factory_level != null ? Number(r.factory_level) : undefined,
+    workersCount: r.workers_count != null ? Number(r.workers_count) : undefined,
+    productionOutput: r.production_output ? String(r.production_output) : undefined,
+    pressViewers: r.press_viewers ? String(r.press_viewers) : undefined,
+    pressFrequency: r.press_frequency ? String(r.press_frequency) : undefined,
+    specialNotes: r.special_notes ? String(r.special_notes) : undefined,
   }));
 }
 

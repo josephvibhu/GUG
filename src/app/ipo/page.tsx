@@ -13,7 +13,15 @@ import {
   Clock,
   FileText,
   User,
-  Percent
+  Percent,
+  Factory,
+  Newspaper,
+  Crown,
+  MessageSquare,
+  TrendingUp,
+  Users,
+  Gauge,
+  Sparkles
 } from "lucide-react";
 
 interface UserApplication {
@@ -29,10 +37,29 @@ interface UserApplication {
   operatorNotes?: string;
   finalPrice?: number;
   createdAt: string;
+  discordId?: string;
+  businessType?: "FACTORY" | "PRESS" | "SPECIAL";
+  weeklyRevenue?: number;
+  factoryLevel?: number;
+  workersCount?: number;
+  productionOutput?: string;
+  pressViewers?: string;
+  pressFrequency?: string;
+  specialNotes?: string;
 }
 
 export default function IpoPage() {
   const [parlamentumName, setParlamentumName] = useState("");
+  const [discordId, setDiscordId] = useState("");
+  const [businessType, setBusinessType] = useState<"FACTORY" | "PRESS" | "SPECIAL">("FACTORY");
+  const [weeklyRevenue, setWeeklyRevenue] = useState("500");
+  const [factoryLevel, setFactoryLevel] = useState("1");
+  const [workersCount, setWorkersCount] = useState("5");
+  const [productionOutput, setProductionOutput] = useState("");
+  const [pressViewers, setPressViewers] = useState("");
+  const [pressFrequency, setPressFrequency] = useState("Weekly Edition");
+  const [specialNotes, setSpecialNotes] = useState("");
+
   const [ticker, setTicker] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -49,6 +76,7 @@ export default function IpoPage() {
 
   const numTotalShares = parseInt(totalShares, 10) || 0;
   const numIpoPrice = parseFloat(ipoPrice) || 0;
+  const numWeeklyRevenue = parseFloat(weeklyRevenue) || 0;
   const initialMarketCap = numTotalShares * numIpoPrice;
   const founderPercent = parseFloat((100 - floatPercent).toFixed(2));
   const rawFounderShares = Math.floor(numTotalShares * (founderPercent / 100));
@@ -56,16 +84,18 @@ export default function IpoPage() {
   const founderShares = numTotalShares - publicFloat;
   const publicFloatVal = publicFloat * numIpoPrice;
 
-  const emojiList = ["🏛️", "⚙️", "⚒️", "🗡️", "💎", "🌾", "🚢", "🚂", "🛡️", "⚗️", "👑"];
+  const emojiList = ["🏛️", "⚙️", "⚒️", "🗡️", "💎", "🌾", "🚢", "🚂", "🛡️", "⚗️", "👑", "📜", "📰"];
 
   const sectors = [
     "Mining & Raw Iron Extraction",
     "Industry & Metallurgy",
     "Agriculture & Grain Trade",
     "Banking & Corporate Credit",
+    "Newspaper & Public Press",
     "Logistics & Courier Guild",
     "Military & Defense Outfitting",
     "Parliamentary Faction Syndicate",
+    "Special & Cultural Enterprise",
   ];
 
   const fetchApplications = async () => {
@@ -108,6 +138,10 @@ export default function IpoPage() {
       setError("Please provide your exact in-game Parlamentum character name.");
       return;
     }
+    if (!discordId.trim()) {
+      setError("Please provide your Discord ID (e.g. username) so the operator can coordinate listing terms.");
+      return;
+    }
     if (!description.trim()) {
       setError("Please describe your business lore and in-game backing assets.");
       return;
@@ -121,6 +155,15 @@ export default function IpoPage() {
       return;
     }
 
+    if (businessType === "FACTORY" && !productionOutput.trim()) {
+      setError("Please specify your weekly production output (e.g. 500 Iron / week).");
+      return;
+    }
+    if (businessType === "PRESS" && !pressViewers.trim()) {
+      setError("Please specify your average readers/viewers per edition.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -129,6 +172,15 @@ export default function IpoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           parlamentumName: parlamentumName.trim(),
+          discordId: discordId.trim(),
+          businessType,
+          weeklyRevenue: numWeeklyRevenue,
+          factoryLevel: businessType === "FACTORY" ? parseInt(factoryLevel, 10) || 1 : undefined,
+          workersCount: businessType === "FACTORY" ? parseInt(workersCount, 10) || 0 : undefined,
+          productionOutput: businessType === "FACTORY" ? productionOutput.trim() : undefined,
+          pressViewers: businessType === "PRESS" ? pressViewers.trim() : undefined,
+          pressFrequency: businessType === "PRESS" ? pressFrequency.trim() : undefined,
+          specialNotes: businessType === "SPECIAL" ? specialNotes.trim() : undefined,
           ticker: cleanTicker,
           name: name.trim(),
           description: description.trim(),
@@ -148,6 +200,9 @@ export default function IpoPage() {
         setTicker("");
         setName("");
         setDescription("");
+        setProductionOutput("");
+        setPressViewers("");
+        setSpecialNotes("");
         fetchApplications();
       } else {
         setError(data.message || "Failed to submit IPO charter application.");
@@ -198,7 +253,11 @@ export default function IpoPage() {
                             <span>{app.name}</span>
                             <span className="font-mono text-amber-400">(${app.ticker})</span>
                           </div>
-                          <span className="text-[10px] text-zinc-400">{app.sector}</span>
+                          <div className="flex items-center gap-2 text-[10px] text-zinc-400 mt-0.5">
+                            <span>{app.sector}</span>
+                            <span>·</span>
+                            <span className="text-purple-300 font-mono">Discord: @{app.discordId || "N/A"}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -211,6 +270,48 @@ export default function IpoPage() {
                       }`}>
                         {app.status === "PENDING" ? "🟡 Under Review" : app.status === "APPROVED" ? "🟢 Listed on Bourse" : "🔴 Rejected"}
                       </span>
+                    </div>
+
+                    {/* Specific Metrics Badge */}
+                    <div className="mt-2.5 p-2 bg-zinc-900/60 rounded border border-zinc-800 text-[11px] flex flex-wrap items-center gap-3 text-zinc-300">
+                      <div>
+                        <span className="text-zinc-500 text-[10px] block">Weekly Rev</span>
+                        <span className="font-mono text-emerald-400 font-bold">{app.weeklyRevenue ? `${app.weeklyRevenue.toLocaleString()}g` : "0g"}</span>
+                      </div>
+                      {app.businessType === "FACTORY" && (
+                        <>
+                          <div>
+                            <span className="text-zinc-500 text-[10px] block">Factory Lvl</span>
+                            <span className="font-mono text-white">Lvl {app.factoryLevel || 1}</span>
+                          </div>
+                          <div>
+                            <span className="text-zinc-500 text-[10px] block">Workers</span>
+                            <span className="font-mono text-white">{app.workersCount || 0}</span>
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-zinc-500 text-[10px] block">Output</span>
+                            <span className="font-mono text-amber-300 truncate block">{app.productionOutput || "Standard"}</span>
+                          </div>
+                        </>
+                      )}
+                      {app.businessType === "PRESS" && (
+                        <>
+                          <div>
+                            <span className="text-zinc-500 text-[10px] block">Readership</span>
+                            <span className="font-mono text-white">{app.pressViewers || "General"}</span>
+                          </div>
+                          <div>
+                            <span className="text-zinc-500 text-[10px] block">Frequency</span>
+                            <span className="font-mono text-amber-300">{app.pressFrequency || "Weekly"}</span>
+                          </div>
+                        </>
+                      )}
+                      {app.businessType === "SPECIAL" && (
+                        <div className="flex-1">
+                          <span className="text-zinc-500 text-[10px] block">Special Lore</span>
+                          <span className="font-mono text-purple-300 truncate block">{app.specialNotes || "Special Enterprise"}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-zinc-800/80 font-mono text-[11px]">
@@ -272,21 +373,241 @@ export default function IpoPage() {
               </div>
             )}
 
-            {/* Applicant In-Game Name */}
+            {/* Applicant In-Game Name & Discord ID */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-zinc-300 block mb-1.5 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-amber-400" />
+                  Founder In-Game Character Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={parlamentumName}
+                  onChange={(e) => setParlamentumName(e.target.value)}
+                  placeholder="Exact character name in Parlamentum"
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400 transition"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-zinc-300 block mb-1.5 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-purple-400" />
+                  Founder Discord ID (Handle)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={discordId}
+                  onChange={(e) => setDiscordId(e.target.value)}
+                  placeholder="e.g. @josepharora or username#1234"
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-purple-400 transition"
+                />
+              </div>
+            </div>
+            <span className="text-[11px] text-zinc-400 -mt-2 block">
+              The High Registrar coordinates IPO price approval and inspects in-game assets directly with you on Discord.
+            </span>
+
+            {/* Business Model Category */}
+            <div className="pt-1">
+              <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
+                Enterprise Classification & Backing Model
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBusinessType("FACTORY")}
+                  className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col gap-1 ${
+                    businessType === "FACTORY"
+                      ? "bg-amber-500/10 border-amber-500/60 text-white"
+                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-amber-400">
+                    <Factory className="w-4 h-4" /> Industrial / Factory
+                  </div>
+                  <span className="text-[10px] text-zinc-400 leading-snug">
+                    Mines, metallurgy, farms & workshops
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBusinessType("PRESS")}
+                  className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col gap-1 ${
+                    businessType === "PRESS"
+                      ? "bg-blue-500/10 border-blue-500/60 text-white"
+                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-blue-400">
+                    <Newspaper className="w-4 h-4" /> Newspaper & Press
+                  </div>
+                  <span className="text-[10px] text-zinc-400 leading-snug">
+                    Gazettes, media circulation & journalism
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBusinessType("SPECIAL")}
+                  className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col gap-1 ${
+                    businessType === "SPECIAL"
+                      ? "bg-purple-500/10 border-purple-500/60 text-white"
+                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-purple-400">
+                    <Crown className="w-4 h-4" /> Special & Boutique
+                  </div>
+                  <span className="text-[10px] text-zinc-400 leading-snug">
+                    Mercenaries, banking & simplified lore
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Dynamic Specific Metrics Based on Category */}
+            {businessType === "FACTORY" && (
+              <div className="p-4 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-400 border-b border-zinc-800/80 pb-2">
+                  <Factory className="w-4 h-4" /> Industrial Facility & Production Metrics
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                      Factory / Facility Level
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={factoryLevel}
+                      onChange={(e) => setFactoryLevel(e.target.value)}
+                      placeholder="1"
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                      Number of Workers Employed
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={workersCount}
+                      onChange={(e) => setWorkersCount(e.target.value)}
+                      placeholder="5"
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                    Weekly Production Output
+                  </label>
+                  <input
+                    type="text"
+                    value={productionOutput}
+                    onChange={(e) => setProductionOutput(e.target.value)}
+                    placeholder="e.g. 1,200 Raw Iron units / week or 400 Weapon armaments / week"
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                  />
+                  <span className="text-[10px] text-zinc-400 mt-1 block">
+                    Your production rate verifies the commodity flow that powers shareholder dividends.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {businessType === "PRESS" && (
+              <div className="p-4 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-blue-400 border-b border-zinc-800/80 pb-2">
+                  <Newspaper className="w-4 h-4" /> Press Readership & Publication Metrics
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                      Average Readers / Edition Views
+                    </label>
+                    <input
+                      type="text"
+                      value={pressViewers}
+                      onChange={(e) => setPressViewers(e.target.value)}
+                      placeholder="e.g. ~850 active readers per edition"
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                      Publishing Frequency
+                    </label>
+                    <select
+                      value={pressFrequency}
+                      onChange={(e) => setPressFrequency(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer"
+                    >
+                      <option value="Daily Edition">Daily Edition</option>
+                      <option value="Weekly Edition">Weekly Edition</option>
+                      <option value="Bi-Weekly Edition">Bi-Weekly Edition</option>
+                      <option value="Special Bulletins">Special Bulletins</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {businessType === "SPECIAL" && (
+              <div className="p-4 bg-purple-950/20 rounded-xl border border-purple-500/30 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-purple-300 border-b border-purple-500/20 pb-2">
+                  <Sparkles className="w-4 h-4 text-purple-400" /> Simplified Special Enterprise Charter
+                </div>
+                <p className="text-[11px] text-zinc-300 leading-relaxed">
+                  For mercenary syndicates, diplomatic bureaus, lore societies, or unique commodity traders that don&apos;t run a standard factory or printing press.
+                </p>
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                    Special Services & Collateral Notes
+                  </label>
+                  <input
+                    type="text"
+                    value={specialNotes}
+                    onChange={(e) => setSpecialNotes(e.target.value)}
+                    placeholder="e.g. 50-man mercenary contract syndicate backing or state vault deposits"
+                    className="w-full bg-zinc-900 border border-purple-500/40 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Weekly Revenue */}
             <div>
-              <label className="text-xs font-semibold text-zinc-300 block mb-1.5 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-amber-400" />
-                Founder In-Game Parlamentum Character Name
+              <label className="text-xs font-semibold text-zinc-300 block mb-1.5 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                  Estimated Weekly Enterprise Revenue (Gold)
+                </span>
+                <span className="text-[11px] font-mono text-emerald-400">
+                  {numWeeklyRevenue > 0 ? `~${(numWeeklyRevenue * 52).toLocaleString()} gold / yr annualized` : "0 gold"}
+                </span>
               </label>
               <input
-                type="text"
-                value={parlamentumName}
-                onChange={(e) => setParlamentumName(e.target.value)}
-                placeholder="Exact character name in Parlamentum"
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400 transition"
+                type="number"
+                min="0"
+                step="50"
+                value={weeklyRevenue}
+                onChange={(e) => setWeeklyRevenue(e.target.value)}
+                placeholder="500"
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-400 transition"
               />
-              <span className="text-[11px] text-zinc-400 mt-1 block">
-                The operator will verify your character and negotiate listing terms in-game or via Discord.
+              <span className="text-[10px] text-zinc-400 mt-1 block">
+                Estimated gross or net gold earned by your business weekly in Parlamentum. Used by operators to evaluate dividend feasibility.
               </span>
             </div>
 
@@ -529,9 +850,28 @@ export default function IpoPage() {
 
             <div className="space-y-2.5 font-mono text-xs">
               <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
+                <span className="text-zinc-400 font-sans">Enterprise Model:</span>
+                <span className="font-bold text-amber-400 font-sans">
+                  {businessType === "FACTORY" ? "🏭 Industrial / Factory" : businessType === "PRESS" ? "📰 Newspaper & Press" : "⚜️ Special & Lore"}
+                </span>
+              </div>
+
+              <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
+                <span className="text-zinc-400 font-sans">Est. Weekly Revenue:</span>
+                <span className="font-bold text-emerald-400">{numWeeklyRevenue.toLocaleString()} gold / wk</span>
+              </div>
+
+              <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
                 <span className="text-zinc-400 font-sans">Initial Valuation (Market Cap):</span>
                 <span className="font-bold text-emerald-400">{initialMarketCap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold</span>
               </div>
+
+              {numWeeklyRevenue > 0 && (
+                <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
+                  <span className="text-zinc-400 font-sans">Valuation / Annual Revenue:</span>
+                  <span className="font-bold text-purple-300">{(initialMarketCap / (numWeeklyRevenue * 52)).toFixed(2)}x</span>
+                </div>
+              )}
 
               <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
                 <span className="text-zinc-400 font-sans">Public Float (% Putting Out):</span>

@@ -47,7 +47,7 @@ export default function WalletModal({
   const [balance, setBalance] = useState<number>(0);
   const [parlamentumName, setParlamentumName] = useState<string>("");
   const [depositAmount, setDepositAmount] = useState<string>("500");
-  const [withdrawAmount, setWithdrawAmount] = useState<string>("500");
+  const [withdrawAmount, setWithdrawAmount] = useState<string>("");
   const [houseOperator, setHouseOperator] = useState<string>("JosephArora");
   const [ironPrice, setIronPrice] = useState<number>(5);
   const [taxRate, setTaxRate] = useState<number>(10);
@@ -61,12 +61,22 @@ export default function WalletModal({
       const res = await fetch("/api/wallet");
       const data = await res.json();
       if (data.success) {
-        setBalance(data.balance);
+        const bal = Number(data.balance) || 0;
+        setBalance(bal);
         setParlamentumName(data.parlamentumName || "");
         setHouseOperator(data.houseOperator || "JosephArora");
         setIronPrice(data.ironPrice || 5);
         setTaxRate(data.taxRate || 10);
         setLedger(data.ledger || []);
+
+        // Percentage-based autofill for withdrawal
+        if (bal < 20) {
+          setWithdrawAmount(bal > 0 ? bal.toString() : "");
+        } else {
+          // Default to 50% of available balance (minimum 20 gold)
+          const defaultWithdraw = Math.max(20, Math.floor(bal * 0.5));
+          setWithdrawAmount(defaultWithdraw.toString());
+        }
       }
     } catch (e) {
       console.error(e);
@@ -143,8 +153,8 @@ export default function WalletModal({
     e.preventDefault();
     setFeedback(null);
 
-    if (numWithdraw < 10) {
-      setFeedback({ type: "error", message: "Minimum withdrawal is 10 gold." });
+    if (numWithdraw < 20) {
+      setFeedback({ type: "error", message: "Minimum cash out is 20 gold. You need at least 20 gold to withdraw." });
       return;
     }
     if (numWithdraw > balance) {
@@ -466,6 +476,18 @@ export default function WalletModal({
                 </div>
               </div>
 
+              {balance < 20 && (
+                <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold">Minimum 20 Gold Required to Cash Out</div>
+                    <div className="text-[11px] text-zinc-300 mt-0.5">
+                      Your purse holds <strong className="text-white font-mono">{balance.toLocaleString()} gold</strong>. An account needs at least 20 gold to withdraw to Parlamentum.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="text-zinc-300 font-semibold block mb-1">
                   Recipient Character in Parlamentum
@@ -487,35 +509,65 @@ export default function WalletModal({
                 </div>
                 <input
                   type="number"
-                  min="1"
+                  min="20"
                   max={balance}
                   step="1"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder="Min 20 gold"
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 font-mono text-amber-400 font-bold text-sm focus:outline-none focus:border-amber-400"
                 />
-                <div className="flex gap-1.5 mt-2">
-                  {[25, 50, 75, 100].map((pct) => (
-                    <button
-                      key={pct}
-                      type="button"
-                      onClick={() => setWithdrawAmount(Math.max(1, Math.floor(balance * (pct / 100))).toString())}
-                      className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono py-1 rounded text-[10px] cursor-pointer"
-                    >
-                      {pct}%
-                    </button>
-                  ))}
+
+                {/* Percentage Suboptions with calculated gold amounts */}
+                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                  {[25, 50, 75, 100].map((pct) => {
+                    const calcAmount = Math.floor(balance * (pct / 100));
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => {
+                          if (balance < 20) {
+                            setWithdrawAmount(balance.toString());
+                          } else {
+                            setWithdrawAmount(Math.max(20, calcAmount).toString());
+                          }
+                        }}
+                        className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono py-1.5 px-1 rounded text-center transition cursor-pointer border border-zinc-700/60 hover:border-zinc-500"
+                      >
+                        <div className="text-[11px] font-bold text-amber-300">{pct === 100 ? "Max" : `${pct}%`}</div>
+                        <div className="text-[9px] text-zinc-400 truncate">{calcAmount}g</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-zinc-400 mt-2">
+                  <span>ℹ️ Minimum cash out is <strong className="text-zinc-200">20 gold</strong>.</span>
+                  {numWithdraw > 0 && numWithdraw < 20 && (
+                    <span className="text-rose-400 font-semibold">Needs at least 20 gold to withdraw</span>
+                  )}
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || balance < 1}
-                className={`w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs tracking-wide transition shadow-lg shadow-amber-500/20 cursor-pointer ${
-                  balance < 1 ? "opacity-50 cursor-not-allowed" : ""
+                disabled={loading || balance < 20 || numWithdraw < 20 || numWithdraw > balance}
+                className={`w-full py-2.5 rounded-xl font-bold text-xs tracking-wide transition shadow-lg cursor-pointer ${
+                  balance < 20 || numWithdraw < 20 || numWithdraw > balance
+                    ? "bg-zinc-800 text-zinc-500 border border-zinc-700/60 cursor-not-allowed shadow-none"
+                    : "bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/20"
                 }`}
               >
-                {loading ? "Requesting House Purchase..." : `Withdraw ${numWithdraw.toLocaleString()} Gold Net to Parlamentum`}
+                {loading
+                  ? "Requesting House Purchase..."
+                  : balance < 20
+                  ? "Needs at least 20 gold to withdraw"
+                  : numWithdraw < 20
+                  ? "Needs at least 20 gold to withdraw"
+                  : numWithdraw > balance
+                  ? `Exceeds available purse (${balance.toLocaleString()} gold)`
+                  : `Withdraw ${numWithdraw.toLocaleString()} Gold Net to Parlamentum`}
               </button>
             </form>
           )}

@@ -302,6 +302,17 @@ export async function initDb(): Promise<void> {
     await db.execute(`ALTER TABLE companies ADD COLUMN last_dividend_date TEXT;`);
   } catch {}
 
+  // Migrations for enhanced IPO applications
+  try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN discord_id TEXT;`); } catch {}
+  try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN business_type TEXT DEFAULT 'FACTORY';`); } catch {}
+  try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN weekly_revenue REAL DEFAULT 0.0;`); } catch {}
+  try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN factory_level INTEGER;`); } catch {}
+  try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN workers_count INTEGER;`); } catch {}
+  try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN production_output TEXT;`); } catch {}
+  try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN press_viewers TEXT;`); } catch {}
+  try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN press_frequency TEXT;`); } catch {}
+  try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN special_notes TEXT;`); } catch {}
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS earnings_reports (
       id TEXT PRIMARY KEY,
@@ -458,6 +469,15 @@ export async function initDb(): Promise<void> {
       operator_notes TEXT,
       final_price REAL,
       created_at TEXT NOT NULL,
+      discord_id TEXT,
+      business_type TEXT DEFAULT 'FACTORY',
+      weekly_revenue REAL DEFAULT 0.0,
+      factory_level INTEGER,
+      workers_count INTEGER,
+      production_output TEXT,
+      press_viewers TEXT,
+      press_frequency TEXT,
+      special_notes TEXT,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
   `);

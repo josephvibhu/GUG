@@ -82,8 +82,8 @@ export async function POST(request: Request) {
     const numAmount = Math.floor(Number(amount));
     const targetName = (parlamentumName || user.parlamentumName || user.username).trim();
 
-    if (!Number.isFinite(numAmount) || numAmount < 10) {
-      return NextResponse.json({ success: false, message: "Minimum transaction is 10 gold." }, { status: 400 });
+    if (!Number.isFinite(numAmount) || numAmount < 5) {
+      return NextResponse.json({ success: false, message: "Minimum transaction is 5 gold." }, { status: 400 });
     }
 
     const [taxRateStr, houseName, autoApproveStr] = await Promise.all([
@@ -141,6 +141,13 @@ export async function POST(request: Request) {
 
     if (action === "withdraw") {
       // 2. WITHDRAWAL (Send back money by negating tax)
+      if (numAmount < 20) {
+        return NextResponse.json({
+          success: false,
+          message: "Minimum cash out is 20 gold. You need at least 20 gold to withdraw.",
+        }, { status: 400 });
+      }
+
       const userRes = await db.execute({
         sql: "SELECT cash_balance FROM users WHERE id = ?",
         args: [user.id],
