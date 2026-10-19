@@ -14,6 +14,7 @@ export interface UserSession {
   isAdmin: boolean;
   isFrozen: boolean;
   termsAccepted: boolean;
+  adjustmentNoticeSeen?: boolean;
 }
 
 export const COOKIE_NAME = "parlamentum_session_id";
@@ -93,6 +94,7 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     isAdmin: Number(u.is_admin) === 1,
     isFrozen: Number(u.is_frozen || 0) === 1,
     termsAccepted: Boolean(u.terms_accepted_at),
+    adjustmentNoticeSeen: Boolean(u.deposit_adjustment_notice_seen_at),
   };
 }
 
@@ -238,6 +240,7 @@ export async function loginUser(
       isAdmin: Number(u.is_admin) === 1,
       isFrozen: Number(u.is_frozen || 0) === 1,
       termsAccepted: Boolean(u.terms_accepted_at),
+      adjustmentNoticeSeen: Boolean(u.deposit_adjustment_notice_seen_at),
     },
   };
 }
@@ -248,6 +251,18 @@ export async function acceptTerms(userId: string): Promise<boolean> {
   const now = new Date().toISOString();
   await db.execute({
     sql: "UPDATE users SET terms_accepted_at = ? WHERE id = ?",
+    args: [now, userId],
+  });
+  await persistDbToBlob();
+  return true;
+}
+
+export async function dismissAdjustmentNotice(userId: string): Promise<boolean> {
+  await initDb();
+  const db = getDb();
+  const now = new Date().toISOString();
+  await db.execute({
+    sql: "UPDATE users SET deposit_adjustment_notice_seen_at = ? WHERE id = ?",
     args: [now, userId],
   });
   await persistDbToBlob();

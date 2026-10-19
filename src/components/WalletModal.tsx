@@ -26,7 +26,7 @@ interface WalletModalProps {
 interface LedgerEntry {
   id: string;
   type: "DEPOSIT" | "WITHDRAWAL";
-  method: "MARKET_IRON" | "CONTRACT" | "MANUAL_LOAD";
+  method: "MARKET_IRON" | "CONTRACT" | "MANUAL_LOAD" | "ADMIN_CREDIT" | string;
   amount: number;
   ironUnits: number;
   parlamentumName: string;
@@ -365,6 +365,12 @@ export default function WalletModal({
                       Purchase using citizen <span className="font-mono text-zinc-300">{parlamentumName || "your account"}</span>. 
                       Click below after purchase to immediately credit your purse.
                     </div>
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 text-[10px] text-amber-300/90 mt-2 flex items-start gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Parlamentum In-Game Tax Notice:</strong> Parlamentum automatically levies a 5% market sales tax on all in-game market trades. Purse credits reflect 100% of the net gold received by the House.
+                      </span>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-1.5 text-zinc-300 font-mono text-[11px]">
@@ -602,15 +608,38 @@ export default function WalletModal({
                             {isDeposit ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                           </div>
                           <div>
-                            <div className="font-bold text-white flex items-center gap-2">
-                              <span>{isDeposit ? "Gold Deposit" : "Gold Withdrawal"}</span>
-                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300">
-                                {tx.method === "CONTRACT" ? "Contract" : tx.method === "MANUAL_LOAD" ? "Operator Load" : "Raw Iron (5g)"}
-                              </span>
-                            </div>
-                            <div className="text-zinc-400 text-[10px] mt-0.5">
-                              {tx.recipeNote}
-                            </div>
+                            {(() => {
+                              const isAdjustment = tx.recipeNote?.toLowerCase().includes("recalibration") || tx.recipeNote?.toLowerCase().includes("adjustment");
+                              return (
+                                <>
+                                  <div className="font-bold text-white flex items-center gap-2">
+                                    <span>{isDeposit ? "Gold Deposit" : "Gold Withdrawal"}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                                      isAdjustment
+                                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                        : "bg-zinc-800 text-zinc-300"
+                                    }`}>
+                                      {isAdjustment
+                                        ? "⚖️ Net Tax Recalibration"
+                                        : tx.method === "CONTRACT"
+                                        ? "Contract"
+                                        : tx.method === "MANUAL_LOAD" || tx.method === "ADMIN_CREDIT"
+                                        ? "Operator Load"
+                                        : "Raw Iron (5g)"}
+                                    </span>
+                                  </div>
+                                  {isAdjustment ? (
+                                    <div className="mt-1.5 p-2 rounded-lg bg-emerald-950/40 border border-emerald-700/50 text-[10px] text-emerald-200/90 leading-relaxed font-mono">
+                                      {tx.recipeNote}
+                                    </div>
+                                  ) : (
+                                    <div className="text-zinc-400 text-[10px] mt-0.5">
+                                      {tx.recipeNote}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                             <div className="text-[10px] text-zinc-400 mt-1">
                               {new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString()}
                             </div>

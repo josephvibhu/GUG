@@ -280,6 +280,10 @@ export async function initDb(): Promise<void> {
   } catch {}
 
   try {
+    await db.execute(`ALTER TABLE users ADD COLUMN deposit_adjustment_notice_seen_at TEXT;`);
+  } catch {}
+
+  try {
     await db.execute(`ALTER TABLE users ADD COLUMN state_realm_name TEXT;`);
   } catch {}
 

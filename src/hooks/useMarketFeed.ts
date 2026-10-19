@@ -15,6 +15,7 @@ export interface FeedUser {
   avatar: string;
   isAdmin?: boolean;
   termsAccepted?: boolean;
+  adjustmentNoticeSeen?: boolean;
 }
 
 export interface MarketFeed {

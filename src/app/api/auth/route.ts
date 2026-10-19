@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, loginUser, registerUser, acceptTerms } from "@/lib/auth";
+import { getCurrentUser, loginUser, registerUser, acceptTerms, dismissAdjustmentNotice } from "@/lib/auth";
 import { seedMarketData } from "@/lib/seed";
 
 
@@ -38,6 +38,15 @@ export async function POST(request: Request) {
       }
       await acceptTerms(user.id);
       return NextResponse.json({ success: true, message: "Terms accepted" });
+    }
+
+    if (action === "dismiss_adjustment_notice") {
+      const user = await getCurrentUser();
+      if (!user) {
+        return NextResponse.json({ success: false, message: "Not logged in" }, { status: 401 });
+      }
+      await dismissAdjustmentNotice(user.id);
+      return NextResponse.json({ success: true, message: "Adjustment notice dismissed" });
     }
 
     if (action === "logout") {

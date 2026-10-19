@@ -69,6 +69,7 @@ export default function TermsPage() {
               <li><strong className="text-zinc-300">Zero Fiat Currency:</strong> Under no circumstance does Grow Ur Gold accept real-world currency (USD, EUR, crypto with real-world fiat value, etc.).</li>
               <li><strong className="text-zinc-300">No Cash-Outs to Real Money:</strong> In-game gold held in your Grow Ur Gold purse cannot be converted or redeemed for any real-world money, goods, or services.</li>
               <li><strong className="text-zinc-300">In-Game Settlement:</strong> Gold deposits and withdrawals are executed exclusively inside the Parlamentum game client via verified player-to-player trade items (Raw Iron).</li>
+              <li><strong className="text-zinc-300">Parlamentum In-Game Sales Tax:</strong> In-game market trades in Parlamentum carry an automated 5% game sales tax. Wallet deposits reflect 100% of the net virtual gold received by the House.</li>
             </ul>
           </section>
 
