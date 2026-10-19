@@ -1,5 +1,5 @@
 import { getDb, initDb, scheduleBlobPersist } from "./db";
-import { approveDeposit, manualCreditCitizen } from "./wallet";
+import { approveDeposit, manualCreditCitizen, getSetting } from "./wallet";
 import crypto from "crypto";
 
 export interface LedgerEntryInput {
@@ -154,13 +154,13 @@ export async function syncLedgerData(
         const citizen = userRes.rows[0];
         matchedUserId = String(citizen.id);
 
-        // 1. Check if user has an active PENDING deposit for exactly this sale's amount
-        // (otherwise the sale is credited directly below, so a large claimed deposit can't be settled by a small sale)
+        // 1. Check if user has an active PENDING deposit for this sale's amount or iron quantity
         const pending = await db.execute({
           sql: `SELECT id, amount FROM wallet_transactions
-                WHERE user_id = ? AND type = 'DEPOSIT' AND status = 'PENDING' AND amount = ?
+                WHERE user_id = ? AND type = 'DEPOSIT' AND status = 'PENDING' 
+                  AND (amount = ? OR iron_units = ?)
                 ORDER BY created_at ASC LIMIT 1`,
-          args: [citizen.id, totalAmount],
+          args: [citizen.id, totalAmount, qty],
         });
 
         if (pending.rows.length > 0) {
@@ -174,19 +174,66 @@ export async function syncLedgerData(
             reason: `Auto-verified pending deposit via /trade/ledger (${qty} ${cleanItem} · ${totalAmount}g)`,
           });
         } else {
-          // 2. Direct instant credit to purse!
-          await manualCreditCitizen(
-            String(citizen.username),
-            totalAmount,
-            `Verified in-game sale on /trade/ledger (${qty}x ${cleanItem} at ${priceStr})`
-          );
-          entryStatus = "AUTO_CREDITED";
-          newCredits.push({
-            user: String(citizen.username),
-            gold: totalAmount,
-            item: cleanItem,
-            reason: `Direct ledger credit: ${qty}x ${cleanItem} sold for ${totalAmount}g`,
+          // 2. Prevent duplicate credits:
+          // Check if the trade date is from today (UTC)
+          const nowUtc = new Date();
+          const todayM = String(nowUtc.getUTCMonth() + 1).padStart(2, "0");
+          const todayD = String(nowUtc.getUTCDate()).padStart(2, "0");
+          const todayY = String(nowUtc.getUTCFullYear());
+          const todayY2 = todayY.slice(2);
+          
+          const isFromToday = 
+            cleanDate.includes(`${todayM}/${todayD}/${todayY}`) || 
+            cleanDate.includes(`${todayM}/${todayD}/${todayY2}`) ||
+            cleanDate.includes(`${nowUtc.getUTCMonth() + 1}/${nowUtc.getUTCDate()}/${todayY}`);
+
+          // Check if this user already has ANY credited deposit for this exact amount or units
+          const alreadyCredited = await db.execute({
+            sql: `SELECT id FROM wallet_transactions 
+                  WHERE user_id = ? AND type = 'DEPOSIT' AND status = 'CREDITED'
+                    AND (amount = ? OR iron_units = ?)
+                  LIMIT 1`,
+            args: [citizen.id, totalAmount, qty],
           });
+
+          const autoApprove = (await getSetting("auto_approve_deposits", "false")) === "true";
+
+          if (!isFromToday || alreadyCredited.rows.length > 0) {
+            // Already credited historically or from a past date: log only, never duplicate credit
+            entryStatus = "HISTORICAL_SYNC";
+          } else if (autoApprove) {
+            // New unannounced fill from today AND auto-approve is explicitly enabled
+            await manualCreditCitizen(
+              String(citizen.username),
+              totalAmount,
+              `Verified in-game sale on /trade/ledger (${qty}x ${cleanItem} at ${priceStr})`
+            );
+            entryStatus = "AUTO_CREDITED";
+            newCredits.push({
+              user: String(citizen.username),
+              gold: totalAmount,
+              item: cleanItem,
+              reason: `Direct ledger credit: ${qty}x ${cleanItem} sold for ${totalAmount}g`,
+            });
+          } else {
+            // Auto-approve is disabled: queue as PENDING deposit for operator review
+            const txId = `tx_${crypto.randomUUID().slice(0, 8)}`;
+            await db.execute({
+              sql: `INSERT INTO wallet_transactions (
+                id, user_id, type, method, amount, iron_units, parlamentum_name, status, recipe_note, created_at
+              ) VALUES (?, ?, 'DEPOSIT', 'MARKET_IRON', ?, ?, ?, 'PENDING', ?, ?)`,
+              args: [
+                txId,
+                citizen.id,
+                totalAmount,
+                qty,
+                String(citizen.parlamentum_name || citizen.username),
+                `Auto-detected unannounced sale on /trade/ledger (${qty}x ${cleanItem} for ${totalAmount}g). Awaiting operator approval.`,
+                new Date().toISOString(),
+              ],
+            });
+            entryStatus = "QUEUED_FOR_APPROVAL";
+          }
         }
       } else {
         entryStatus = "UNREGISTERED_CITIZEN";
