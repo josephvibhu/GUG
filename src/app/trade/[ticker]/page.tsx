@@ -239,6 +239,7 @@ function Terminal({ ticker }: { ticker: string }) {
             userCash={data.user?.cashBalance || 0}
             loggedIn={!!data.user}
             selectedPrice={selectedPrice}
+            orderBook={data.orderBook}
             marketSchedule={data.marketSchedule}
             onTradeSuccess={refresh}
           />

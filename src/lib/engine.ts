@@ -100,8 +100,48 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   }
 
   // 2. Validate Available Balance / Shares & Lock Escrow
+  let effectiveMarketBuyPrice = Number(company.current_price);
+  if (type === "BUY" && orderType === "MARKET") {
+    // Find the best available ask on the book
+    const bestAskRes = await db.execute({
+      sql: "SELECT price FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND user_id != ? ORDER BY price ASC LIMIT 1",
+      args: [actualCompanyId, userId],
+    });
+    if (bestAskRes.rows.length === 0) {
+      return {
+        success: false,
+        message: "No shares currently available for sale on the order book. Please use a Limit order to post your bid.",
+        filledQuantity: 0,
+        remainingQuantity: 0,
+        averageFillPrice: 0,
+        tradesExecuted: [],
+      };
+    }
+    const lowestAsk = Number(bestAskRes.rows[0].price);
+    effectiveMarketBuyPrice = price > 0 ? Math.max(price, lowestAsk) : lowestAsk;
+  }
+
+  if (type === "SELL" && orderType === "MARKET") {
+    const bestBidRes = await db.execute({
+      sql: "SELECT price FROM orders WHERE company_id = ? AND type = 'BUY' AND status IN ('OPEN', 'PARTIAL') AND user_id != ? ORDER BY price DESC LIMIT 1",
+      args: [actualCompanyId, userId],
+    });
+    if (bestBidRes.rows.length === 0) {
+      return {
+        success: false,
+        message: "No active buy orders on the order book. Please switch to Advanced to place a Limit Sell order at your desired price.",
+        filledQuantity: 0,
+        remainingQuantity: 0,
+        averageFillPrice: 0,
+        tradesExecuted: [],
+      };
+    }
+  }
+
   if (type === "BUY") {
-    const requiredCash = orderType === "LIMIT" ? price * quantity : Number(company.current_price) * quantity * 1.05; // 5% slippage buffer for market
+    const requiredCash = orderType === "LIMIT"
+      ? Math.round(price * quantity * 100) / 100
+      : Math.round(effectiveMarketBuyPrice * quantity * 1.05 * 100) / 100; // 5% slippage buffer for market
     const availableCash = Number(user.cash_balance);
 
     if (availableCash < requiredCash) {
@@ -182,7 +222,7 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
     // MARKET buys only escrowed current price + 5%, so they can't take asks above that band
     // (the buyer would be charged the escrow while the seller is paid the full ask).
     const matchQuery = "SELECT * FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND price <= ? AND user_id != ? ORDER BY price ASC, created_at ASC";
-    const priceCap = orderType === "LIMIT" ? price : Number(company.current_price) * 1.05;
+    const priceCap = orderType === "LIMIT" ? price : Math.round(effectiveMarketBuyPrice * 1.05 * 100) / 100;
 
     const matchArgs = [actualCompanyId, priceCap, userId];
     const opposingOrders = await db.execute({ sql: matchQuery, args: matchArgs });
@@ -270,7 +310,7 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
       }
 
       // Update Buyer: deduct locked cash and add shares to buyer portfolio
-      const lockedCashDeduct = orderType === "LIMIT" ? Math.round(matchQty * price * 100) / 100 : Math.round(matchQty * Number(company.current_price) * 1.05 * 100) / 100;
+      const lockedCashDeduct = orderType === "LIMIT" ? Math.round(matchQty * price * 100) / 100 : Math.round(matchQty * effectiveMarketBuyPrice * 1.05 * 100) / 100;
       const cashDifference = lockedCashDeduct - matchCost; // Refund difference if filled below limit price!
 
       await db.execute({
@@ -307,7 +347,7 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
         });
       } else {
         // Market order: unlock remaining unspent locked cash
-        const unspentCash = Math.round(remainingQuantity * Number(company.current_price) * 1.05 * 100) / 100;
+        const unspentCash = Math.round(remainingQuantity * effectiveMarketBuyPrice * 1.05 * 100) / 100;
         await db.execute({
           sql: "UPDATE users SET locked_cash = locked_cash - ?, cash_balance = cash_balance + ? WHERE id = ?",
           args: [unspentCash, unspentCash, userId],

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Company, PortfolioPosition } from "@/lib/market";
+import { Company, PortfolioPosition, OrderBookData } from "@/lib/market";
 import { fmtPrice, fmtQty, fmtGold } from "@/lib/format";
 
 interface TradeFormProps {
@@ -11,6 +11,7 @@ interface TradeFormProps {
   userCash: number;
   loggedIn: boolean;
   selectedPrice: number | null;
+  orderBook?: OrderBookData;
   marketSchedule?: { isOpen: boolean; statusText: string } | null;
   onTradeSuccess: () => void;
 }
@@ -21,6 +22,7 @@ export default function TradeForm({
   userCash,
   loggedIn,
   selectedPrice,
+  orderBook,
   marketSchedule,
   onTradeSuccess,
 }: TradeFormProps) {
@@ -32,17 +34,29 @@ export default function TradeForm({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // A click on an order-book level fills in that price (adjusted during render, no effect needed)
+  // Lowest Ask on the order book (cheapest seller) and Highest Bid (best buyer)
+  const lowestAsk = orderBook?.asks && orderBook.asks.length > 0 ? orderBook.asks[0].price : null;
+  const highestBid = orderBook?.bids && orderBook.bids.length > 0 ? orderBook.bids[0].price : null;
+
+  // In Basic Mode:
+  // Buying executes at the lowest available ask from sellers.
+  // Selling executes at the highest available bid from buyers.
+  const marketExecutionPrice = side === "BUY"
+    ? (lowestAsk ?? company.currentPrice)
+    : (highestBid ?? company.currentPrice);
+
+  // A click on an order-book level fills in that price and switches to Advanced mode
   const [seenPrice, setSeenPrice] = useState(selectedPrice);
   if (selectedPrice !== seenPrice) {
     setSeenPrice(selectedPrice);
     if (selectedPrice) {
       setOrderType("LIMIT");
+      setMode("ADVANCED");
       setPrice(selectedPrice.toFixed(2));
     }
   }
 
-  const numPrice = orderType === "LIMIT" ? parseFloat(price) || 0 : company.currentPrice;
+  const numPrice = orderType === "LIMIT" ? parseFloat(price) || 0 : marketExecutionPrice;
   const numQty = parseInt(quantity, 10) || 0;
   const totalCost = Math.round(numPrice * numQty * 100) / 100;
   // The server escrows market buys at the last price + 5%, so size and check them against that
@@ -184,12 +198,77 @@ export default function TradeForm({
       {mode === "BASIC" ? (
         <div className="flex flex-col gap-3">
           {/* Price display banner */}
-          <div className="p-2.5 rounded-[4px] bg-pane border border-rule flex items-center justify-between text-xs">
-            <span className="text-ash">{side === "BUY" ? "Market Execution Price" : "Current Selling Price"}</span>
-            <span className="font-bold text-zinc-50 font-mono">
-              {fmtPrice(company.currentPrice)} gold <span className="text-[11px] font-normal text-ash">/ share</span>
-            </span>
-          </div>
+          {side === "BUY" ? (
+            lowestAsk != null ? (
+              <div className="p-2.5 rounded-[4px] bg-pane border border-rule flex items-center justify-between text-xs">
+                <div className="flex flex-col">
+                  <span className="text-ash font-medium">Market Execution Price</span>
+                  <span className="text-[10px] text-emerald-400 font-mono">Lowest Ask on book</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-zinc-50 font-mono text-sm">
+                    {fmtPrice(lowestAsk)} gold
+                  </span>
+                  <span className="text-[10px] text-ash block">
+                    {lowestAsk !== company.currentPrice ? `(Last trade: ${fmtPrice(company.currentPrice)}g)` : "/ share"}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-[4px] bg-amber-500/10 border border-amber-500/30 flex flex-col gap-1.5 text-xs text-amber-200">
+                <div className="font-bold text-amber-300">No shares currently for sale on the book</div>
+                <p className="text-[11px] text-zinc-300">
+                  There are no active sell orders. Switch to Advanced to place a Limit Buy order at your desired price.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("ADVANCED");
+                    setOrderType("LIMIT");
+                    setPrice(company.currentPrice.toFixed(2));
+                  }}
+                  className="mt-1 py-1 px-3 rounded bg-amber-500 hover:bg-amber-400 text-black font-semibold text-[11px] self-start cursor-pointer transition"
+                >
+                  Place Limit Buy Order →
+                </button>
+              </div>
+            )
+          ) : (
+            highestBid != null ? (
+              <div className="p-2.5 rounded-[4px] bg-pane border border-rule flex items-center justify-between text-xs">
+                <div className="flex flex-col">
+                  <span className="text-ash font-medium">Market Execution Price</span>
+                  <span className="text-[10px] text-bullion font-mono">Highest Bid on book</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-zinc-50 font-mono text-sm">
+                    {fmtPrice(highestBid)} gold
+                  </span>
+                  <span className="text-[10px] text-ash block">
+                    {highestBid !== company.currentPrice ? `(Last trade: ${fmtPrice(company.currentPrice)}g)` : "/ share"}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-[4px] bg-blue-500/10 border border-blue-500/30 flex flex-col gap-1.5 text-xs text-blue-200">
+                <div className="font-bold text-blue-300">No active buy orders on book</div>
+                <p className="text-[11px] text-zinc-300">
+                  No buyers are waiting at market right now. Switch to Advanced to set your asking price and list shares on the book.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("ADVANCED");
+                    setOrderType("LIMIT");
+                    setPrice(lowestAsk ? lowestAsk.toFixed(2) : company.currentPrice.toFixed(2));
+                  }}
+                  className="mt-1 py-1 px-3 rounded bg-blue-500 hover:bg-blue-400 text-black font-semibold text-[11px] self-start cursor-pointer transition"
+                >
+                  Set Limit Selling Price →
+                </button>
+              </div>
+            )
+          )}
 
           {/* Quick Clickable Share Amount Selector with Stepper */}
           <div className="flex flex-col gap-2">
@@ -435,10 +514,14 @@ export default function TradeForm({
 
       <button
         type="submit"
-        disabled={isLoading || !!blocked}
+        disabled={
+          isLoading ||
+          !!blocked ||
+          (mode === "BASIC" && ((side === "BUY" && lowestAsk == null) || (side === "SELL" && highestBid == null)))
+        }
         className={`h-10 rounded-[4px] text-[14px] font-semibold transition-colors disabled:cursor-not-allowed cursor-pointer ${
-          blocked
-            ? "bg-pane text-ash"
+          blocked || (mode === "BASIC" && ((side === "BUY" && lowestAsk == null) || (side === "SELL" && highestBid == null)))
+            ? "bg-pane text-ash border border-rule cursor-not-allowed"
             : side === "BUY"
             ? "bg-bull hover:bg-emerald-400 text-floor"
             : "bg-bear hover:bg-rose-400 text-white"
@@ -446,8 +529,12 @@ export default function TradeForm({
       >
         {isLoading
           ? "Placing order…"
+          : mode === "BASIC" && side === "BUY" && lowestAsk == null
+          ? "No Shares Available on Book"
+          : mode === "BASIC" && side === "SELL" && highestBid == null
+          ? "No Buyers on Order Book"
           : mode === "BASIC"
-          ? `⚡ ${side === "BUY" ? "Quick Buy" : "Quick Sell"} ${numQty > 0 ? fmtQty(numQty) + " " : ""}${company.ticker}`
+          ? `⚡ ${side === "BUY" ? "Quick Buy" : "Quick Sell"} ${numQty > 0 ? fmtQty(numQty) + " " : ""}${company.ticker} (${fmtPrice(totalCost)}g)`
           : `${side === "BUY" ? "Buy" : "Sell"} ${numQty > 0 ? fmtQty(numQty) + " " : ""}${company.ticker}`}
       </button>
 
