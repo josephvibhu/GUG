@@ -15,8 +15,11 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Bot,
+  Coins,
+  Landmark,
 } from "lucide-react";
 import WalletModal from "./WalletModal";
+import TermsModal from "./TermsModal";
 import { FloorClock } from "./FloorClock";
 import { CoinMark } from "./CoinMark";
 import { useMarketFeed, refreshMarketFeed } from "@/hooks/useMarketFeed";
@@ -88,6 +91,8 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
     { href: tradeHref, label: "Trade", icon: ChartCandlestick, active: pathname.startsWith("/trade") },
     { href: "/portfolio", label: "Portfolio", icon: Briefcase, active: pathname === "/portfolio" },
     { href: "/ipo", label: "List a company", short: "List", icon: CirclePlus, active: pathname === "/ipo" },
+    { href: "/crypto", label: "Crypto", icon: Coins, active: pathname === "/crypto", badge: "SOON" },
+    { href: "/funds", label: "Mutual Funds", short: "Funds", icon: Landmark, active: pathname === "/funds", badge: "SOON" },
   ];
   const name = user ? (user.displayName || user.username) : "";
 
@@ -100,17 +105,22 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
             <span className="condensed text-[17px] font-extrabold tracking-tight text-zinc-50 leading-none">Grow Ur Gold</span>
           </Link>
 
-          <nav className="hidden md:flex items-stretch h-full ml-2" aria-label="Main">
+          <nav className="hidden lg:flex items-stretch h-full ml-2" aria-label="Main">
             {links.map((l) => (
               <Link
                 key={l.label}
                 href={l.href}
                 aria-current={l.active ? "page" : undefined}
-                className={`px-3 flex items-center text-[13px] border-b-2 transition-colors ${
+                className={`px-3 flex items-center gap-1.5 text-[13px] border-b-2 transition-colors ${
                   l.active ? "text-zinc-50 border-zinc-50" : "text-ash border-transparent hover:text-paper"
                 }`}
               >
-                {l.label}
+                <span>{l.label}</span>
+                {l.badge && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 leading-none">
+                    {l.badge}
+                  </span>
+                )}
               </Link>
             ))}
             {user?.isAdmin && (
@@ -240,6 +250,9 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
           }}
         />
       )}
+
+      {/* Mandatory Terms & Conditions modal for users who have not yet accepted */}
+      <TermsModal isOpen={Boolean(user && user.termsAccepted === false)} />
     </>
   );
 }

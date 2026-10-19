@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, loginUser, registerUser } from "@/lib/auth";
+import { getCurrentUser, loginUser, registerUser, acceptTerms } from "@/lib/auth";
 import { seedMarketData } from "@/lib/seed";
 
 
@@ -26,9 +26,18 @@ export async function POST(request: Request) {
     }
 
     if (action === "register") {
-      const { username, password, adminCode } = body;
-      const res = await registerUser(username, password, adminCode);
+      const { username, password, adminCode, acceptedTerms } = body;
+      const res = await registerUser(username, password, adminCode, acceptedTerms);
       return NextResponse.json(res);
+    }
+
+    if (action === "accept_terms") {
+      const user = await getCurrentUser();
+      if (!user) {
+        return NextResponse.json({ success: false, message: "Not logged in" }, { status: 401 });
+      }
+      await acceptTerms(user.id);
+      return NextResponse.json({ success: true, message: "Terms accepted" });
     }
 
     if (action === "logout") {

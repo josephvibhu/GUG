@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [repeatPassword, setRepeatPassword] = useState("");
   const [adminCode, setAdminCode] = useState("");
   const [showAdminField, setShowAdminField] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +37,10 @@ export default function LoginPage() {
       setError("Passwords do not match.");
       return;
     }
+    if (tab === "register" && !agreeTerms) {
+      setError("You must accept the Terms & Conditions to register.");
+      return;
+    }
 
     setLoading(true);
 
@@ -48,6 +53,7 @@ export default function LoginPage() {
             username: cleanUser, 
             password, 
             adminCode: adminCode.trim(),
+            acceptedTerms: agreeTerms,
           };
 
       const res = await fetch(endpoint, {
@@ -90,8 +96,16 @@ export default function LoginPage() {
           The player-run stock exchange of Parlamentum
         </p>
 
+        {/* Prominent In-Game Currency Disclaimer Banner */}
+        <div className="w-full bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-left flex items-start gap-2.5 text-xs text-amber-200/90 mb-4">
+          <Shield className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="leading-snug">
+            <span className="font-semibold text-amber-300">Notice:</span> Played with Parlamentum gold only. No real money goes in or comes out. Not run by the Parlamentum team.
+          </div>
+        </div>
+
         {/* Tab Switcher: Log in / New here */}
-        <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-900 rounded-xl border border-zinc-800 w-full mt-6 mb-4">
+        <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-900 rounded-xl border border-zinc-800 w-full mb-4">
           <button
             type="button"
             onClick={() => {
@@ -178,6 +192,23 @@ export default function LoginPage() {
                 />
               </div>
 
+              {/* Terms & Conditions Acceptance Checkbox */}
+              <label className="flex items-start gap-2.5 cursor-pointer text-[12px] text-zinc-300 select-none pt-1">
+                <input
+                  type="checkbox"
+                  checked={agreeTerms}
+                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                  className="mt-0.5 rounded border-zinc-700 text-amber-500 focus:ring-amber-400 bg-zinc-950 w-4 h-4 cursor-pointer shrink-0"
+                />
+                <span className="leading-snug">
+                  I agree to the{" "}
+                  <Link href="/terms" target="_blank" className="text-amber-400 hover:text-amber-300 underline underline-offset-2">
+                    Terms & Conditions
+                  </Link>
+                  . I acknowledge this is played with <strong className="text-white">Parlamentum gold only</strong>, no real money goes in or comes out, and it is not run by the Parlamentum team.
+                </span>
+              </label>
+
               {/* Optional Operator Access Code */}
               <div className="pt-1">
                 <button
@@ -229,7 +260,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-[10px] text-zinc-400 text-center mt-6 max-w-sm">
-          Played with Parlamentum in-game gold only. No real money goes in or comes out. Not run by the official Parlamentum team.
+          Played with Parlamentum gold only. No real money goes in or comes out. Not run by the Parlamentum team.
         </p>
       </div>
     </div>

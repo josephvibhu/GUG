@@ -14,6 +14,7 @@ export interface FeedUser {
   lockedCash: number;
   avatar: string;
   isAdmin?: boolean;
+  termsAccepted?: boolean;
 }
 
 export interface MarketFeed {

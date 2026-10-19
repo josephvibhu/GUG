@@ -230,6 +230,14 @@ export default function IpoPage() {
           </p>
         </div>
 
+        {/* Notice Banner */}
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 flex items-start sm:items-center gap-3 text-xs text-amber-200/90">
+          <Coins className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+          <div className="leading-snug">
+            <strong className="text-amber-300">In-Game Economic Policy:</strong> Played with Parlamentum gold only. No real money goes in or comes out. Not run by the Parlamentum team.
+          </div>
+        </div>
+
         {/* Existing Applications Section */}
         {applications.length > 0 && (
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3">

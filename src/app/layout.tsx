@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Archivo } from "next/font/google";
 import "./globals.css";
+import Footer from "@/components/Footer";
 
 // One variable family: normal width for the interface, condensed for symbols and prices (see globals.css)
 const archivo = Archivo({
@@ -25,7 +26,10 @@ export default function RootLayout({
       className={`${archivo.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100 selection:bg-amber-500 selection:text-black">
-        {children}
+        <div className="flex-1 flex flex-col">
+          {children}
+        </div>
+        <Footer />
       </body>
     </html>
   );

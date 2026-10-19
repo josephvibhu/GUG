@@ -224,8 +224,13 @@ export default function WalletModal({
           </div>
         </div>
 
+        {/* Notice Banner */}
+        <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2 mt-3 flex items-center gap-2 text-[11px] text-amber-200/90 shrink-0">
+          <span className="font-semibold text-amber-300">⚖️ Notice:</span> Played with Parlamentum gold only. No real money goes in or comes out. Not run by the Parlamentum team.
+        </div>
+
         {/* Navigation Tabs */}
-        <div className="grid grid-cols-3 gap-1.5 p-1 bg-zinc-950 rounded-xl border border-zinc-800 my-4 shrink-0">
+        <div className="grid grid-cols-3 gap-1.5 p-1 bg-zinc-950 rounded-xl border border-zinc-800 my-3 shrink-0">
           <button
             type="button"
             onClick={() => {

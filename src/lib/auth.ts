@@ -13,6 +13,7 @@ export interface UserSession {
   avatar: string;
   isAdmin: boolean;
   isFrozen: boolean;
+  termsAccepted: boolean;
 }
 
 export const COOKIE_NAME = "parlamentum_session_id";
@@ -91,13 +92,15 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     avatar: String(u.avatar || "👤"),
     isAdmin: Number(u.is_admin) === 1,
     isFrozen: Number(u.is_frozen || 0) === 1,
+    termsAccepted: Boolean(u.terms_accepted_at),
   };
 }
 
 export async function registerUser(
   username: string, 
   password: string, 
-  adminCode?: string
+  adminCode?: string,
+  acceptedTerms?: boolean
 ): Promise<{ success: boolean; message?: string; user?: UserSession }> {
   await initDb();
   const db = getDb();
@@ -108,6 +111,9 @@ export async function registerUser(
   }
   if (password.length < 6) {
     return { success: false, message: "Password must be at least 6 characters" };
+  }
+  if (!acceptedTerms) {
+    return { success: false, message: "You must accept the Terms & Conditions to register." };
   }
 
   const existing = await db.execute({
@@ -132,8 +138,8 @@ export async function registerUser(
   await db.execute({
     sql: `INSERT INTO users (
             id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, 
-            avatar, is_admin, account_type, created_at
-          ) VALUES (?, ?, ?, ?, ?, 0.0, 0.0, ?, ?, 'CITIZEN', ?)`,
+            avatar, is_admin, account_type, terms_accepted_at, created_at
+          ) VALUES (?, ?, ?, ?, ?, 0.0, 0.0, ?, ?, 'CITIZEN', ?, ?)`,
     args: [
       id, 
       cleanUser, 
@@ -142,6 +148,7 @@ export async function registerUser(
       cleanUser, 
       avatar, 
       isAdmin,
+      now,
       now
     ],
   });
@@ -170,6 +177,7 @@ export async function registerUser(
       avatar,
       isAdmin: isAdmin === 1,
       isFrozen: false,
+      termsAccepted: true,
     },
   };
 }
@@ -229,8 +237,21 @@ export async function loginUser(
       avatar: String(u.avatar || "👤"),
       isAdmin: Number(u.is_admin) === 1,
       isFrozen: Number(u.is_frozen || 0) === 1,
+      termsAccepted: Boolean(u.terms_accepted_at),
     },
   };
+}
+
+export async function acceptTerms(userId: string): Promise<boolean> {
+  await initDb();
+  const db = getDb();
+  const now = new Date().toISOString();
+  await db.execute({
+    sql: "UPDATE users SET terms_accepted_at = ? WHERE id = ?",
+    args: [now, userId],
+  });
+  await persistDbToBlob();
+  return true;
 }
 
 export async function logoutUser(): Promise<boolean> {

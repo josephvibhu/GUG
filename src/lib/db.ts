@@ -207,6 +207,7 @@ export async function initDb(): Promise<void> {
       locked_cash REAL NOT NULL DEFAULT 0.0,
       avatar TEXT,
       is_admin INTEGER NOT NULL DEFAULT 0,
+      terms_accepted_at TEXT,
       created_at TEXT NOT NULL
     );
   `);
@@ -272,6 +273,10 @@ export async function initDb(): Promise<void> {
 
   try {
     await db.execute(`ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT 'CITIZEN';`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN terms_accepted_at TEXT;`);
   } catch {}
 
   try {

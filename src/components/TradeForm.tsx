@@ -450,6 +450,10 @@ export default function TradeForm({
           ? `⚡ ${side === "BUY" ? "Quick Buy" : "Quick Sell"} ${numQty > 0 ? fmtQty(numQty) + " " : ""}${company.ticker}`
           : `${side === "BUY" ? "Buy" : "Sell"} ${numQty > 0 ? fmtQty(numQty) + " " : ""}${company.ticker}`}
       </button>
+
+      <p className="text-[10px] text-ash/70 text-center leading-tight pt-1">
+        Settled in Parlamentum gold only. No real money goes in or comes out. Not run by the Parlamentum team.
+      </p>
     </form>
   );
 }
