@@ -23,6 +23,7 @@ export interface Company {
   sharesBoughtBack: number;
   buybackGoldSpent: number;
   totalDividendsPaid?: number;
+  weeklyRevenue?: number;
   createdAt: string;
 }
 
@@ -160,6 +161,8 @@ export async function getAllCompanies(): Promise<Company[]> {
     status: (row.status as any) || "ACTIVE",
     sharesBoughtBack: Number(row.shares_bought_back || 0),
     buybackGoldSpent: Number(row.buyback_gold_spent || 0),
+    totalDividendsPaid: Number(row.total_dividends_paid || 0),
+    weeklyRevenue: Number(row.weekly_revenue || 0),
     createdAt: String(row.created_at),
   }, dayStats[String(row.id)]));
 }
@@ -202,6 +205,7 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
     sharesBoughtBack: Number(row.shares_bought_back || 0),
     buybackGoldSpent: Number(row.buyback_gold_spent || 0),
     totalDividendsPaid: Number(row.total_dividends_paid || 0),
+    weeklyRevenue: Number(row.weekly_revenue || 0),
     createdAt: String(row.created_at),
   }, dayStats[String(row.id)]);
 }

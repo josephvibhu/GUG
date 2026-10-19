@@ -311,6 +311,10 @@ export async function initDb(): Promise<void> {
     await db.execute(`ALTER TABLE companies ADD COLUMN last_dividend_date TEXT;`);
   } catch {}
 
+  try {
+    await db.execute(`ALTER TABLE companies ADD COLUMN weekly_revenue REAL DEFAULT 0.0;`);
+  } catch {}
+
   // Migrations for enhanced IPO applications
   try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN discord_id TEXT;`); } catch {}
   try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN business_type TEXT DEFAULT 'FACTORY';`); } catch {}

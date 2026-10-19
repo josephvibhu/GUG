@@ -381,6 +381,9 @@ function Terminal({ ticker }: { ticker: string }) {
                   <Stat label="Total shares" value={fmtQty(c.totalShares)} />
                   <Stat label="Public float" value={fmtQty(c.floatShares)} />
                   <Stat label="IPO price" value={`${fmtPrice(c.ipoPrice)} gold`} />
+                  {c.weeklyRevenue && c.weeklyRevenue > 0 ? (
+                    <Stat label="Est. weekly revenue" value={`${c.weeklyRevenue.toLocaleString()} gold`} />
+                  ) : null}
                   <Stat label="Listed" value={fmtUtcDate(c.createdAt)} />
                   <Stat label="Bought back" value={fmtQty(c.sharesBoughtBack)} />
                 </dl>

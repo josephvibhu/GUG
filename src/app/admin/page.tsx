@@ -1950,6 +1950,11 @@ export default function AdminPage() {
                             <span className="font-mono text-amber-400 font-bold ml-1.5 text-[11px]">
                               ${cmp.ticker}
                             </span>
+                            {cmp.weeklyRevenue ? (
+                              <span className="text-[10px] text-emerald-400 font-mono ml-2 font-normal">
+                                · ~{Number(cmp.weeklyRevenue).toLocaleString()}g/wk
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                       </td>
