@@ -698,7 +698,7 @@ export default function AdminPage() {
                   Total Platform Net Profit
                 </span>
                 <span className="font-mono text-xl sm:text-2xl font-black text-emerald-400">
-                  +{financialSummary.totalPlatformProfit.toLocaleString()} gold
+                  +{Number(financialSummary.totalPlatformProfit || 0).toLocaleString()} gold
                 </span>
               </div>
             </div>
@@ -712,11 +712,11 @@ export default function AdminPage() {
                   <Wallet className="w-3.5 h-3.5 text-amber-400" />
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-amber-400 mt-1">
-                  {financialSummary.operatorCash.toLocaleString()} <span className="text-xs text-amber-300/80 font-normal">gold</span>
+                  {Number(financialSummary.operatorCash || 0).toLocaleString()} <span className="text-xs text-amber-300/80 font-normal">gold</span>
                 </div>
                 <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
                   <span>In Open Orders:</span>
-                  <span className="text-zinc-300 font-mono">{financialSummary.operatorLocked.toLocaleString()} gold</span>
+                  <span className="text-zinc-300 font-mono">{Number(financialSummary.operatorLocked || 0).toLocaleString()} gold</span>
                 </div>
               </div>
 
@@ -727,7 +727,7 @@ export default function AdminPage() {
                   <Landmark className="w-3.5 h-3.5 text-cyan-400" />
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-cyan-300 mt-1">
-                  {financialSummary.treasuryBalance.toLocaleString()} <span className="text-xs text-cyan-400/80 font-normal">gold</span>
+                  {Number(financialSummary.treasuryBalance || 0).toLocaleString()} <span className="text-xs text-cyan-400/80 font-normal">gold</span>
                 </div>
                 <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
                   <span>Vault Account:</span>
@@ -742,11 +742,11 @@ export default function AdminPage() {
                   <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
-                  +{financialSummary.totalTradeFees.toLocaleString()} <span className="text-xs text-emerald-300/80 font-normal">gold</span>
+                  +{Number(financialSummary.totalTradeFees || 0).toLocaleString()} <span className="text-xs text-emerald-300/80 font-normal">gold</span>
                 </div>
                 <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
-                  <span>Vol: {financialSummary.totalTradeVolume.toLocaleString()}g</span>
-                  <span className="text-zinc-300">{financialSummary.tradeCount} trades</span>
+                  <span>Vol: {Number(financialSummary.totalTradeVolume || 0).toLocaleString()}g</span>
+                  <span className="text-zinc-300">{financialSummary.tradeCount || 0} trades</span>
                 </div>
               </div>
 
@@ -757,11 +757,11 @@ export default function AdminPage() {
                   <Users className="w-3.5 h-3.5 text-purple-400" />
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-purple-300 mt-1">
-                  {financialSummary.totalCitizenGold.toLocaleString()} <span className="text-xs text-purple-300/80 font-normal">gold</span>
+                  {Number(financialSummary.totalCitizenGold || 0).toLocaleString()} <span className="text-xs text-purple-300/80 font-normal">gold</span>
                 </div>
                 <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
                   <span>Circulating Supply</span>
-                  <span className="text-zinc-300">{financialSummary.citizenCount} citizens</span>
+                  <span className="text-zinc-300">{financialSummary.citizenCount || 0} citizens</span>
                 </div>
               </div>
             </div>
@@ -772,11 +772,11 @@ export default function AdminPage() {
                 <div>
                   <span className="text-[10px] uppercase text-zinc-400 font-sans block">Total Gold Deposited (Inflow)</span>
                   <span className="font-mono text-sm font-bold text-emerald-400">
-                    +{financialSummary.totalDepositedGold.toLocaleString()} gold
+                    +{Number(financialSummary.totalDepositedGold || 0).toLocaleString()} gold
                   </span>
                 </div>
                 <span className="text-[10px] text-zinc-500 font-mono bg-zinc-900 px-2 py-1 rounded border border-rule">
-                  {financialSummary.totalIronUnitsDeposited.toLocaleString()} Raw Iron
+                  {Number(financialSummary.totalIronUnitsDeposited || 0).toLocaleString()} Raw Iron
                 </span>
               </div>
 
@@ -784,10 +784,10 @@ export default function AdminPage() {
                 <div>
                   <span className="text-[10px] uppercase text-zinc-400 font-sans block">Total Gold Withdrawn (Outflow)</span>
                   <span className="font-mono text-sm font-bold text-rose-400">
-                    -{financialSummary.totalWithdrawnGold.toLocaleString()} gold
+                    -{Number(financialSummary.totalWithdrawnGold || 0).toLocaleString()} gold
                   </span>
                 </div>
-                {financialSummary.pendingWithdrawalsGold > 0 && (
+                {Number(financialSummary.pendingWithdrawalsGold || 0) > 0 && (
                   <span className="text-[10px] text-amber-300 font-mono bg-amber-500/10 px-2 py-1 rounded border border-amber-500/30">
                     {financialSummary.pendingWithdrawalsGold}g pending
                   </span>
@@ -798,11 +798,11 @@ export default function AdminPage() {
                 <div>
                   <span className="text-[10px] uppercase text-zinc-400 font-sans block">Net Gold Held Under Custody</span>
                   <span className="font-mono text-sm font-bold text-zinc-100">
-                    {financialSummary.netGoldInCustody.toLocaleString()} gold
+                    {Number(financialSummary.netGoldInCustody || 0).toLocaleString()} gold
                   </span>
                 </div>
                 <span className="text-[10px] text-bullion font-mono bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
-                  IPO Fees: +{financialSummary.totalIpoFees.toLocaleString()}g
+                  IPO Fees: +{Number(financialSummary.totalIpoFees || financialSummary.totalListingFees || 0).toLocaleString()}g
                 </span>
               </div>
             </div>

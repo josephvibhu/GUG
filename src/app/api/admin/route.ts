@@ -161,6 +161,7 @@ export async function GET() {
       tradeCount: Number(tradeStatsRow.trade_count || 0),
       totalTradeFees,
       totalListingFees,
+      totalIpoFees: totalListingFees,
       totalPlatformProfit,
       totalDepositedGold: Number(walletStatsRow.total_deposits || 0),
       totalIronUnitsDeposited: Number(walletStatsRow.total_iron_deposited || 0),
