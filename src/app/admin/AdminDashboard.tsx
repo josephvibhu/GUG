@@ -92,6 +92,12 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   const [tradeFee, setTradeFee] = useState<number>(0.5);
   const [listingFee, setListingFee] = useState<number>(200);
 
+  // Discord Webhook Engine
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState<string>("");
+  const [discordWhaleThreshold, setDiscordWhaleThreshold] = useState<number>(25);
+  const [discordAlertsEnabled, setDiscordAlertsEnabled] = useState<boolean>(true);
+  const [discordTesting, setDiscordTesting] = useState<boolean>(false);
+
   // Market Trading Hours (UTC)
   const [openTime, setOpenTime] = useState<string>("15:30");
   const [closeTime, setCloseTime] = useState<string>("16:30");
@@ -163,6 +169,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           setAutoApprove(data.settings.autoApprove);
           if (data.settings.tradeFee !== undefined) setTradeFee(data.settings.tradeFee);
           if (data.settings.listingFee !== undefined) setListingFee(data.settings.listingFee);
+          if (data.settings.discordWebhookUrl !== undefined) setDiscordWebhookUrl(data.settings.discordWebhookUrl);
+          if (data.settings.discordWhaleThreshold !== undefined) setDiscordWhaleThreshold(data.settings.discordWhaleThreshold);
+          if (data.settings.discordAlertsEnabled !== undefined) setDiscordAlertsEnabled(data.settings.discordAlertsEnabled);
         }
         if (data.marketSchedule) {
           setMarketSchedule(data.marketSchedule);
@@ -481,6 +490,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           apiKey,
           tradeFee: Number(tradeFee),
           listingFee: Number(listingFee),
+          discordWebhookUrl,
+          discordWhaleThreshold: Number(discordWhaleThreshold),
+          discordAlertsEnabled,
         }),
       });
       const data = await res.json();
@@ -491,6 +503,35 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
       }
     } catch (e: any) {
       setFeedback({ type: "error", message: e.message });
+    }
+  };
+
+  const handleTestDiscordWebhook = async () => {
+    if (!discordWebhookUrl) {
+      setFeedback({ type: "error", message: "Please enter a Discord Webhook URL first." });
+      return;
+    }
+    setDiscordTesting(true);
+    setFeedback(null);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "test_discord_webhook",
+          webhookUrl: discordWebhookUrl,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+      } else {
+        setFeedback({ type: "error", message: data.message });
+      }
+    } catch (e: any) {
+      setFeedback({ type: "error", message: e.message });
+    } finally {
+      setDiscordTesting(false);
     }
   };
 
@@ -1834,6 +1875,117 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </div>
           </div>
         </form>
+
+        {/* Section 3.25: Discord Webhooks & Community Hype Engine */}
+        <div className="bg-gradient-to-r from-indigo-950/40 via-zinc-900/60 to-zinc-900/60 border border-indigo-500/30 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📢</span>
+                <h3 className="font-bold text-white text-sm">
+                  Discord Webhooks &amp; Community Hype Engine
+                </h3>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${discordWebhookUrl ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-zinc-800 text-zinc-400"}`}>
+                  {discordWebhookUrl ? "Active" : "Not Configured"}
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                Automatically posts real-time Whale Trade Alerts, Operator Deposit Pings, and new IPO Float announcements to your Discord server.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleTestDiscordWebhook}
+                disabled={discordTesting}
+                className="px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-300 font-bold text-xs transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {discordTesting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Sending Ping...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Send Test Alert</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 text-xs">
+            <div className="lg:col-span-6">
+              <label className="font-semibold text-zinc-300 block mb-1">
+                Discord Webhook URL
+              </label>
+              <input
+                type="text"
+                placeholder="https://discord.com/api/webhooks/..."
+                value={discordWebhookUrl}
+                onChange={(e) => setDiscordWebhookUrl(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 font-mono text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-400"
+              />
+              <span className="text-[10px] text-zinc-400 mt-1 block">
+                Paste the Webhook URL from your Discord channel settings (Integrations → Webhooks). Remember to click &ldquo;Save Settings&rdquo; above!
+              </span>
+            </div>
+
+            <div className="lg:col-span-3">
+              <label className="font-semibold text-zinc-300 block mb-1">
+                Whale Trade Threshold (gold)
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="1"
+                  step="5"
+                  value={discordWhaleThreshold}
+                  onChange={(e) => setDiscordWhaleThreshold(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-3 pr-8 py-2 font-mono text-amber-300 font-bold text-xs focus:outline-none focus:border-indigo-400"
+                />
+                <Coins className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-2.5" />
+              </div>
+              <span className="text-[10px] text-zinc-400 mt-1 block">
+                Trades &ge; this total value trigger a special 🚨 Whale Alert.
+              </span>
+            </div>
+
+            <div className="lg:col-span-3">
+              <label className="font-semibold text-zinc-300 block mb-1">
+                Alerts Toggle
+              </label>
+              <select
+                value={discordAlertsEnabled ? "true" : "false"}
+                onChange={(e) => setDiscordAlertsEnabled(e.target.value === "true")}
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-400"
+              >
+                <option value="true">Enabled (Broadcasting)</option>
+                <option value="false">Muted (Disabled)</option>
+              </select>
+              <span className="text-[10px] text-zinc-400 mt-1 block">
+                Quickly mute alerts during scheduled maintenance.
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[11px] text-zinc-400 border-t border-zinc-800/60">
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-400 font-bold">🚨</span>
+              <span><strong>Whale Trades:</strong> Sweeping order book floats and large block trades post immediately.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-amber-400 font-bold">📥</span>
+              <span><strong>Deposit Pings:</strong> Alerts you the second a citizen announces a deposit on GUG.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-purple-400 font-bold">🚀</span>
+              <span><strong>IPO Launches:</strong> Welcomes newly chartered companies and alerts traders to initial floats.</span>
+            </div>
+          </div>
+        </div>
 
         {/* Section 3.5: In-Game Deposit Auto-Verifier (Method 2 Userscript) */}
         <div className="bg-gradient-to-r from-emerald-950/40 via-zinc-900/60 to-zinc-900/60 border border-emerald-500/30 rounded-2xl p-5 shadow-xl flex flex-col gap-4">

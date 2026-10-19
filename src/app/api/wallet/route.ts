@@ -123,6 +123,16 @@ export async function POST(request: Request) {
         args: [targetName, user.id],
       });
 
+      // Dispatch Discord webhook ping to operator (non-blocking)
+      import("@/lib/discord").then(({ notifyDiscordDepositAnnouncement }) => {
+        notifyDiscordDepositAnnouncement({
+          citizenName: targetName,
+          amount: actualGold,
+          ironUnits,
+          txId,
+        });
+      }).catch(() => {});
+
       const updatedUser = await db.execute({
         sql: "SELECT cash_balance FROM users WHERE id = ?",
         args: [user.id],

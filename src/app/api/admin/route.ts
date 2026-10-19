@@ -18,13 +18,16 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "Forbidden: Admin access required." }, { status: 403 });
     }
 
-    const [taxRate, houseName, apiKey, autoApprove, tradeFee, listingFee] = await Promise.all([
+    const [taxRate, houseName, apiKey, autoApprove, tradeFee, listingFee, discordWebhookUrl, discordWhaleThreshold, discordAlertsEnabled] = await Promise.all([
       getSetting("tax_rate", "10"),
       getSetting("house_name", "JosephArora"),
       getSetting("api_key", ""),
       getSetting("auto_approve_deposits", "true"),
       getSetting("trade_fee_percent", "0.5"),
       getSetting("ipo_listing_fee", "200"),
+      getSetting("discord_webhook_url", ""),
+      getSetting("discord_whale_threshold", "25"),
+      getSetting("discord_alerts_enabled", "true"),
     ]);
 
     const { getMarketSchedule } = await import("@/lib/marketHours");
@@ -179,6 +182,9 @@ export async function GET() {
         autoApprove: autoApprove === "true",
         tradeFee: Number(tradeFee),
         listingFee: Number(listingFee),
+        discordWebhookUrl: discordWebhookUrl || "",
+        discordWhaleThreshold: Number(discordWhaleThreshold) || 25,
+        discordAlertsEnabled: discordAlertsEnabled !== "false",
       },
       marketSchedule,
       pendingDeposits: pendingRes.rows,
@@ -522,18 +528,48 @@ export async function POST(request: Request) {
     }
 
     if (action === "update_settings") {
-      const { taxRate, houseName, autoApprove, apiKey, tradeFee, listingFee } = body;
+      const { taxRate, houseName, autoApprove, apiKey, tradeFee, listingFee, discordWebhookUrl, discordWhaleThreshold, discordAlertsEnabled } = body;
       if (taxRate !== undefined) await setSetting("tax_rate", String(taxRate));
       if (houseName !== undefined) await setSetting("house_name", String(houseName));
       if (autoApprove !== undefined) await setSetting("auto_approve_deposits", String(autoApprove));
       if (apiKey !== undefined) await setSetting("api_key", String(apiKey));
       if (tradeFee !== undefined) await setSetting("trade_fee_percent", String(tradeFee));
       if (listingFee !== undefined) await setSetting("ipo_listing_fee", String(listingFee));
+      if (discordWebhookUrl !== undefined) await setSetting("discord_webhook_url", String(discordWebhookUrl));
+      if (discordWhaleThreshold !== undefined) await setSetting("discord_whale_threshold", String(discordWhaleThreshold));
+      if (discordAlertsEnabled !== undefined) await setSetting("discord_alerts_enabled", String(discordAlertsEnabled));
 
       const { scheduleBlobPersist } = await import("@/lib/db");
       scheduleBlobPersist();
 
       return NextResponse.json({ success: true, message: "Operator settings updated successfully!" });
+    }
+
+    if (action === "test_discord_webhook") {
+      const { webhookUrl } = body;
+      const { sendDiscordEmbed } = await import("@/lib/discord");
+      const testRes = await sendDiscordEmbed(
+        {
+          title: "✅ Grow UR Gold Discord Bot Connected!",
+          description: "Your Discord webhook is properly configured and active. Whale trade alerts and deposit announcements will now arrive in this channel in real time.",
+          color: 0x10b981,
+          fields: [
+            { name: "Status", value: "🟢 Active & Verified", inline: true },
+            { name: "Operator", value: `@${user.displayName || user.username}`, inline: true },
+            { name: "Platform", value: "[Grow UR Gold Exchange](https://growurgold.vercel.app)", inline: true },
+          ],
+        },
+        webhookUrl
+      );
+
+      if (!testRes.success) {
+        return NextResponse.json(
+          { success: false, message: testRes.message || "Failed to deliver test alert to Discord. Check your Webhook URL." },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({ success: true, message: "Test alert delivered to Discord successfully!" });
     }
 
     if (action === "freeze_user") {

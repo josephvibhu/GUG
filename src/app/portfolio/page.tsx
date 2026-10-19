@@ -7,6 +7,7 @@ import WalletModal from "@/components/WalletModal";
 import StockGiftModal from "@/components/StockGiftModal";
 import StockGiftsSection from "@/components/StockGiftsSection";
 import OpenOrdersTable, { type OpenOrder } from "@/components/OpenOrdersTable";
+import PortfolioPnLCard from "@/components/PortfolioPnLCard";
 import { PortfolioPosition } from "@/lib/market";
 import { usePoll, stableBody } from "@/hooks/usePoll";
 import type { FeedUser } from "@/hooks/useMarketFeed";
@@ -131,6 +132,18 @@ export default function PortfolioPage() {
               </div>
             </header>
 
+            {p && (
+              <PortfolioPnLCard
+                user={user}
+                positions={positions}
+                cashBalance={p.cashBalance}
+                lockedCash={p.lockedCash}
+                totalStockValue={p.totalStockValue}
+                totalNetWorth={p.totalNetWorth}
+                totalDividendsEarned={data ? data.totalDividendsEarned : 0}
+              />
+            )}
+
             <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border border-rule rounded-[4px] divide-x divide-y lg:divide-y-0 divide-rule [&>*]:border-rule">
               <Figure label="Net worth" value={p ? `${fmtGold(p.totalNetWorth)} gold` : "–"} />
               <Figure label="Purse" value={p ? `${fmtGold(p.cashBalance)} gold` : "–"} tone="text-bullion" />
@@ -178,27 +191,45 @@ export default function PortfolioPage() {
                           <td className="py-2.5 px-2 text-right text-paper hidden sm:table-cell">{fmtPrice(pos.avgBuyPrice)}</td>
                           <td className="py-2.5 px-2 text-right text-zinc-50">{fmtPrice(pos.currentPrice)}</td>
                           <td className="py-2.5 px-2 text-right text-paper hidden md:table-cell">{fmtGold(pos.marketValue)}</td>
-                          <td className={`py-2.5 px-2 text-right ${moveColor(pos.pnl)}`}>
-                            {fmtSigned(pos.pnl)}
-                            <span className="block text-[11px]">{fmtPct(pos.pnlPercent)}</span>
+                          <td className="py-2.5 px-2 text-right">
+                            <div className="flex flex-col items-end">
+                              <span className={`font-mono font-bold text-[12px] ${moveColor(pos.pnl)}`}>
+                                {fmtSigned(pos.pnl)} gold
+                              </span>
+                              <span className={`inline-block text-[10px] font-mono px-1.5 py-0.5 rounded font-bold mt-0.5 ${
+                                pos.pnl > 0 
+                                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" 
+                                  : pos.pnl < 0 
+                                    ? "bg-rose-500/15 text-rose-400 border border-rose-500/30" 
+                                    : "text-ash bg-zinc-800"
+                              }`}>
+                                {fmtPct(pos.pnlPercent)}
+                              </span>
+                            </div>
                           </td>
                           <td className="py-2.5 pl-2 pr-4 text-right">
-                            {pos.availableShares > 0 ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setGiftModalCompany(pos.companyId);
-                                  setShowGiftModal(true);
-                                }}
-                                className="px-2 py-0.5 rounded-[3px] bg-pane border border-rule hover:border-bullion/60 text-[11px] text-paper hover:text-bullion transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                title="Create a gift coupon code from these shares"
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Link
+                                href={`/trade/${pos.ticker}`}
+                                className="px-2 py-0.5 rounded-[3px] bg-zinc-800 hover:bg-zinc-700 text-[11px] text-zinc-200 transition-colors font-medium"
                               >
-                                <Gift className="w-3 h-3 text-bullion" />
-                                Gift
-                              </button>
-                            ) : (
-                              <span className="text-[11px] text-ash">–</span>
-                            )}
+                                Trade
+                              </Link>
+                              {pos.availableShares > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setGiftModalCompany(pos.companyId);
+                                    setShowGiftModal(true);
+                                  }}
+                                  className="px-2 py-0.5 rounded-[3px] bg-pane border border-rule hover:border-bullion/60 text-[11px] text-paper hover:text-bullion transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                  title="Create a gift coupon code from these shares"
+                                >
+                                  <Gift className="w-3 h-3 text-bullion" />
+                                  Gift
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
