@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
+import { SECTORS } from "@/lib/sectors";
 import { 
   Building2, 
   Coins, 
@@ -86,17 +87,7 @@ export default function IpoPage() {
 
   const emojiList = ["🏛️", "⚙️", "⚒️", "🗡️", "💎", "🌾", "🚢", "🚂", "🛡️", "⚗️", "👑", "📜", "📰"];
 
-  const sectors = [
-    "Mining & Raw Iron Extraction",
-    "Industry & Metallurgy",
-    "Agriculture & Grain Trade",
-    "Banking & Corporate Credit",
-    "Newspaper & Public Press",
-    "Logistics & Courier Guild",
-    "Military & Defense Outfitting",
-    "Parliamentary Faction Syndicate",
-    "Special & Cultural Enterprise",
-  ];
+  const sectors = SECTORS;
 
   const fetchApplications = async () => {
     try {
@@ -924,8 +915,8 @@ export default function IpoPage() {
 
               <div className="flex justify-between p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30">
                 <div className="flex flex-col">
-                  <span className="text-emerald-300 font-sans font-bold">Est. Net Disbursed to Founder:</span>
-                  <span className="text-[10px] text-emerald-400/80">Capital into your purse as shares sell</span>
+                  <span className="text-emerald-300 font-sans font-bold">Est. raised for the company:</span>
+                  <span className="text-[10px] text-emerald-400/80">Goes into the company treasury as shares sell. Move it to your purse from the Founder tab.</span>
                 </div>
                 <span className="font-mono font-black text-emerald-400 text-sm">
                   {Math.max(0, publicFloatVal - 200).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold

@@ -10,7 +10,7 @@ import OrderBook from "@/components/OrderBook";
 import TradeForm from "@/components/TradeForm";
 import RecentTrades from "@/components/RecentTrades";
 import OpenOrdersTable, { type OpenOrder } from "@/components/OpenOrdersTable";
-import { BuybackDialog, EarningsDialog } from "@/components/FounderTools";
+import { BuybackDialog, EarningsDialog, TreasuryPanel, CompanyProfileForm } from "@/components/FounderTools";
 import CompanyLedger from "@/components/CompanyLedger";
 import { Company, OrderBookData, TradeItem, PortfolioPosition } from "@/lib/market";
 import { usePoll, stableBody } from "@/hooks/usePoll";
@@ -58,6 +58,7 @@ interface TerminalData {
   earningsReports: Report[];
   nextFriday: string;
   shareholders: Holder[];
+  founderView: { discordHandle: string } | null;
 }
 
 type Tab = "book" | "trades" | "orders" | "position" | "holders" | "dividends" | "ledger" | "about" | "founder";
@@ -87,7 +88,9 @@ function Terminal({ ticker }: { ticker: string }) {
   const [data, setData] = useState<TerminalData | null>(null);
   const [missing, setMissing] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
-  const [tab, setTab] = useState<Tab | null>(null);
+  const [tab, setTab] = useState<Tab | null>(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "founder" ? "founder" : null
+  );
   const [dialog, setDialog] = useState<"buyback" | "earnings" | null>(null);
   const lastBody = useRef("");
 
@@ -145,7 +148,9 @@ function Terminal({ ticker }: { ticker: string }) {
     trades.length > 1 ? (trades[0].price > trades[1].price ? "up" : trades[0].price < trades[1].price ? "down" : "flat") : "flat";
   const freshTrade = trades[0] && data.serverNow - Date.parse(trades[0].timestamp) < 6000;
   const prevRef = c.currentPrice / (1 + c.change24h / 100);
-  const canFound = !!data.user && (c.creatorId === data.user.id || !!data.user.isAdmin);
+  const isFounder = !!data.user && c.creatorId === data.user.id;
+  const canFound = isFounder || !!data.user?.isAdmin;
+  const dividendDue = data.earningsReports.filter((r) => r.status === "SCHEDULED").reduce((sum, r) => sum + r.dividendPool, 0);
   const founderShares = data.shareholders.find((h) => h.userId === c.creatorId)?.shares || 0;
   const latestReport = data.earningsReports[0];
 
@@ -219,6 +224,7 @@ function Terminal({ ticker }: { ticker: string }) {
           <Stat label="24h low" value={fmtPrice(c.low24h)} />
           <Stat label="24h volume" value={`${fmtCompact(c.volume24h)} gold`} />
           <Stat label="Market cap" value={`${fmtCompact(c.marketCap)} gold`} />
+          {c.weeklyRevenue ? <Stat label="Revenue / week" value={`${fmtCompact(c.weeklyRevenue)} gold`} /> : null}
         </dl>
       </div>
 
@@ -385,6 +391,7 @@ function Terminal({ ticker }: { ticker: string }) {
                   {c.weeklyRevenue && c.weeklyRevenue > 0 ? (
                     <Stat label="Est. weekly revenue" value={`${c.weeklyRevenue.toLocaleString()} gold`} />
                   ) : null}
+                  <Stat label="Company treasury" value={`${fmtGold(c.treasuryBalance || 0)} gold`} />
                   <Stat label="Listed" value={fmtUtcDate(c.createdAt)} />
                   <Stat label="Bought back" value={fmtQty(c.sharesBoughtBack)} />
                 </dl>
@@ -392,24 +399,37 @@ function Terminal({ ticker }: { ticker: string }) {
             )}
 
             {active === "founder" && canFound && (
-              <div className="px-4 py-4 flex flex-col gap-4 max-w-2xl">
+              <div className="px-4 py-4 flex flex-col gap-6 max-w-2xl">
                 <p className="text-[13px] text-ash leading-relaxed">
-                  Only the founder and the operator see this. Dividends and buybacks are paid from your purse
-                  ({fmtGold(data.user?.cashBalance || 0)} gold).
+                  Only {isFounder ? "you" : "the founder"} and the operator see this tab.
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setDialog("earnings")} className="h-9 px-4 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold">
-                    Report weekly earnings
-                  </button>
-                  <button type="button" onClick={() => setDialog("buyback")} className="h-9 px-4 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper">
-                    Buy back shares
-                  </button>
-                </div>
-                <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
-                  <Stat label="Dividends paid" value={`${fmtGold(c.totalDividendsPaid || 0)} gold`} />
-                  <Stat label="Shares bought back" value={fmtQty(c.sharesBoughtBack)} />
-                  <Stat label="Spent on buybacks" value={`${fmtGold(c.buybackGoldSpent)} gold`} />
-                </dl>
+                {isFounder ? (
+                  <TreasuryPanel company={c} userCash={data.user?.cashBalance || 0} dividendDue={dividendDue} onDone={refresh} />
+                ) : (
+                  <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                    <Stat label="Company treasury" value={`${fmtGold(c.treasuryBalance || 0)} gold`} />
+                  </dl>
+                )}
+                <section aria-labelledby="payouts-title" className="flex flex-col gap-3">
+                  <h3 id="payouts-title" className="text-[13px] font-semibold text-zinc-50">Dividends and buybacks</h3>
+                  <p className="text-[12px] text-ash leading-relaxed">
+                    Dividends are paid from the treasury first, then your purse. Buybacks are paid from your purse.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setDialog("earnings")} className="h-9 px-4 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper">
+                      Report weekly earnings
+                    </button>
+                    <button type="button" onClick={() => setDialog("buyback")} className="h-9 px-4 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper">
+                      Buy back shares
+                    </button>
+                  </div>
+                  <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                    <Stat label="Dividends paid" value={`${fmtGold(c.totalDividendsPaid || 0)} gold`} />
+                    <Stat label="Shares bought back" value={fmtQty(c.sharesBoughtBack)} />
+                    <Stat label="Spent on buybacks" value={`${fmtGold(c.buybackGoldSpent)} gold`} />
+                  </dl>
+                </section>
+                <CompanyProfileForm key={c.id} company={c} discordHandle={data.founderView?.discordHandle || ""} onDone={refresh} />
               </div>
             )}
           </div>

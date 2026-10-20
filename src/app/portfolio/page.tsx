@@ -166,6 +166,13 @@ export default function PortfolioPage() {
                 sub={founderPositions.length > 0 ? `+${fmtGold(founderStockValue)}g founder equity` : undefined} 
               />
               <Figure label="Purse" value={p ? `${fmtGold(p.cashBalance)} gold` : "–"} tone="text-bullion" />
+              {founderPositions.length > 0 && (
+                <Figure
+                  label={founderPositions.length > 1 ? "Company treasuries" : `${founderPositions[0].ticker} treasury`}
+                  value={`${fmtGold(founderPositions.reduce((sum, x) => sum + (x.treasuryBalance || 0), 0))} gold`}
+                  tone="text-bullion"
+                />
+              )}
               <Figure label="In buy orders" value={p ? `${fmtGold(p.lockedCash)} gold` : "–"} tone="text-paper" />
               <Figure label={founderPositions.length > 0 ? "Trading stocks" : "Shares value"} value={p ? `${fmtGold(tradingStockValue)} gold` : "–"} tone="text-paper" />
               <Figure label="Unrealized" value={p ? `${unrealized >= 0 ? "+" : "−"}${fmtGold(Math.abs(unrealized))}` : "–"} sub={p ? fmtPct(unrealizedPct) : undefined} tone={moveColor(unrealized)} />
@@ -273,6 +280,11 @@ export default function PortfolioPage() {
                           </div>
                         </div>
 
+                        <div className="mt-3 p-2.5 rounded-lg bg-zinc-950/50 border border-zinc-800/60 flex items-center justify-between text-[11px]">
+                          <span className="text-zinc-400 text-[10px]">Company treasury</span>
+                          <span className="font-mono font-bold text-bullion">{fmtGold(fPos.treasuryBalance || 0)} gold</span>
+                        </div>
+
                         {/* Underwriting Charter Fee status */}
                         <div className="mt-3 p-2.5 rounded-lg bg-zinc-950/50 border border-zinc-800/60 flex items-center justify-between text-[11px] font-mono">
                           <div>
@@ -293,10 +305,10 @@ export default function PortfolioPage() {
                           Trade Terminal
                         </Link>
                         <Link
-                          href="/dividends"
+                          href={`/trade/${fPos.ticker}?tab=founder`}
                           className="py-2 px-3 rounded-lg bg-bullion hover:bg-amber-300 text-xs font-semibold text-floor transition"
                         >
-                          Declare Dividend
+                          Treasury & dividends
                         </Link>
                         <Link
                           href={`/companies/${fPos.ticker}`}
