@@ -138,43 +138,24 @@ export default function TradeForm({
 
   return (
     <form onSubmit={handleSubmitOrder} className="p-3 flex flex-col gap-3 text-[13px]">
-      {/* Mode Switcher: Basic (Quick Clickable) vs Advanced (Pro Ticket) */}
-      <div className="flex items-center justify-between pb-1 border-b border-rule">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-ash">Mode</span>
-        <div className="flex bg-pane p-0.5 rounded-[4px] text-[11px] font-medium border border-rule">
+      <div className="grid grid-cols-2 gap-0.5 p-0.5 rounded-[4px] border border-rule" role="group" aria-label="Ticket">
+        {(["BASIC", "ADVANCED"] as const).map((m) => (
           <button
+            key={m}
             type="button"
+            aria-pressed={mode === m}
             onClick={() => {
-              setMode("BASIC");
-              setOrderType("MARKET");
+              setMode(m);
+              if (m === "BASIC") setOrderType("MARKET");
               setFeedback(null);
             }}
-            className={`px-2.5 py-0.5 rounded-[3px] transition cursor-pointer flex items-center gap-1 ${
-              mode === "BASIC"
-                ? "bg-bullion text-floor font-bold shadow-sm"
-                : "text-ash hover:text-paper"
-            }`}
+            className={`h-7 rounded-[3px] text-[12px] ${mode === m ? "bg-rule text-zinc-50 font-semibold" : "text-ash hover:text-paper"}`}
           >
-            ⚡ Basic
+            {m === "BASIC" ? "Basic" : "Advanced"}
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode("ADVANCED");
-              setFeedback(null);
-            }}
-            className={`px-2.5 py-0.5 rounded-[3px] transition cursor-pointer flex items-center gap-1 ${
-              mode === "ADVANCED"
-                ? "bg-zinc-700 text-white font-bold shadow-sm"
-                : "text-ash hover:text-paper"
-            }`}
-          >
-            ⚙️ Advanced
-          </button>
-        </div>
+        ))}
       </div>
 
-      {/* Buy / Sell Selector */}
       <div className="grid grid-cols-2 gap-0.5 p-0.5 rounded-[4px] bg-pane" role="group" aria-label="Side">
         {(["BUY", "SELL"] as const).map((s) => (
           <button
@@ -185,7 +166,7 @@ export default function TradeForm({
               setSide(s);
               setFeedback(null);
             }}
-            className={`h-8 rounded-[3px] font-semibold transition-colors cursor-pointer ${
+            className={`h-8 rounded-[3px] font-semibold transition-colors ${
               side === s ? (s === "BUY" ? "bg-bull text-floor" : "bg-bear text-white") : "text-ash hover:text-paper"
             }`}
           >
@@ -194,210 +175,103 @@ export default function TradeForm({
         ))}
       </div>
 
-      {/* BASIC MODE: Simplified, clickable access without complex inputs */}
       {mode === "BASIC" ? (
         <div className="flex flex-col gap-3">
-          {/* Price display banner */}
-          {side === "BUY" ? (
-            lowestAsk != null ? (
-              <div className="p-2.5 rounded-[4px] bg-pane border border-rule flex items-center justify-between text-xs">
-                <div className="flex flex-col">
-                  <span className="text-ash font-medium">Market Execution Price</span>
-                  <span className="text-[10px] text-emerald-400 font-mono">Lowest Ask on book</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-zinc-50 font-mono text-sm">
-                    {fmtPrice(lowestAsk)} gold
-                  </span>
-                  <span className="text-[10px] text-ash block">
-                    {lowestAsk !== company.currentPrice ? `(Last trade: ${fmtPrice(company.currentPrice)}g)` : "/ share"}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3 rounded-[4px] bg-amber-500/10 border border-amber-500/30 flex flex-col gap-1.5 text-xs text-amber-200">
-                <div className="font-bold text-amber-300">No shares currently for sale on the book</div>
-                <p className="text-[11px] text-zinc-300">
-                  There are no active sell orders. Switch to Advanced to place a Limit Buy order at your desired price.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("ADVANCED");
-                    setOrderType("LIMIT");
-                    setPrice(company.currentPrice.toFixed(2));
-                  }}
-                  className="mt-1 py-1 px-3 rounded bg-amber-500 hover:bg-amber-400 text-black font-semibold text-[11px] self-start cursor-pointer transition"
-                >
-                  Place Limit Buy Order →
-                </button>
-              </div>
-            )
-          ) : (
-            highestBid != null ? (
-              <div className="p-2.5 rounded-[4px] bg-pane border border-rule flex items-center justify-between text-xs">
-                <div className="flex flex-col">
-                  <span className="text-ash font-medium">Market Execution Price</span>
-                  <span className="text-[10px] text-bullion font-mono">Highest Bid on book</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-zinc-50 font-mono text-sm">
-                    {fmtPrice(highestBid)} gold
-                  </span>
-                  <span className="text-[10px] text-ash block">
-                    {highestBid !== company.currentPrice ? `(Last trade: ${fmtPrice(company.currentPrice)}g)` : "/ share"}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3 rounded-[4px] bg-blue-500/10 border border-blue-500/30 flex flex-col gap-1.5 text-xs text-blue-200">
-                <div className="font-bold text-blue-300">No active buy orders on book</div>
-                <p className="text-[11px] text-zinc-300">
-                  No buyers are waiting at market right now. Switch to Advanced to set your asking price and list shares on the book.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("ADVANCED");
-                    setOrderType("LIMIT");
-                    setPrice(lowestAsk ? lowestAsk.toFixed(2) : company.currentPrice.toFixed(2));
-                  }}
-                  className="mt-1 py-1 px-3 rounded bg-blue-500 hover:bg-blue-400 text-black font-semibold text-[11px] self-start cursor-pointer transition"
-                >
-                  Set Limit Selling Price →
-                </button>
-              </div>
-            )
-          )}
-
-          {/* Quick Clickable Share Amount Selector with Stepper */}
-          <div className="flex flex-col gap-2">
-            <div className="flex justify-between text-[12px] text-ash">
-              <span>Shares to trade</span>
-              <span>
-                {side === "BUY"
-                  ? `Max: ${fmtQty(numPrice > 0 ? Math.floor(userCash / escrowPrice) : 0)}`
-                  : `Owned: ${fmtQty(availableShares)}`}
+          {(side === "BUY" ? lowestAsk : highestBid) != null ? (
+            <div className="flex items-baseline justify-between">
+              <span className="text-[12px] text-ash">{side === "BUY" ? "Cheapest share for sale" : "Best offer from a buyer"}</span>
+              <span className="text-right">
+                <span className="condensed tabular text-[18px] font-bold text-zinc-50">{fmtPrice((side === "BUY" ? lowestAsk : highestBid) as number)}</span>
+                <span className="block text-[11px] text-ash tabular">last trade {fmtPrice(company.currentPrice)}</span>
               </span>
             </div>
+          ) : (
+            <div className="flex flex-col items-start gap-2 text-[12px] text-ash">
+              <p>{side === "BUY" ? "Nobody is selling right now." : "Nobody is buying right now."} Name your price with a limit order instead.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("ADVANCED");
+                  setOrderType("LIMIT");
+                  setPrice((side === "SELL" && lowestAsk ? lowestAsk : company.currentPrice).toFixed(2));
+                }}
+                className="h-8 px-3 rounded-[4px] border border-rule hover:border-zinc-500 text-[12px] text-paper"
+              >
+                Place a limit order
+              </button>
+            </div>
+          )}
 
-            {/* Stepper with - / count / + */}
-            <div className="flex items-center justify-between bg-floor border border-rule rounded-[4px] p-1">
+          <div className="flex flex-col gap-1.5">
+            <span className="flex justify-between text-[12px] text-ash">
+              Shares
+              <span className="tabular">
+                {side === "BUY" ? `up to ${fmtQty(numPrice > 0 ? Math.floor(userCash / escrowPrice) : 0)}` : `${fmtQty(availableShares)} free`}
+              </span>
+            </span>
+            <div className="flex items-center rounded-[4px] border border-rule bg-floor">
               <button
                 type="button"
                 onClick={() => setQuantity(Math.max(1, (parseInt(quantity, 10) || 1) - 1).toString())}
-                className="w-9 h-8 rounded-[3px] bg-pane hover:bg-zinc-700 text-zinc-100 font-bold text-base flex items-center justify-center transition cursor-pointer"
-                aria-label="Decrease quantity"
+                className="h-9 w-10 text-[18px] text-paper hover:text-zinc-50"
+                aria-label="One share fewer"
               >
-                -
+                −
               </button>
-              <div className="flex items-center gap-1 font-mono font-bold text-zinc-50 text-sm">
-                <input
-                  type="number"
-                  min="1"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  className="w-16 text-center bg-transparent focus:outline-none"
-                />
-                <span className="text-[12px] font-normal text-ash font-sans">shares</span>
-              </div>
+              <input
+                type="number"
+                inputMode="numeric"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                aria-label="Shares"
+                className="flex-1 min-w-0 h-9 bg-transparent text-center text-[15px] text-zinc-50 tabular focus:outline-none"
+              />
               <button
                 type="button"
                 onClick={() => setQuantity(((parseInt(quantity, 10) || 0) + 1).toString())}
-                className="w-9 h-8 rounded-[3px] bg-pane hover:bg-zinc-700 text-zinc-100 font-bold text-base flex items-center justify-center transition cursor-pointer"
-                aria-label="Increase quantity"
+                className="h-9 w-10 text-[18px] text-paper hover:text-zinc-50"
+                aria-label="One share more"
               >
                 +
               </button>
             </div>
-
-            {/* Clickable Quick Share Bundles */}
-            <div className="flex flex-col gap-1.5 pt-1">
-              <div className="grid grid-cols-4 gap-1">
-                {[1, 5, 10, 25].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setQuantity(preset.toString())}
-                    className={`h-7 rounded-[3px] border text-[11px] font-mono transition cursor-pointer ${
-                      quantity === preset.toString()
-                        ? "border-bullion text-bullion bg-bullion/10 font-bold"
-                        : "border-rule text-ash hover:text-paper hover:border-zinc-600 bg-pane"
-                    }`}
-                  >
-                    +{preset}
-                  </button>
-                ))}
-              </div>
-
-              {/* Quick Percentages */}
-              <div className="grid grid-cols-3 gap-1">
-                {side === "BUY" ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => handlePercentPick(25)}
-                      className="h-7 rounded-[3px] border border-rule text-[11px] text-ash hover:text-paper hover:border-zinc-600 bg-pane transition cursor-pointer"
-                    >
-                      25% Purse
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handlePercentPick(50)}
-                      className="h-7 rounded-[3px] border border-rule text-[11px] text-ash hover:text-paper hover:border-zinc-600 bg-pane transition cursor-pointer"
-                    >
-                      50% Purse
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handlePercentPick(100)}
-                      className="h-7 rounded-[3px] border border-bullion/50 text-[11px] font-bold text-bullion hover:border-bullion bg-bullion/10 transition cursor-pointer"
-                    >
-                      Max Buy
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => handlePercentPick(25)}
-                      className="h-7 rounded-[3px] border border-rule text-[11px] text-ash hover:text-paper hover:border-zinc-600 bg-pane transition cursor-pointer"
-                    >
-                      25%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handlePercentPick(50)}
-                      className="h-7 rounded-[3px] border border-rule text-[11px] text-ash hover:text-paper hover:border-zinc-600 bg-pane transition cursor-pointer"
-                    >
-                      50%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handlePercentPick(100)}
-                      className="h-7 rounded-[3px] border border-bear/50 text-[11px] font-bold text-bear hover:border-bear bg-bear/10 transition cursor-pointer"
-                    >
-                      All ({fmtQty(availableShares)})
-                    </button>
-                  </>
-                )}
-              </div>
+            <div className="grid grid-cols-7 gap-1">
+              {[1, 5, 10, 25].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setQuantity(preset.toString())}
+                  className={`h-7 rounded-[3px] border text-[12px] tabular ${
+                    quantity === preset.toString() ? "border-zinc-500 text-zinc-50" : "border-rule text-ash hover:text-paper"
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+              {[25, 50, 100].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => handlePercentPick(pct)}
+                  className="h-7 rounded-[3px] border border-rule text-[12px] text-ash hover:text-paper"
+                >
+                  {pct === 100 ? (side === "BUY" ? "Max" : "All") : `${pct}%`}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Simple summary card */}
-          <div className="p-2.5 rounded-[4px] bg-pane/70 border border-rule space-y-1.5 text-xs">
+          <dl className="flex flex-col gap-1 text-[12px]">
             <div className="flex justify-between">
-              <span className="text-ash">{side === "BUY" ? "Estimated Total Cost:" : "Estimated Total Payout:"}</span>
-              <strong className="text-zinc-50 font-mono text-sm">{fmtPrice(totalCost)} gold</strong>
+              <dt className="text-ash">{side === "BUY" ? "Estimated cost" : "Estimated payout"}</dt>
+              <dd className="text-zinc-50 font-medium tabular">{fmtPrice(totalCost)} gold</dd>
             </div>
-            <div className="flex justify-between text-[11px]">
-              <span className="text-ash">{side === "BUY" ? "Your Purse Balance:" : "Shares Available to Sell:"}</span>
-              <span className="text-paper font-mono">
-                {side === "BUY" ? `${fmtGold(userCash)} gold` : `${fmtQty(availableShares)} shares`}
-              </span>
+            <div className="flex justify-between">
+              <dt className="text-ash">{side === "BUY" ? "Purse" : "Your shares"}</dt>
+              <dd className="text-paper tabular">{side === "BUY" ? `${fmtGold(userCash)} gold` : fmtQty(availableShares)}</dd>
             </div>
-          </div>
+          </dl>
         </div>
       ) : (
         /* ADVANCED MODE: Professional order ticket with Limit / Market and exact price */
@@ -514,33 +388,21 @@ export default function TradeForm({
 
       <button
         type="submit"
-        disabled={
-          isLoading ||
-          !!blocked ||
-          (mode === "BASIC" && ((side === "BUY" && lowestAsk == null) || (side === "SELL" && highestBid == null)))
-        }
-        className={`h-10 rounded-[4px] text-[14px] font-semibold transition-colors disabled:cursor-not-allowed cursor-pointer ${
+        disabled={isLoading || !!blocked || (mode === "BASIC" && ((side === "BUY" && lowestAsk == null) || (side === "SELL" && highestBid == null)))}
+        className={`h-10 rounded-[4px] text-[14px] font-semibold transition-colors disabled:cursor-not-allowed ${
           blocked || (mode === "BASIC" && ((side === "BUY" && lowestAsk == null) || (side === "SELL" && highestBid == null)))
-            ? "bg-pane text-ash border border-rule cursor-not-allowed"
+            ? "bg-pane text-ash border border-rule"
             : side === "BUY"
-            ? "bg-bull hover:bg-emerald-400 text-floor"
-            : "bg-bear hover:bg-rose-400 text-white"
+            ? "bg-bull hover:brightness-110 text-floor"
+            : "bg-bear hover:brightness-110 text-white"
         } ${isLoading ? "opacity-60" : ""}`}
       >
         {isLoading
           ? "Placing order…"
-          : mode === "BASIC" && side === "BUY" && lowestAsk == null
-          ? "No Shares Available on Book"
-          : mode === "BASIC" && side === "SELL" && highestBid == null
-          ? "No Buyers on Order Book"
-          : mode === "BASIC"
-          ? `⚡ ${side === "BUY" ? "Quick Buy" : "Quick Sell"} ${numQty > 0 ? fmtQty(numQty) + " " : ""}${company.ticker} (${fmtPrice(totalCost)}g)`
-          : `${side === "BUY" ? "Buy" : "Sell"} ${numQty > 0 ? fmtQty(numQty) + " " : ""}${company.ticker}`}
+          : mode === "BASIC" && ((side === "BUY" && lowestAsk == null) || (side === "SELL" && highestBid == null))
+          ? side === "BUY" ? "Nothing for sale" : "No buyers"
+          : `${side === "BUY" ? "Buy" : "Sell"} ${numQty > 0 ? fmtQty(numQty) + " " : ""}${company.ticker}${mode === "BASIC" && numQty > 0 ? ` for ${fmtPrice(totalCost)} gold` : ""}`}
       </button>
-
-      <p className="text-[10px] text-ash/70 text-center leading-tight pt-1">
-        Settled in Parlamentum gold only. No real money goes in or comes out. Not run by the Parlamentum team.
-      </p>
     </form>
   );
 }
