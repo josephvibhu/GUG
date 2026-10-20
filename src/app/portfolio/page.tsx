@@ -12,7 +12,7 @@ import { PortfolioPosition } from "@/lib/market";
 import { usePoll, stableBody } from "@/hooks/usePoll";
 import type { FeedUser } from "@/hooks/useMarketFeed";
 import { fmtGold, fmtPrice, fmtQty, fmtPct, fmtSigned, fmtUtcDate, moveColor } from "@/lib/format";
-import { Gift, Building2, TrendingUp, Layers, ShieldCheck } from "lucide-react";
+import { Gift } from "lucide-react";
 
 interface PortfolioResponse {
   positions: PortfolioPosition[];
@@ -45,14 +45,11 @@ interface PortfolioData {
   totalDividendsEarned: number;
 }
 
-function Figure({ label, value, sub, tone = "text-zinc-50" }: { label: string; value: string; sub?: string; tone?: string }) {
+function Figure({ label, value, tone = "text-zinc-50", big = false }: { label: string; value: string; tone?: string; big?: boolean }) {
   return (
-    <div className="px-4 py-3 flex flex-col gap-0.5 min-w-0">
-      <dt className="text-[12px] text-ash">{label}</dt>
-      <dd className={`text-[17px] font-semibold truncate ${tone}`}>
-        {value}
-        {sub && <span className="ml-1.5 text-[12px] font-normal">{sub}</span>}
-      </dd>
+    <div className="bg-floor px-3 sm:px-4 py-3 flex flex-col gap-0.5 min-w-0">
+      <dt className="text-[12px] text-ash truncate">{label}</dt>
+      <dd className={`condensed tabular font-bold truncate leading-tight ${big ? "text-[24px]" : "text-[19px]"} ${tone}`}>{value}</dd>
     </div>
   );
 }
@@ -106,7 +103,7 @@ export default function PortfolioPage() {
     <div className="min-h-screen flex flex-col">
       <Navbar onUserRefresh={refresh} />
 
-      <main className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-8">
+      <main className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-8">
         {loggedOut ? (
           <div className="flex flex-col items-start gap-3 py-10">
             <h1 className="condensed text-[28px] font-extrabold text-zinc-50 leading-none">Portfolio</h1>
@@ -117,297 +114,201 @@ export default function PortfolioPage() {
           </div>
         ) : (
           <>
-            <header className="flex flex-wrap items-end justify-between gap-4">
+            <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div className="min-w-0">
-                <h1 className="condensed text-[28px] font-extrabold text-zinc-50 leading-none tracking-tight truncate">
-                  Portfolio
-                </h1>
-                <p className="mt-1.5 text-[13px] text-ash">
-                  {user ? `${user.displayName || user.username} • In game as ${user.parlamentumName || user.username}` : " "}
+                <h1 className="condensed text-[28px] font-extrabold text-zinc-50 leading-none tracking-tight">Portfolio</h1>
+                <p className="mt-1.5 text-[13px] text-ash truncate">
+                  {user ? `In game as ${user.parlamentumName || user.username}` : " "}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-3 sm:flex gap-2">
+                <button type="button" onClick={() => setWallet("deposit")} className="h-9 px-4 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold">
+                  Deposit
+                </button>
+                <button type="button" onClick={() => setWallet("withdraw")} className="h-9 px-4 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper">
+                  Withdraw
+                </button>
                 <button
                   type="button"
                   onClick={() => {
                     setGiftModalCompany(undefined);
                     setShowGiftModal(true);
                   }}
-                  className="h-9 px-3.5 rounded-[4px] border border-bullion/50 hover:bg-bullion/10 text-[13px] text-bullion font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
+                  className="h-9 px-4 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper flex items-center justify-center gap-1.5"
                 >
-                  <Gift className="w-3.5 h-3.5" />
-                  Gift stock
-                </button>
-                <button type="button" onClick={() => setWallet("deposit")} className="h-9 px-4 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold">
-                  Deposit gold
-                </button>
-                <button type="button" onClick={() => setWallet("withdraw")} className="h-9 px-4 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper">
-                  Withdraw gold
+                  <Gift className="h-3.5 w-3.5 text-ash" />
+                  Gift
                 </button>
               </div>
             </header>
 
-            {p && (
-              <PortfolioPnLCard
-                user={user}
-                positions={pnlPositions}
-                cashBalance={p.cashBalance}
-                lockedCash={p.lockedCash}
-                totalStockValue={pnlStockValue}
-                totalNetWorth={tradingNetWorth}
-                totalDividendsEarned={data ? data.totalDividendsEarned : 0}
-              />
-            )}
-
-            <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border border-rule rounded-[4px] divide-x divide-y lg:divide-y-0 divide-rule [&>*]:border-rule">
-              <Figure 
-                label={founderPositions.length > 0 ? "Trading Net Worth" : "Net worth"} 
-                value={p ? `${fmtGold(tradingNetWorth)} gold` : "–"} 
-                sub={founderPositions.length > 0 ? `+${fmtGold(founderStockValue)}g founder equity` : undefined} 
-              />
-              <Figure label="Purse" value={p ? `${fmtGold(p.cashBalance)} gold` : "–"} tone="text-bullion" />
-              {founderPositions.length > 0 && (
-                <Figure
-                  label={founderPositions.length > 1 ? "Company treasuries" : `${founderPositions[0].ticker} treasury`}
-                  value={`${fmtGold(founderPositions.reduce((sum, x) => sum + (x.treasuryBalance || 0), 0))} gold`}
-                  tone="text-bullion"
+            <section aria-label="Summary" className="flex flex-col gap-3">
+              <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-px bg-rule border border-rule rounded-[4px] overflow-hidden">
+                <Figure big label="Net worth" value={p ? `${fmtGold(tradingNetWorth + founderStockValue)}` : "–"} />
+                <Figure big label="Purse" value={p ? fmtGold(p.cashBalance) : "–"} tone="text-bullion" />
+                {founderPositions.length > 0 && (
+                  <Figure
+                    label={founderPositions.length > 1 ? "Company treasuries" : `${founderPositions[0].ticker} treasury`}
+                    value={fmtGold(founderPositions.reduce((sum, x) => sum + (x.treasuryBalance || 0), 0))}
+                    tone="text-bullion"
+                  />
+                )}
+                <Figure label="In buy orders" value={p ? fmtGold(p.lockedCash) : "–"} tone="text-paper" />
+                <Figure label={founderPositions.length > 0 ? "Traded shares" : "Shares"} value={p ? fmtGold(tradingStockValue) : "–"} tone="text-paper" />
+                {founderPositions.length > 0 && <Figure label="Founder shares" value={fmtGold(founderStockValue)} tone="text-paper" />}
+                <Figure label="Unrealized" value={p ? `${unrealized >= 0 ? "+" : "−"}${fmtGold(Math.abs(unrealized))} ${fmtPct(unrealizedPct)}` : "–"} tone={moveColor(unrealized)} />
+                <Figure label="Dividends received" value={data ? fmtPrice(data.totalDividendsEarned) : "–"} tone="text-paper" />
+              </dl>
+              <p className="text-[12px] text-ash">All figures in gold. Net worth counts your purse, open buy orders and shares at the last price.</p>
+              {p && (
+                <PortfolioPnLCard
+                  user={user}
+                  positions={pnlPositions}
+                  cashBalance={p.cashBalance}
+                  lockedCash={p.lockedCash}
+                  totalStockValue={pnlStockValue}
+                  totalNetWorth={tradingNetWorth}
+                  totalDividendsEarned={data ? data.totalDividendsEarned : 0}
                 />
               )}
-              <Figure label="In buy orders" value={p ? `${fmtGold(p.lockedCash)} gold` : "–"} tone="text-paper" />
-              <Figure label={founderPositions.length > 0 ? "Trading stocks" : "Shares value"} value={p ? `${fmtGold(tradingStockValue)} gold` : "–"} tone="text-paper" />
-              <Figure label="Unrealized" value={p ? `${unrealized >= 0 ? "+" : "−"}${fmtGold(Math.abs(unrealized))}` : "–"} sub={p ? fmtPct(unrealizedPct) : undefined} tone={moveColor(unrealized)} />
-              <Figure label="Dividends received" value={data ? `${fmtPrice(data.totalDividendsEarned)} gold` : "–"} tone="text-paper" />
-            </dl>
+            </section>
 
-            <section aria-labelledby="holdings" className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rule pb-3">
-                <div className="flex items-center gap-2">
-                  <h2 id="holdings" className="text-[15px] font-semibold text-zinc-50">
-                    Holdings
-                  </h2>
-                  <span className="text-xs text-ash font-mono">
-                    ({holdingsTab === "trading" ? tradingPositions.length : holdingsTab === "founder" ? founderPositions.length : positions.length} {holdingsTab === "founder" ? "companies" : "positions"})
+            <section aria-labelledby="holdings" className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 id="holdings" className="text-[15px] font-semibold text-zinc-50">
+                  Holdings{" "}
+                  <span className="text-ash font-normal tabular">
+                    {holdingsTab === "trading" ? tradingPositions.length : holdingsTab === "founder" ? founderPositions.length : positions.length}
                   </span>
-                </div>
-
+                </h2>
                 {founderPositions.length > 0 && (
-                  <div className="flex items-center gap-1 p-1 bg-zinc-900 border border-rule rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setHoldingsTab("trading")}
-                      className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition ${
-                        holdingsTab === "trading"
-                          ? "bg-bullion text-floor shadow"
-                          : "text-zinc-400 hover:text-white"
-                      }`}
-                    >
-                      <TrendingUp className="w-3.5 h-3.5" />
-                      <span>Trading Portfolio ({tradingPositions.length})</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setHoldingsTab("founder")}
-                      className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition ${
-                        holdingsTab === "founder"
-                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow"
-                          : "text-zinc-400 hover:text-white"
-                      }`}
-                    >
-                      <Building2 className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Founder & Company Equity ({founderPositions.length})</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setHoldingsTab("all")}
-                      className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${
-                        holdingsTab === "all"
-                          ? "bg-zinc-800 text-white"
-                          : "text-zinc-500 hover:text-zinc-300"
-                      }`}
-                    >
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>All</span>
-                    </button>
+                  <div role="tablist" aria-label="Holdings" className="flex rounded-[4px] border border-rule p-0.5 text-[13px]">
+                    {([
+                      ["trading", "Traded"],
+                      ["founder", "My companies"],
+                      ["all", "All"],
+                    ] as const).map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        aria-selected={holdingsTab === id}
+                        onClick={() => setHoldingsTab(id)}
+                        className={`h-7 px-3 rounded-[3px] ${holdingsTab === id ? "bg-rule text-zinc-50 font-semibold" : "text-ash hover:text-paper"}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
 
-              {/* Founder Holdings Dedicated Enterprise View */}
               {holdingsTab === "founder" && founderPositions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {founderPositions.map((fPos) => (
-                    <div
-                      key={fPos.companyId}
-                      className="p-5 rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-amber-950/20 border border-amber-500/30 flex flex-col justify-between gap-4 shadow-xl"
-                    >
-                      <div>
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xl font-black text-amber-400">${fPos.ticker}</span>
-                              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                                👑 Founder Equity
-                              </span>
-                            </div>
-                            <h3 className="text-sm font-bold text-white mt-1">{fPos.name}</h3>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[10px] text-zinc-400 block font-sans">Market Valuation</span>
-                            <span className="font-mono text-base font-black text-emerald-400">
-                              {fmtGold(fPos.marketValue)} gold
-                            </span>
-                            <span className="text-[10px] text-zinc-500 font-mono block">@ {fmtPrice(fPos.currentPrice)}g / sh</span>
-                          </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {founderPositions.map((f) => (
+                    <article key={f.companyId} className="border border-rule rounded-[4px] flex flex-col">
+                      <header className="px-4 pt-3 pb-2 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <Link href={`/trade/${f.ticker}`} className="condensed text-[20px] font-extrabold text-zinc-50 leading-none">{f.ticker}</Link>
+                          <p className="text-[12px] text-ash truncate mt-1">{f.name}</p>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-zinc-800/80 font-mono text-[11px]">
-                          <div className="p-2.5 rounded-lg bg-zinc-950/70 border border-zinc-800/60">
-                            <span className="text-zinc-400 text-[10px] font-sans block">Controlling Stake</span>
-                            <span className="text-paper font-bold text-xs">{fmtQty(fPos.shares)} sh</span>
-                            <span className="text-[10px] text-amber-400 block mt-0.5">
-                              {fPos.ownershipPercent !== undefined ? `${fPos.ownershipPercent.toFixed(1)}% ownership` : "Controlling"}
-                            </span>
-                          </div>
-
-                          <div className="p-2.5 rounded-lg bg-zinc-950/70 border border-zinc-800/60">
-                            <span className="text-zinc-400 text-[10px] font-sans block">Primary Float for Sale</span>
-                            <span className="text-paper font-bold text-xs">
-                              {fPos.lockedShares > 0 ? `${fmtQty(fPos.lockedShares)} sh in IPO order` : "Float open"}
-                            </span>
-                            <span className="text-[10px] text-zinc-400 block mt-0.5">
-                              Total Float: {fmtQty(fPos.floatShares || 1000)} sh
-                            </span>
-                          </div>
+                        <div className="text-right">
+                          <div className="condensed tabular text-[20px] font-bold text-zinc-50 leading-none">{fmtGold(f.marketValue)}</div>
+                          <div className="text-[12px] text-ash mt-1 tabular">at {fmtPrice(f.currentPrice)}</div>
                         </div>
-
-                        <div className="mt-3 p-2.5 rounded-lg bg-zinc-950/50 border border-zinc-800/60 flex items-center justify-between text-[11px]">
-                          <span className="text-zinc-400 text-[10px]">Company treasury</span>
-                          <span className="font-mono font-bold text-bullion">{fmtGold(fPos.treasuryBalance || 0)} gold</span>
+                      </header>
+                      <dl className="px-4 py-2 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] border-t border-rule">
+                        <div>
+                          <dt className="text-[12px] text-ash">Your shares</dt>
+                          <dd className="tabular text-paper">
+                            {fmtQty(f.shares)} <span className="text-ash">{f.ownershipPercent !== undefined ? `${f.ownershipPercent.toFixed(1)}%` : ""}</span>
+                          </dd>
                         </div>
-
-                        {/* Underwriting Charter Fee status */}
-                        <div className="mt-3 p-2.5 rounded-lg bg-zinc-950/50 border border-zinc-800/60 flex items-center justify-between text-[11px] font-mono">
-                          <div>
-                            <span className="text-zinc-400 font-sans block text-[10px]">IPO Charter Underwriting</span>
-                            <span className="text-zinc-300">200g deducted from float capital</span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                            {Number(fPos.ipoFeeCollected || 0).toFixed(1)}g / 200g collected
-                          </span>
+                        <div>
+                          <dt className="text-[12px] text-ash">Treasury</dt>
+                          <dd className="tabular text-bullion font-semibold">{fmtGold(f.treasuryBalance || 0)} gold</dd>
                         </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-zinc-800/60">
-                        <Link
-                          href={`/trade/${fPos.ticker}`}
-                          className="flex-1 py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-white text-center transition"
-                        >
-                          Trade Terminal
+                        <div>
+                          <dt className="text-[12px] text-ash">IPO shares unsold</dt>
+                          <dd className="tabular text-paper">{fmtQty(f.lockedShares)} of {fmtQty(f.floatShares || 0)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-[12px] text-ash">Listing fee paid</dt>
+                          <dd className="tabular text-paper">{fmtGold(Number(f.ipoFeeCollected || 0))} of 200</dd>
+                        </div>
+                      </dl>
+                      <div className="mt-auto px-4 py-3 border-t border-rule flex flex-wrap gap-2">
+                        <Link href={`/trade/${f.ticker}?tab=founder`} className="h-8 px-3 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold flex items-center">
+                          Founder tools
                         </Link>
-                        <Link
-                          href={`/trade/${fPos.ticker}?tab=founder`}
-                          className="py-2 px-3 rounded-lg bg-bullion hover:bg-amber-300 text-xs font-semibold text-floor transition"
-                        >
-                          Treasury & dividends
+                        <Link href={`/company/${f.ticker}/ledger`} className="h-8 px-3 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper flex items-center">
+                          Ledger
                         </Link>
-                        <Link
-                          href={`/companies/${fPos.ticker}`}
-                          className="py-2 px-3 rounded-lg border border-rule hover:border-zinc-500 text-xs text-paper transition"
-                        >
-                          Company Ledger
+                        <Link href={`/trade/${f.ticker}`} className="h-8 px-3 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper flex items-center">
+                          Trade
                         </Link>
                       </div>
-                    </div>
+                    </article>
                   ))}
                 </div>
               ) : (
-                <div className="border border-rule rounded-[4px] overflow-x-auto">
+                <div className="border border-rule rounded-[4px] overflow-hidden">
                   {data && (holdingsTab === "trading" ? tradingPositions.length === 0 : positions.length === 0) ? (
-                    <div className="px-4 py-8 text-center flex flex-col items-center gap-2">
-                      <p className="text-[13px] text-ash">
-                        {holdingsTab === "trading"
-                          ? "You don't hold any speculative market shares yet."
-                          : "You don't hold any shares yet."}
-                      </p>
-                      <Link href="/" className="text-xs font-semibold text-bullion hover:underline underline-offset-4">
-                        Browse the market to invest in companies →
-                      </Link>
+                    <div className="px-4 py-8 flex flex-col items-start gap-2">
+                      <p className="text-[13px] text-ash">You don&apos;t hold any shares yet.</p>
+                      <Link href="/" className="text-[13px] text-paper underline underline-offset-4">Browse the market</Link>
                     </div>
                   ) : (
-                    <table className="w-full text-[13px]">
+                    <table className="w-full text-[13px] tabular">
                       <thead>
                         <tr className="text-[12px] text-ash text-left border-b border-rule">
-                          <th scope="col" className="font-normal py-2.5 pl-4 pr-2">Company</th>
+                          <th scope="col" className="font-normal py-2.5 pl-3 sm:pl-4 pr-2">Company</th>
                           <th scope="col" className="font-normal py-2.5 px-2 text-right">Shares</th>
                           <th scope="col" className="font-normal py-2.5 px-2 text-right hidden sm:table-cell">Average</th>
-                          <th scope="col" className="font-normal py-2.5 px-2 text-right">Last</th>
+                          <th scope="col" className="font-normal py-2.5 px-2 text-right hidden sm:table-cell">Last</th>
                           <th scope="col" className="font-normal py-2.5 px-2 text-right hidden md:table-cell">Value</th>
-                          <th scope="col" className="font-normal py-2.5 px-2 text-right">Unrealized</th>
-                          <th scope="col" className="font-normal py-2.5 pl-2 pr-4 text-right">Actions</th>
+                          <th scope="col" className="font-normal py-2.5 pl-2 pr-3 sm:px-2 text-right">Unrealized</th>
+                          <th scope="col" className="font-normal py-2.5 pl-2 pr-4 text-right hidden sm:table-cell"><span className="sr-only">Actions</span></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {(holdingsTab === "trading" ? tradingPositions : holdingsTab === "founder" ? founderPositions : positions).map((pos) => (
+                        {(holdingsTab === "trading" ? tradingPositions : positions).map((pos) => (
                           <tr key={pos.companyId} className="border-b border-rule last:border-0 hover:bg-pane">
-                            <td className="py-2.5 pl-4 pr-2">
-                              <Link href={`/trade/${pos.ticker}`} className="flex flex-col">
-                                <div className="flex items-center gap-1.5">
+                            <td className="py-2.5 pl-3 sm:pl-4 pr-2">
+                              <Link href={`/trade/${pos.ticker}`} className="flex flex-col min-w-0">
+                                <span className="flex items-center gap-1.5">
                                   <span className="condensed font-bold text-[15px] text-zinc-50">{pos.ticker}</span>
-                                  {pos.isCreator && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                      👑 Founder
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[12px] text-ash truncate max-w-[200px]">{pos.name}</span>
+                                  {pos.isCreator && <span className="text-[11px] text-bullion">founder</span>}
+                                </span>
+                                <span className="text-[12px] text-ash truncate max-w-[130px] sm:max-w-[220px]">{pos.name}</span>
                               </Link>
                             </td>
                             <td className="py-2.5 px-2 text-right text-zinc-50">
                               {fmtQty(pos.shares)}
-                              {pos.lockedShares > 0 && <span className="block text-[11px] text-ash">{fmtQty(pos.lockedShares)} in sell orders</span>}
+                              {pos.lockedShares > 0 && <span className="block text-[11px] text-ash">{fmtQty(pos.lockedShares)} selling</span>}
                             </td>
                             <td className="py-2.5 px-2 text-right text-paper hidden sm:table-cell">{fmtPrice(pos.avgBuyPrice)}</td>
-                            <td className="py-2.5 px-2 text-right text-zinc-50">{fmtPrice(pos.currentPrice)}</td>
+                            <td className="py-2.5 px-2 text-right text-zinc-50 hidden sm:table-cell">{fmtPrice(pos.currentPrice)}</td>
                             <td className="py-2.5 px-2 text-right text-paper hidden md:table-cell">{fmtGold(pos.marketValue)}</td>
-                            <td className="py-2.5 px-2 text-right">
-                              <div className="flex flex-col items-end">
-                                <span className={`font-mono font-bold text-[12px] ${moveColor(pos.pnl)}`}>
-                                  {fmtSigned(pos.pnl)} gold
-                                </span>
-                                <span className={`inline-block text-[10px] font-mono px-1.5 py-0.5 rounded font-bold mt-0.5 ${
-                                  pos.pnl > 0 
-                                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" 
-                                    : pos.pnl < 0 
-                                      ? "bg-rose-500/15 text-rose-400 border border-rose-500/30" 
-                                      : "text-ash bg-zinc-800"
-                                }`}>
-                                  {fmtPct(pos.pnlPercent)}
-                                </span>
-                              </div>
+                            <td className={`py-2.5 pl-2 pr-3 sm:px-2 text-right ${moveColor(pos.pnl)}`}>
+                              {fmtSigned(pos.pnl)}
+                              <span className="block text-[11px]">{fmtPct(pos.pnlPercent)}</span>
                             </td>
-                            <td className="py-2.5 pl-2 pr-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <Link
-                                  href={`/trade/${pos.ticker}`}
-                                  className="px-2 py-0.5 rounded-[3px] bg-zinc-800 hover:bg-zinc-700 text-[11px] text-zinc-200 transition-colors font-medium"
+                            <td className="py-2.5 pl-2 pr-4 text-right hidden sm:table-cell">
+                              {pos.availableShares > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setGiftModalCompany(pos.companyId);
+                                    setShowGiftModal(true);
+                                  }}
+                                  className="h-7 px-2.5 rounded-[3px] border border-rule hover:border-zinc-500 text-[12px] text-paper inline-flex items-center gap-1"
+                                  title="Gift some of these shares"
                                 >
-                                  Trade
-                                </Link>
-                                {pos.availableShares > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setGiftModalCompany(pos.companyId);
-                                      setShowGiftModal(true);
-                                    }}
-                                    className="px-2 py-0.5 rounded-[3px] bg-pane border border-rule hover:border-bullion/60 text-[11px] text-paper hover:text-bullion transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                    title="Create a gift coupon code from these shares"
-                                  >
-                                    <Gift className="w-3 h-3 text-bullion" />
-                                    Gift
-                                  </button>
-                                )}
-                              </div>
+                                  <Gift className="h-3 w-3 text-ash" />
+                                  Gift
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
