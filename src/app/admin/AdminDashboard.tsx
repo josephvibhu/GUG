@@ -239,8 +239,8 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
       } else {
         setFeedback({ type: "error", message: data.message });
       }
-    } catch (e: any) {
-      setFeedback({ type: "error", message: e.message });
+    } catch {
+      setFeedback({ type: "error", message: "Couldn't reach the exchange. Try again." });
     }
   };
 

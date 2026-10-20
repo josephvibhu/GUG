@@ -135,10 +135,11 @@ function ironBuys(v: unknown, priceCents: number, item: string, exportTaxPct: nu
     const r = t as Row & { id: string; at: string; quantity: string; pricePerUnit: string; counterparty: string | null };
     if (r.book !== "GLOBAL" || r.side !== "SOLD" || r.itemType !== item || r.currency !== "GOLD" || Number(r.pricePerUnit) !== priceCents || !r.counterparty) continue;
     const units = Number(r.quantity);
-    const grossCents = units * priceCents;
-    // The game's own tax figure when the ledger gives one; otherwise its rule: rounded down, at least a hundredth
-    const taxCents = digits(r.tax)
-      ? Number(r.tax)
+    // The ledger gives the game's own figures in hundredths: `total` and `taxPaid` (the export tax the House paid).
+    // Without them, the game's rules: total = units × price, tax rounded down and at least a hundredth.
+    const grossCents = digits(r.total) ? Number(r.total) : units * priceCents;
+    const taxCents = digits(r.taxPaid)
+      ? Number(r.taxPaid)
       : exportTaxPct > 0
       ? Math.max(1, Math.floor((grossCents * exportTaxPct) / 100))
       : 0;
