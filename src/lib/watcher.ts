@@ -135,10 +135,11 @@ function ironBuys(v: unknown, priceCents: number, item: string, exportTaxPct: nu
     const r = t as Row & { id: string; at: string; quantity: string; pricePerUnit: string; counterparty: string | null };
     if (r.book !== "GLOBAL" || r.side !== "SOLD" || r.itemType !== item || r.currency !== "GOLD" || Number(r.pricePerUnit) !== priceCents || !r.counterparty) continue;
     const units = Number(r.quantity);
-    const grossCents = units * priceCents;
-    // The game's own tax figure when the ledger gives one; otherwise its rule: rounded down, at least a hundredth
-    const taxCents = digits(r.tax)
-      ? Number(r.tax)
+    // The ledger gives the game's own figures in hundredths: `total` and `taxPaid` (the export tax the House paid).
+    // Without them, the game's rules: total = units × price, tax rounded down and at least a hundredth.
+    const grossCents = digits(r.total) ? Number(r.total) : units * priceCents;
+    const taxCents = digits(r.taxPaid)
+      ? Number(r.taxPaid)
       : exportTaxPct > 0
       ? Math.max(1, Math.floor((grossCents * exportTaxPct) / 100))
       : 0;
@@ -238,7 +239,8 @@ async function creditSale(s: Seen & { user: string }): Promise<boolean> {
 
 /** Credits every open trade to the account with the buyer's (or sender's) in-game name. A trade nobody here can claim
  *  stays on the operator's list as not a deposit. A deposit the operator already credited by hand for this trade (the
- *  same player and Raw Iron, or the same gold by contract) is taken as its payment, so it is never paid twice. */
+ *  same player and Raw Iron, or the same gold by contract) is taken as its payment, so it is never paid twice. So is a
+ *  raise in the balance editor made after the trade for exactly its gold, before or after the tax. */
 async function settleOpen(): Promise<void> {
   const db = getDb();
   const open = await db.execute("SELECT * FROM game_sales WHERE state = 'open' ORDER BY at, id");
@@ -271,11 +273,17 @@ async function settleOpen(): Promise<void> {
 
       // Paid by hand already? Link that deposit to this trade instead of paying again (one batch, claim first)
       const claim = crypto.randomUUID();
-      const sameDeposit =
-        s.kind === "market"
-          ? "user_id = ? AND type = 'DEPOSIT' AND status = 'CREDITED' AND game_sale IS NULL AND iron_units = ? AND created_at >= ?"
-          : "user_id = ? AND type = 'DEPOSIT' AND status = 'CREDITED' AND game_sale IS NULL AND ABS(amount - ?) < 0.005 AND created_at >= ?";
-      const matchArgs = [user, s.kind === "market" ? s.units : s.gold, new Date(Date.parse(s.at) - 2 * 86_400_000).toISOString()];
+      const sameDeposit = `user_id = ? AND type = 'DEPOSIT' AND game_sale IS NULL AND (
+          (status = 'CREDITED' AND ${s.kind === "market" ? "iron_units = ?" : "ABS(amount - ?) < 0.005"} AND created_at >= ?)
+          OR (status = 'COMPLETED' AND method = 'OPERATOR_ADJUSTMENT' AND (ABS(amount - ?) < 0.005 OR ABS(amount - ?) < 0.005) AND created_at >= ?))`;
+      const matchArgs = [
+        user,
+        s.kind === "market" ? s.units : s.gold,
+        new Date(Date.parse(s.at) - 2 * 86_400_000).toISOString(),
+        s.gross,
+        s.gold,
+        new Date(Date.parse(s.at)).toISOString(),
+      ];
       const byHand = await db.batch(
         [
           {

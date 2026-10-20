@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { triggerCloudLedgerSync } from "@/lib/cloudSync";
 import { watcherOn, watch, watchView } from "@/lib/watcher";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -30,23 +29,14 @@ async function handleSync(request: Request) {
       return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
     }
 
-    // With the watcher on, the daily cron is its fallback look (the game shows only the last 200 trades)
-    if (await watcherOn()) {
-      await watch(true);
-      const view = await watchView();
-      return NextResponse.json({ success: !view.error, timestamp: new Date().toISOString(), message: view.error || "Watcher looked at the game." });
+    // The daily cron is the watcher's fallback look, for days nobody opens the exchange (the game shows only the
+    // last 200 trades). With the watcher off, deposits are credited by hand and there is nothing to do.
+    if (!(await watcherOn())) {
+      return NextResponse.json({ success: true, timestamp: new Date().toISOString(), message: "The watcher is off." });
     }
-
-    const result = await triggerCloudLedgerSync();
-
-    return NextResponse.json({
-      success: result.success,
-      timestamp: new Date().toISOString(),
-      message: result.message,
-      fillsFound: result.fillsFound,
-      credited: result.newCredits.length,
-      expired: result.expired,
-    });
+    await watch(true);
+    const view = await watchView();
+    return NextResponse.json({ success: !view.error, timestamp: new Date().toISOString(), message: view.error || "Watcher looked at the game." });
   } catch (error) {
     console.error("GET/POST /api/cron/sync-ledger error:", error);
     return NextResponse.json({ success: false, message: "Sync failed. See the server log." }, { status: 500 });

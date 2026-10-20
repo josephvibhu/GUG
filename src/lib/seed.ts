@@ -61,9 +61,6 @@ export async function seedMarketData(force = false) {
   await db.execute(`
     INSERT OR IGNORE INTO settings (key, value) VALUES ('house_name', 'JosephArora');
   `);
-  await db.execute(`
-    INSERT OR IGNORE INTO settings (key, value) VALUES ('auto_approve_deposits', 'false');
-  `);
 
   // Ensure Grow UR Gold (GUG) is chartered as the flagship sovereign marketplace company
   // Specs: Grow UR Gold - GUG, The Official Marketplace of the Singaporean Stock Exchange

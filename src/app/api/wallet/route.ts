@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { maybeWatch } from "@/lib/watcher";
 import { getDb, initDb } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { 
@@ -87,14 +88,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: `Minimum transaction is ${IRON_UNIT_PRICE} gold.` }, { status: 400 });
     }
 
-    const [taxRateStr, houseName, autoApproveStr] = await Promise.all([
+    const [taxRateStr, houseName] = await Promise.all([
       getSetting("tax_rate", "10"),
       getSetting("house_name", "JosephArora"),
-      getSetting("auto_approve_deposits", "true"),
     ]);
 
     const taxRate = parseFloat(taxRateStr) || 10;
-    const autoApprove = autoApproveStr === "true";
 
     const now = new Date().toISOString();
     const txId = `tx_${crypto.randomUUID().slice(0, 8)}`;
@@ -138,12 +137,8 @@ export async function POST(request: Request) {
         });
       }).catch(() => {});
 
-      // Look for the purchase right away: the watcher when it's on, otherwise the older cookie sync
-      import("@/lib/watcher").then(async ({ watcherOn, maybeWatch }) => {
-        if (await watcherOn()) return maybeWatch();
-        const { triggerCloudLedgerSync } = await import("@/lib/cloudSync");
-        await triggerCloudLedgerSync();
-      }).catch(() => {});
+      // Look for the purchase right away when the watcher is on
+      after(() => maybeWatch());
 
       const updatedUser = await db.execute({
         sql: "SELECT cash_balance FROM users WHERE id = ?",

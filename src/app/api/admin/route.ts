@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, initDb, LEAKED_API_KEY } from "@/lib/db";
+import { getDb, initDb } from "@/lib/db";
 import { watcherOn } from "@/lib/watcher";
 import { getCurrentUser } from "@/lib/auth";
 import { 
@@ -22,33 +22,19 @@ export async function GET() {
     const [
       taxRate,
       houseName,
-      apiKey,
-      autoApprove,
       tradeFee,
       listingFee,
       discordWebhookUrl,
       discordWhaleThreshold,
       discordAlertsEnabled,
-      parlamentumCookie,
-      lastCloudSyncAt,
-      lastCloudSyncStatus,
-      lastCloudSyncMessage,
-      lastCloudSyncFills,
     ] = await Promise.all([
       getSetting("tax_rate", "10"),
       getSetting("house_name", "JosephArora"),
-      getSetting("api_key", ""),
-      getSetting("auto_approve_deposits", "true"),
       getSetting("trade_fee_percent", "0.5"),
       getSetting("ipo_listing_fee", "200"),
       getSetting("discord_webhook_url", ""),
       getSetting("discord_whale_threshold", "25"),
       getSetting("discord_alerts_enabled", "true"),
-      getSetting("parlamentum_cookie", ""),
-      getSetting("last_cloud_sync_at", ""),
-      getSetting("last_cloud_sync_status", "IDLE"),
-      getSetting("last_cloud_sync_message", ""),
-      getSetting("last_cloud_sync_fills", "0"),
     ]);
 
     const { getMarketSchedule } = await import("@/lib/marketHours");
@@ -160,10 +146,6 @@ export async function GET() {
     const earningsReports = await getEarningsReports();
     const nextFriday = getNextFridayUtc();
 
-    const { getLedgerEntries, getTradeInsights } = await import("@/lib/ledger");
-    const ledgerEntries = await getLedgerEntries(60);
-    const tradeInsights = await getTradeInsights();
-
     // Financial & Treasury Metrics for the Operator
     const [treasuryRes, operatorRes, tradeStatsRes, walletStatsRes] = await Promise.all([
       db.execute("SELECT cash_balance, locked_cash FROM users WHERE id = 'usr_treasury'"),
@@ -229,19 +211,11 @@ export async function GET() {
       settings: {
         taxRate: Number(taxRate),
         houseName,
-        apiKey,
-        autoApprove: autoApprove === "true",
         tradeFee: Number(tradeFee),
         listingFee: Number(listingFee),
         discordWebhookUrl: discordWebhookUrl || "",
         discordWhaleThreshold: Number(discordWhaleThreshold) || 25,
         discordAlertsEnabled: discordAlertsEnabled !== "false",
-        parlamentumCookie: parlamentumCookie ? (parlamentumCookie.slice(0, 15) + "..." + parlamentumCookie.slice(-10)) : "",
-        hasParlamentumCookie: Boolean(parlamentumCookie && parlamentumCookie.trim()),
-        lastCloudSyncAt: lastCloudSyncAt || null,
-        lastCloudSyncStatus: lastCloudSyncStatus || "IDLE",
-        lastCloudSyncMessage: lastCloudSyncMessage || "",
-        lastCloudSyncFills: Number(lastCloudSyncFills) || 0,
       },
       marketSchedule,
       pendingDeposits: pendingRes.rows,
@@ -250,8 +224,6 @@ export async function GET() {
       citizens: enrichedCitizens,
       earningsReports,
       nextFriday: nextFriday.toISOString(),
-      ledgerEntries,
-      tradeInsights,
       financialSummary,
     });
   } catch (error: any) {
@@ -260,158 +232,16 @@ export async function GET() {
   }
 }
 
-// Webhook/maintenance actions: the stored key must be set and must not be the old public default
-async function isValidApiKey(apiKey: unknown): Promise<boolean> {
-  const expectedKey = await getSetting("api_key", "");
-  return typeof apiKey === "string" && expectedKey !== "" && expectedKey !== LEAKED_API_KEY && apiKey === expectedKey;
-}
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key",
-};
-
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: corsHeaders });
-}
-
 export async function POST(request: Request) {
   try {
     await initDb();
     const body = await request.json();
     const { action } = body;
 
-    // 1. Direct In-Game Ledger Sync (/trade/ledger)
-    if (action === "webhook_ledger_sync") {
-      const { apiKey, entries, stats } = body;
-      if (!(await isValidApiKey(apiKey))) {
-        return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
-      }
-
-      const { syncLedgerData } = await import("@/lib/ledger");
-      const res = await syncLedgerData(entries || [], stats);
-      return NextResponse.json(res, { headers: corsHeaders });
-    }
-
-    // 2. Automated Parlamentum in-game sale event webhook
-    if (action === "webhook_credit" || action === "webhook_sale_event") {
-      const { apiKey, buyerName, goldAmount, ironUnits, rawNotification } = body;
-      if (!(await isValidApiKey(apiKey))) {
-        return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
-      }
-
-      if (await watcherOn()) {
-        return NextResponse.json({ success: true, matched: false, message: "The watcher credits deposits from the game's ledger; this sale was not credited again." }, { headers: corsHeaders });
-      }
-
-      const db = getDb();
-      const units = Number(ironUnits) || (goldAmount ? Math.ceil(Number(goldAmount) / 5) : 0);
-      const gold = Number(goldAmount) || (units * 5);
-
-      // 1. If buyerName is specified, find their pending deposit for this amount or credit what was paid directly
-      // (a pending deposit is only approved when the sale covers its amount, never on the claim alone)
-      if (buyerName) {
-        const pending = await db.execute({
-          sql: `SELECT wt.id FROM wallet_transactions wt
-                JOIN users u ON wt.user_id = u.id
-                WHERE (LOWER(u.username) = ? OR LOWER(wt.parlamentum_name) = ?)
-                AND wt.type = 'DEPOSIT' AND wt.status = 'PENDING' AND wt.amount = ?
-                ORDER BY wt.created_at DESC LIMIT 1`,
-          args: [buyerName.toLowerCase(), buyerName.toLowerCase(), gold],
-        });
-
-        if (pending.rows.length > 0) {
-          const res = await approveDeposit(String(pending.rows[0].id));
-          return NextResponse.json({ ...res, matchedPending: true }, { headers: corsHeaders });
-        }
-
-        const res = await manualCreditCitizen(
-          buyerName,
-          gold,
-          `Automated Parlamentum sale webhook (${units} Raw Iron)`
-        );
-        return NextResponse.json(res, { headers: corsHeaders });
-      }
-
-      // 2. If buyerName is not in the notification (e.g. anonymous market sale: "2× Raw Iron sold — 10.00 gold"):
-      // Automatically match the oldest PENDING deposit waiting for this exact Raw Iron quantity or gold!
-      const pendingMatch = await db.execute({
-        sql: `SELECT id, user_id, amount, iron_units, parlamentum_name 
-              FROM wallet_transactions 
-              WHERE type = 'DEPOSIT' AND status = 'PENDING' 
-              AND (iron_units = ? OR amount = ?)
-              ORDER BY created_at ASC LIMIT 1`,
-        args: [units, gold],
-      });
-
-      if (pendingMatch.rows.length > 0) {
-        const tx = pendingMatch.rows[0];
-        const res = await approveDeposit(String(tx.id));
-        return NextResponse.json({
-          success: true,
-          matched: true,
-          message: `Auto-verified and approved deposit for ${tx.parlamentum_name} (${units} Raw Iron · ${gold} gold)!`,
-          txId: tx.id,
-        }, { headers: corsHeaders });
-      }
-
-      return NextResponse.json({
-        success: true,
-        matched: false,
-        message: `Sale event recorded (${units} Raw Iron · ${gold} gold), but no pending citizen deposit was waiting for this amount.`,
-      }, { headers: corsHeaders });
-    }
-
-    // Otherwise require logged-in admin
+    // Every action is the operator's
     const user = await getCurrentUser();
     if (!user || !user.isAdmin) {
       return NextResponse.json({ success: false, message: "Forbidden: Admin access required." }, { status: 403 });
-    }
-
-    if (action === "credit_ledger_entry_manual") {
-      const { entryId, username } = body;
-      const db = getDb();
-      const entryRes = await db.execute({
-        sql: "SELECT * FROM parlamentum_ledger_entries WHERE id = ?",
-        args: [entryId],
-      });
-      if (entryRes.rows.length === 0) {
-        return NextResponse.json({ success: false, message: "Ledger transaction entry not found" }, { status: 404 });
-      }
-      const entry = entryRes.rows[0];
-      const targetUser = username || entry.with_user;
-      if (!targetUser) {
-        return NextResponse.json({ success: false, message: "No citizen username specified for credit." }, { status: 400 });
-      }
-      // Claim the entry before crediting so it can only ever be paid out once
-      if (entry.status === "QUEUED_FOR_APPROVAL") {
-        return NextResponse.json({ success: false, message: "This fill is waiting in the deposit queue. Approve it there." }, { status: 409 });
-      }
-      const claim = await db.execute({
-        sql: `UPDATE parlamentum_ledger_entries SET status = 'AUTO_CREDITED', with_user = ?
-              WHERE id = ? AND status NOT IN ('AUTO_CREDITED', 'MATCHED_PENDING', 'QUEUED_FOR_APPROVAL')`,
-        args: [String(targetUser), entryId],
-      });
-      if (claim.rowsAffected === 0) {
-        return NextResponse.json({ success: false, message: "This ledger entry has already been credited." }, { status: 409 });
-      }
-      const { manualCreditCitizen } = await import("@/lib/wallet");
-      const res = await manualCreditCitizen(
-        String(targetUser),
-        Number(entry.total_amount),
-        `Manual Ledger Credit for ${entry.quantity}x ${entry.item_name} (Fill: ${entry.trade_date})`
-      );
-      if (res.success) {
-        const { scheduleBlobPersist } = await import("@/lib/db");
-        scheduleBlobPersist();
-      } else {
-        await db.execute({
-          sql: "UPDATE parlamentum_ledger_entries SET status = ?, with_user = ? WHERE id = ?",
-          args: [entry.status, entry.with_user, entryId],
-        });
-      }
-      return NextResponse.json(res);
     }
 
     if (action === "approve") {
@@ -521,12 +351,9 @@ export async function POST(request: Request) {
     }
 
     if (action === "update_settings") {
-      const { taxRate, houseName, autoApprove, apiKey, tradeFee, listingFee, discordWebhookUrl, discordWhaleThreshold, discordAlertsEnabled, parlamentumCookie } = body;
-      if (parlamentumCookie !== undefined) await setSetting("parlamentum_cookie", String(parlamentumCookie).trim());
+      const { taxRate, houseName, tradeFee, listingFee, discordWebhookUrl, discordWhaleThreshold, discordAlertsEnabled } = body;
       if (taxRate !== undefined) await setSetting("tax_rate", String(taxRate));
       if (houseName !== undefined) await setSetting("house_name", String(houseName));
-      if (autoApprove !== undefined) await setSetting("auto_approve_deposits", String(autoApprove));
-      if (apiKey !== undefined) await setSetting("api_key", String(apiKey));
       if (tradeFee !== undefined) await setSetting("trade_fee_percent", String(tradeFee));
       if (listingFee !== undefined) await setSetting("ipo_listing_fee", String(listingFee));
       if (discordWebhookUrl !== undefined) await setSetting("discord_webhook_url", String(discordWebhookUrl));
@@ -537,14 +364,6 @@ export async function POST(request: Request) {
       scheduleBlobPersist();
 
       return NextResponse.json({ success: true, message: "Operator settings updated successfully!" });
-    }
-
-    if (action === "trigger_cloud_sync") {
-      const { triggerCloudLedgerSync } = await import("@/lib/cloudSync");
-      const res = await triggerCloudLedgerSync(true);
-      const { scheduleBlobPersist } = await import("@/lib/db");
-      scheduleBlobPersist();
-      return NextResponse.json(res);
     }
 
     if (action === "test_discord_webhook") {

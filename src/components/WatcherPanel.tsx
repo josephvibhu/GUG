@@ -34,6 +34,17 @@ const ago = (iso: string) => {
 };
 const field = "h-9 rounded-[4px] border border-rule bg-floor px-3 text-[13px] text-paper focus:outline-none focus:border-zinc-500";
 
+// null when the exchange can't be reached: the panel keeps its last view and the next refresh tries again
+const fetchView = async (): Promise<WatchView | null> => {
+  try {
+    const res = await fetch("/api/admin/watcher", { cache: "no-store" });
+    const data = await res.json();
+    return data.success ? data.watcher : null;
+  } catch {
+    return null;
+  }
+};
+
 // The operator's view of the watcher: its game login, its last look, warnings, and the trades it has seen
 export default function WatcherPanel() {
   const [view, setView] = useState<WatchView | null>(null);
@@ -44,20 +55,20 @@ export default function WatcherPanel() {
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/watcher", { cache: "no-store" });
-      const data = await res.json();
-      if (data.success) setView(data.watcher);
-    } catch {
-      // keeps the last view; the next refresh tries again
-    }
+    const v = await fetchView();
+    if (v) setView(v);
   }, []);
 
   useEffect(() => {
-    load();
-    const t = setInterval(load, 30_000);
-    return () => clearInterval(t);
-  }, [load]);
+    let alive = true;
+    const refresh = () => fetchView().then((v) => alive && v && setView(v));
+    refresh();
+    const t = setInterval(refresh, 30_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
 
   const post = async (body: Record<string, unknown>) => {
     setBusy(true);
@@ -185,8 +196,8 @@ export default function WatcherPanel() {
           Save
         </button>
         <p className="basis-full text-[12px] text-ash">
-          Purchases are credited with what the House keeps after this tax (the game&apos;s own figure when its ledger gives one). Only sales at the
-          deposit price count.
+          Purchases are credited with what the House keeps after the game&apos;s tax, using the tax figure in the game&apos;s ledger; this rate is only
+          the fallback if the ledger ever leaves it out. Only sales at the deposit price count.
         </p>
       </form>
 
