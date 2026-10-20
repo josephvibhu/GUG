@@ -101,11 +101,15 @@ body {
   outline-offset: 2px;
 }
 
-/* Room for the phone tab bar so it never covers the end of a page */
-@media (max-width: 767px) {
+/* Room for the phone and tablet tab bar so it never covers the end of a page */
+@media (max-width: 1023px) {
   body:has(.mobile-tabbar) {
-    padding-bottom: 56px;
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   }
+}
+.mobile-tabbar {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(56px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Chart legend values take the colour of the bar under the crosshair */
