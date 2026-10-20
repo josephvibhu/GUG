@@ -1,4 +1,5 @@
 import { getDb, initDb, scheduleBlobPersist } from "./db";
+import { watcherOn } from "./watcher";
 import { approveDeposit, manualCreditCitizen, getSetting } from "./wallet";
 import crypto from "crypto";
 
@@ -78,6 +79,7 @@ export async function syncLedgerData(
 
   const newCredits: Array<{ user: string; gold: number; item: string; reason: string }> = [];
   let syncedCount = 0;
+  const watcherIsOn = await watcherOn();
 
   for (const item of entries) {
     const cleanDate = (item.date || "").trim();
@@ -143,7 +145,10 @@ export async function syncLedgerData(
     const isRawIronSale = cleanSide === "SOLD" && cleanItem.toLowerCase().includes("raw iron") && totalAmount > 0 && currency === "gold";
     const netReceived = Math.max(0, Math.round((totalAmount - taxAmount) * 100) / 100);
 
-    if (isRawIronSale && withUser && withUser !== "—") {
+    if (isRawIronSale && withUser && withUser !== "—" && watcherIsOn) {
+      // The watcher credits deposits from the game's own ledger; this copy of the fill is only logged
+      entryStatus = "WATCHER_CREDITS";
+    } else if (isRawIronSale && withUser && withUser !== "—") {
       // Find matching user in Grow UR Gold
       // The in-game name wins over a matching username or display name
       const userRes = await db.execute({
