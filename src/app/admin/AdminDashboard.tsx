@@ -1804,17 +1804,17 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           {/* IPO Float & Sales Summary KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-floor/70 border-b border-rule">
             <div className="p-3 bg-pane/60 rounded-[6px] border border-rule">
-              <div className="text-[10px] uppercase font-sans font-bold text-zinc-400">Total Shares Listed</div>
+              <div className="text-[10px] uppercase font-sans font-bold text-zinc-400">Total IPO Float</div>
               <div className="text-lg tabular font-black text-white mt-0.5">
                 {companies.reduce((sum, c) => sum + (c.floatShares || 0), 0).toLocaleString()} <span className="text-xs font-normal text-zinc-500">shares</span>
               </div>
               <div className="text-[10px] text-zinc-400 font-sans mt-0.5">
-                Primary public floats
+                Primary public offerings
               </div>
             </div>
 
             <div className="p-3 bg-pane/60 rounded-[6px] border border-rule">
-              <div className="text-[10px] uppercase font-sans font-bold text-paper">Shares Sold (Filled)</div>
+              <div className="text-[10px] uppercase font-sans font-bold text-paper">IPO Float Sold</div>
               <div className="text-lg tabular font-black text-paper mt-0.5">
                 {companies.reduce((sum, c) => sum + (c.sharesSold || 0), 0).toLocaleString()} <span className="text-xs font-normal text-emerald-500">
                   ({(() => {
@@ -1825,23 +1825,19 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 </span>
               </div>
               <div className="text-[10px] text-zinc-400 font-sans mt-0.5">
-                Absorbed by citizens
+                Absorbed from IPOs
               </div>
             </div>
 
             <div className="p-3 bg-pane/60 rounded-[6px] border border-rule">
-              <div className="text-[10px] uppercase font-sans font-bold text-paper">Not Yet Sold (Float Left)</div>
+              <div className="text-[10px] uppercase font-sans font-bold text-paper">Active Book Asks</div>
               <div className="text-lg tabular font-black text-paper mt-0.5">
-                {companies.reduce((sum, c) => sum + (c.sharesRemaining || 0), 0).toLocaleString()} <span className="text-xs font-normal text-amber-500">
-                  ({(() => {
-                    const totalListed = companies.reduce((sum, c) => sum + (c.floatShares || 0), 0);
-                    const totalRem = companies.reduce((sum, c) => sum + (c.sharesRemaining || 0), 0);
-                    return totalListed > 0 ? Math.round((totalRem / totalListed) * 100) : 0;
-                  })()}%)
+                {companies.reduce((sum, c) => sum + (c.totalActiveAsks || 0), 0).toLocaleString()} <span className="text-xs font-normal text-bullion">
+                  ({companies.reduce((sum, c) => sum + (c.secondaryAsks || 0), 0).toLocaleString()} secondary)
                 </span>
               </div>
               <div className="text-[10px] text-zinc-400 font-sans mt-0.5">
-                Available on order book
+                {companies.reduce((sum, c) => sum + (c.sharesRemaining || 0), 0).toLocaleString()} IPO left · {companies.reduce((sum, c) => sum + (c.secondaryAsks || 0), 0).toLocaleString()} secondary
               </div>
             </div>
 
@@ -1868,9 +1864,11 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     <th className="py-3 px-4">Company</th>
                     <th className="py-3 px-4">Founder</th>
                     <th className="py-3 px-4 text-right">Last Price</th>
-                    <th className="py-3 px-4 text-right">Total Listed</th>
-                    <th className="py-3 px-4 text-right">Sold</th>
-                    <th className="py-3 px-4 text-right">Not Yet Sold</th>
+                    <th className="py-3 px-4 text-right">IPO Float</th>
+                    <th className="py-3 px-4 text-right">IPO Sold</th>
+                    <th className="py-3 px-4 text-right">IPO Left</th>
+                    <th className="py-3 px-4 text-right">Secondary Asks</th>
+                    <th className="py-3 px-4 text-right">Total Book Asks</th>
                     <th className="py-3 px-4 text-right">Corporate Treasury</th>
                     <th className="py-3 px-4 text-right">Shares Bought Back</th>
                     <th className="py-3 px-4 text-center">Status</th>
@@ -1932,6 +1930,38 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                             </div>
                             <div className="text-[10px] text-zinc-400 tabular">
                               available
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {(cmp.secondaryAsks || 0) > 0 ? (
+                          <div>
+                            <div className="font-bold text-bullion tabular">
+                              {Number(cmp.secondaryAsks).toLocaleString()}
+                            </div>
+                            <div className="text-[10px] text-zinc-400 tabular">
+                              {cmp.minSecondaryPrice === cmp.maxSecondaryPrice
+                                ? `@ ${Number(cmp.minSecondaryPrice).toFixed(2)}g`
+                                : `@ ${Number(cmp.minSecondaryPrice).toFixed(2)}g - ${Number(cmp.maxSecondaryPrice).toFixed(2)}g`}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-zinc-500 tabular">–</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {(cmp.totalActiveAsks || 0) === 0 ? (
+                          <span className="px-1.5 py-0.5 rounded bg-floor text-ash border border-rule text-[10px] tabular">
+                            0 (No Asks)
+                          </span>
+                        ) : (
+                          <div>
+                            <div className="font-bold text-white tabular">
+                              {Number(cmp.totalActiveAsks).toLocaleString()}
+                            </div>
+                            <div className="text-[10px] text-emerald-400 tabular">
+                              for sale now
                             </div>
                           </div>
                         )}

@@ -29,6 +29,10 @@ export interface Company {
   ipoFeeCollected?: number;
   sharesSold?: number;
   sharesRemaining?: number;
+  secondaryAsks?: number;
+  minSecondaryPrice?: number | null;
+  maxSecondaryPrice?: number | null;
+  totalActiveAsks?: number;
   createdAt: string;
 }
 
@@ -148,7 +152,38 @@ export async function getAllCompanies(): Promise<Company[]> {
       SELECT c.*, u.display_name as creator_name,
              o.initial_quantity as ipo_initial,
              o.remaining_quantity as ipo_remaining,
-             o.status as ipo_status
+             o.status as ipo_status,
+             (
+               SELECT COALESCE(SUM(s.remaining_quantity), 0)
+               FROM orders s
+               WHERE s.company_id = c.id
+                 AND s.type = 'SELL'
+                 AND s.status IN ('OPEN', 'PARTIAL')
+                 AND s.id != ('ord_ipo_' || c.id)
+             ) as secondary_asks,
+             (
+               SELECT MIN(s.price)
+               FROM orders s
+               WHERE s.company_id = c.id
+                 AND s.type = 'SELL'
+                 AND s.status IN ('OPEN', 'PARTIAL')
+                 AND s.id != ('ord_ipo_' || c.id)
+             ) as min_secondary_price,
+             (
+               SELECT MAX(s.price)
+               FROM orders s
+               WHERE s.company_id = c.id
+                 AND s.type = 'SELL'
+                 AND s.status IN ('OPEN', 'PARTIAL')
+                 AND s.id != ('ord_ipo_' || c.id)
+             ) as max_secondary_price,
+             (
+               SELECT COALESCE(SUM(s.remaining_quantity), 0)
+               FROM orders s
+               WHERE s.company_id = c.id
+                 AND s.type = 'SELL'
+                 AND s.status IN ('OPEN', 'PARTIAL')
+             ) as total_active_asks
       FROM companies c
       LEFT JOIN users u ON c.creator_id = u.id
       LEFT JOIN orders o ON o.id = 'ord_ipo_' || c.id
@@ -174,6 +209,10 @@ export async function getAllCompanies(): Promise<Company[]> {
       floatShares: floatListed,
       sharesSold,
       sharesRemaining,
+      secondaryAsks: Number(row.secondary_asks || 0),
+      minSecondaryPrice: row.min_secondary_price !== null && row.min_secondary_price !== undefined ? Number(row.min_secondary_price) : null,
+      maxSecondaryPrice: row.max_secondary_price !== null && row.max_secondary_price !== undefined ? Number(row.max_secondary_price) : null,
+      totalActiveAsks: Number(row.total_active_asks || 0),
       ipoPrice: Number(row.ipo_price),
       currentPrice: Number(row.current_price),
       change24h: Number(row.change_24h),
@@ -203,7 +242,38 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
     sql: `SELECT c.*, u.display_name as creator_name,
                  o.initial_quantity as ipo_initial,
                  o.remaining_quantity as ipo_remaining,
-                 o.status as ipo_status
+                 o.status as ipo_status,
+             (
+               SELECT COALESCE(SUM(s.remaining_quantity), 0)
+               FROM orders s
+               WHERE s.company_id = c.id
+                 AND s.type = 'SELL'
+                 AND s.status IN ('OPEN', 'PARTIAL')
+                 AND s.id != ('ord_ipo_' || c.id)
+             ) as secondary_asks,
+             (
+               SELECT MIN(s.price)
+               FROM orders s
+               WHERE s.company_id = c.id
+                 AND s.type = 'SELL'
+                 AND s.status IN ('OPEN', 'PARTIAL')
+                 AND s.id != ('ord_ipo_' || c.id)
+             ) as min_secondary_price,
+             (
+               SELECT MAX(s.price)
+               FROM orders s
+               WHERE s.company_id = c.id
+                 AND s.type = 'SELL'
+                 AND s.status IN ('OPEN', 'PARTIAL')
+                 AND s.id != ('ord_ipo_' || c.id)
+             ) as max_secondary_price,
+             (
+               SELECT COALESCE(SUM(s.remaining_quantity), 0)
+               FROM orders s
+               WHERE s.company_id = c.id
+                 AND s.type = 'SELL'
+                 AND s.status IN ('OPEN', 'PARTIAL')
+             ) as total_active_asks
           FROM companies c 
           LEFT JOIN users u ON c.creator_id = u.id 
           LEFT JOIN orders o ON o.id = 'ord_ipo_' || c.id
@@ -231,6 +301,10 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
     floatShares: floatListed,
     sharesSold,
     sharesRemaining,
+    secondaryAsks: Number(row.secondary_asks || 0),
+    minSecondaryPrice: row.min_secondary_price !== null && row.min_secondary_price !== undefined ? Number(row.min_secondary_price) : null,
+    maxSecondaryPrice: row.max_secondary_price !== null && row.max_secondary_price !== undefined ? Number(row.max_secondary_price) : null,
+    totalActiveAsks: Number(row.total_active_asks || 0),
     ipoPrice: Number(row.ipo_price),
     currentPrice: Number(row.current_price),
     change24h: Number(row.change_24h),
