@@ -2309,6 +2309,61 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </span>
           </div>
 
+          {/* IPO Float & Sales Summary KPIs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-zinc-950/70 border-b border-zinc-800/80">
+            <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800">
+              <div className="text-[10px] uppercase font-sans font-bold text-zinc-400">Total Shares Listed</div>
+              <div className="text-lg font-mono font-black text-white mt-0.5">
+                {companies.reduce((sum, c) => sum + (c.floatShares || 0), 0).toLocaleString()} <span className="text-xs font-normal text-zinc-500">shares</span>
+              </div>
+              <div className="text-[10px] text-zinc-400 font-sans mt-0.5">
+                Primary public floats
+              </div>
+            </div>
+
+            <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800">
+              <div className="text-[10px] uppercase font-sans font-bold text-emerald-400">Shares Sold (Filled)</div>
+              <div className="text-lg font-mono font-black text-emerald-400 mt-0.5">
+                {companies.reduce((sum, c) => sum + (c.sharesSold || 0), 0).toLocaleString()} <span className="text-xs font-normal text-emerald-500">
+                  ({(() => {
+                    const totalListed = companies.reduce((sum, c) => sum + (c.floatShares || 0), 0);
+                    const totalSold = companies.reduce((sum, c) => sum + (c.sharesSold || 0), 0);
+                    return totalListed > 0 ? Math.round((totalSold / totalListed) * 100) : 0;
+                  })()}%)
+                </span>
+              </div>
+              <div className="text-[10px] text-zinc-400 font-sans mt-0.5">
+                Absorbed by citizens
+              </div>
+            </div>
+
+            <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800">
+              <div className="text-[10px] uppercase font-sans font-bold text-amber-300">Not Yet Sold (Float Left)</div>
+              <div className="text-lg font-mono font-black text-amber-300 mt-0.5">
+                {companies.reduce((sum, c) => sum + (c.sharesRemaining || 0), 0).toLocaleString()} <span className="text-xs font-normal text-amber-500">
+                  ({(() => {
+                    const totalListed = companies.reduce((sum, c) => sum + (c.floatShares || 0), 0);
+                    const totalRem = companies.reduce((sum, c) => sum + (c.sharesRemaining || 0), 0);
+                    return totalListed > 0 ? Math.round((totalRem / totalListed) * 100) : 0;
+                  })()}%)
+                </span>
+              </div>
+              <div className="text-[10px] text-zinc-400 font-sans mt-0.5">
+                Available on order book
+              </div>
+            </div>
+
+            <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800">
+              <div className="text-[10px] uppercase font-sans font-bold text-cyan-300">Corporate Treasuries</div>
+              <div className="text-lg font-mono font-black text-cyan-300 mt-0.5">
+                {companies.reduce((sum, c) => sum + (c.treasuryBalance || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs font-normal text-cyan-500">gold</span>
+              </div>
+              <div className="text-[10px] text-zinc-400 font-sans mt-0.5">
+                Capital raised &amp; profits
+              </div>
+            </div>
+          </div>
+
           {companies.length === 0 ? (
             <div className="py-8 text-center text-zinc-500 text-xs">
               0 companies currently listed on the exchange.
@@ -2321,6 +2376,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     <th className="py-3 px-4">Company</th>
                     <th className="py-3 px-4">Founder</th>
                     <th className="py-3 px-4 text-right">Last Price</th>
+                    <th className="py-3 px-4 text-right">Total Listed</th>
+                    <th className="py-3 px-4 text-right">Sold</th>
+                    <th className="py-3 px-4 text-right">Not Yet Sold</th>
                     <th className="py-3 px-4 text-right">Corporate Treasury</th>
                     <th className="py-3 px-4 text-right">Shares Bought Back</th>
                     <th className="py-3 px-4 text-center">Status</th>
@@ -2353,6 +2411,38 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-white">
                         {cmp.currentPrice.toFixed(2)}g
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="font-bold text-white font-mono">
+                          {(cmp.floatShares || 0).toLocaleString()}
+                        </div>
+                        <div className="text-[10px] text-zinc-400 font-mono">
+                          of {(cmp.totalShares || 0).toLocaleString()} total
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="font-bold text-emerald-400 font-mono">
+                          {(cmp.sharesSold || 0).toLocaleString()}
+                        </div>
+                        <div className="text-[10px] text-zinc-400 font-mono">
+                          {cmp.floatShares > 0 ? `${Math.round(((cmp.sharesSold || 0) / cmp.floatShares) * 100)}%` : "0%"}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {(cmp.sharesRemaining || 0) === 0 ? (
+                          <span className="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30 text-[10px] font-bold font-mono">
+                            0 (Sold Out 🔥)
+                          </span>
+                        ) : (
+                          <div>
+                            <div className="font-bold text-amber-300 font-mono">
+                              {(cmp.sharesRemaining || 0).toLocaleString()}
+                            </div>
+                            <div className="text-[10px] text-zinc-400 font-mono">
+                              available
+                            </div>
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="font-bold text-amber-300 font-mono">

@@ -27,6 +27,8 @@ export interface Company {
   treasuryBalance?: number;
   totalProfitDeposited?: number;
   ipoFeeCollected?: number;
+  sharesSold?: number;
+  sharesRemaining?: number;
   createdAt: string;
 }
 
@@ -141,42 +143,54 @@ export async function getAllCompanies(): Promise<Company[]> {
 
   const [res, dayStats] = await Promise.all([
     db.execute(`
-      SELECT c.*, u.display_name as creator_name
+      SELECT c.*, u.display_name as creator_name,
+             o.initial_quantity as ipo_initial,
+             o.remaining_quantity as ipo_remaining,
+             o.status as ipo_status
       FROM companies c
       LEFT JOIN users u ON c.creator_id = u.id
+      LEFT JOIN orders o ON o.id = 'ord_ipo_' || c.id
       ORDER BY (c.current_price * c.total_shares) DESC
     `),
     getDayStats(),
   ]);
 
-  return res.rows.map((row: any) => withDayStats({
-    id: String(row.id),
-    ticker: String(row.ticker),
-    name: String(row.name),
-    description: String(row.description),
-    sector: String(row.sector),
-    creatorId: String(row.creator_id),
-    creatorName: String(row.creator_name || "Unknown"),
-    totalShares: Number(row.total_shares),
-    floatShares: Number(row.float_shares),
-    ipoPrice: Number(row.ipo_price),
-    currentPrice: Number(row.current_price),
-    change24h: Number(row.change_24h),
-    volume24h: Number(row.volume_24h),
-    high24h: Number(row.high_24h),
-    low24h: Number(row.low_24h),
-    marketCap: Number(row.current_price) * Number(row.total_shares),
-    logoUrl: String(row.logo_url || "🏢"),
-    status: (row.status as any) || "ACTIVE",
-    sharesBoughtBack: Number(row.shares_bought_back || 0),
-    buybackGoldSpent: Number(row.buyback_gold_spent || 0),
-    totalDividendsPaid: Number(row.total_dividends_paid || 0),
-    weeklyRevenue: Number(row.weekly_revenue || 0),
-    treasuryBalance: Number(row.treasury_balance || 0),
-    totalProfitDeposited: Number(row.total_profit_deposited || 0),
-    ipoFeeCollected: Number(row.ipo_fee_collected || 0),
-    createdAt: String(row.created_at),
-  }, dayStats[String(row.id)]));
+  return res.rows.map((row: any) => {
+    const floatListed = Number(row.ipo_initial ?? row.float_shares ?? 0);
+    const sharesRemaining = row.ipo_remaining !== null && row.ipo_remaining !== undefined ? Number(row.ipo_remaining) : 0;
+    const sharesSold = Math.max(0, floatListed - sharesRemaining);
+
+    return withDayStats({
+      id: String(row.id),
+      ticker: String(row.ticker),
+      name: String(row.name),
+      description: String(row.description),
+      sector: String(row.sector),
+      creatorId: String(row.creator_id),
+      creatorName: String(row.creator_name || "Unknown"),
+      totalShares: Number(row.total_shares),
+      floatShares: floatListed,
+      sharesSold,
+      sharesRemaining,
+      ipoPrice: Number(row.ipo_price),
+      currentPrice: Number(row.current_price),
+      change24h: Number(row.change_24h),
+      volume24h: Number(row.volume_24h),
+      high24h: Number(row.high_24h),
+      low24h: Number(row.low_24h),
+      marketCap: Number(row.current_price) * Number(row.total_shares),
+      logoUrl: String(row.logo_url || "🏢"),
+      status: (row.status as any) || "ACTIVE",
+      sharesBoughtBack: Number(row.shares_bought_back || 0),
+      buybackGoldSpent: Number(row.buyback_gold_spent || 0),
+      totalDividendsPaid: Number(row.total_dividends_paid || 0),
+      weeklyRevenue: Number(row.weekly_revenue || 0),
+      treasuryBalance: Number(row.treasury_balance || 0),
+      totalProfitDeposited: Number(row.total_profit_deposited || 0),
+      ipoFeeCollected: Number(row.ipo_fee_collected || 0),
+      createdAt: String(row.created_at),
+    }, dayStats[String(row.id)]);
+  });
 }
 
 export async function getCompanyByTicker(ticker: string): Promise<Company | null> {
@@ -184,9 +198,13 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
   const db = getDb();
 
   const res = await db.execute({
-    sql: `SELECT c.*, u.display_name as creator_name 
+    sql: `SELECT c.*, u.display_name as creator_name,
+                 o.initial_quantity as ipo_initial,
+                 o.remaining_quantity as ipo_remaining,
+                 o.status as ipo_status
           FROM companies c 
           LEFT JOIN users u ON c.creator_id = u.id 
+          LEFT JOIN orders o ON o.id = 'ord_ipo_' || c.id
           WHERE UPPER(c.ticker) = UPPER(?) OR c.id = ?`,
     args: [ticker, ticker],
   });
@@ -194,6 +212,10 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
   if (res.rows.length === 0) return null;
   const row = res.rows[0];
   const dayStats = await getDayStats(String(row.id));
+
+  const floatListed = Number(row.ipo_initial ?? row.float_shares ?? 0);
+  const sharesRemaining = row.ipo_remaining !== null && row.ipo_remaining !== undefined ? Number(row.ipo_remaining) : 0;
+  const sharesSold = Math.max(0, floatListed - sharesRemaining);
 
   return withDayStats({
     id: String(row.id),
@@ -204,7 +226,9 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
     creatorId: String(row.creator_id),
     creatorName: String(row.creator_name || "Unknown"),
     totalShares: Number(row.total_shares),
-    floatShares: Number(row.float_shares),
+    floatShares: floatListed,
+    sharesSold,
+    sharesRemaining,
     ipoPrice: Number(row.ipo_price),
     currentPrice: Number(row.current_price),
     change24h: Number(row.change_24h),
