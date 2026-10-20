@@ -113,7 +113,10 @@ export function EarningsDialog({
   const pool = Math.round(profitNum * 0.5 * 100) / 100;
   const perShare = company.totalShares > 0 ? pool / company.totalShares : 0;
   const backToFounder = perShare * founderShares;
+  // Your own share comes straight back to your purse, so only the other holders' part has to be there
+  const toOthers = Math.max(0, Math.round((pool - backToFounder) * 100) / 100);
   const available = (company.treasuryBalance || 0) + userCash;
+  const short = available + 0.005 < toOthers;
   const fridayLabel = nextFriday ? new Date(nextFriday).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" }) : "Friday";
 
   const submit = async (e: React.FormEvent) => {
@@ -167,10 +170,12 @@ export function EarningsDialog({
           <dd className="text-right text-paper">{perShare.toFixed(4)} gold</dd>
           <dt className="text-ash">Back to you as a holder</dt>
           <dd className="text-right text-paper">≈ {fmtPrice(backToFounder)} gold</dd>
+          <dt className="text-ash">To other holders</dt>
+          <dd className="text-right text-paper">≈ {fmtPrice(toOthers)} gold</dd>
           <dt className="text-ash">Treasury + your purse</dt>
-          <dd className={`text-right ${available < pool ? "text-bear" : "text-paper"}`}>{fmtGold(available)} gold</dd>
+          <dd className={`text-right ${short ? "text-bear" : "text-paper"}`}>{fmtGold(available)} gold</dd>
         </dl>
-        {available < pool && <p className="text-[12px] text-bear">The treasury and your purse can&apos;t cover this dividend yet. Add gold before the payout.</p>}
+        {short && <p className="text-[12px] text-bear">The treasury and your purse can&apos;t cover the other holders&apos; part yet. Add gold before the payout.</p>}
         <label className="flex flex-col gap-1">
           <span className="text-[12px] text-ash">Note to shareholders (optional)</span>
           <input type="text" value={note} onChange={(e) => setNote(e.target.value)} maxLength={140} className="h-9 rounded-[4px] border border-rule bg-floor px-3 text-[13px] text-paper focus:outline-none focus:border-zinc-500" />

@@ -419,7 +419,13 @@ export async function executeDividendPayout(reportId: string): Promise<{
 
   // The dividend is paid out of the company corporate treasury, with founder purse as fallback
   const founderId = String(company.creator_id);
-  const totalDue = Math.round(holdersRes.rows.reduce((sum, row) => sum + Math.round(Number(row.shares) * dividendPerShare * 100) / 100, 0) * 100) / 100;
+  const payoutOf = (row: Record<string, unknown>) => Math.round(Number(row.shares) * dividendPerShare * 100) / 100;
+  const totalDue = Math.round(holdersRes.rows.reduce((sum, row) => sum + payoutOf(row), 0) * 100) / 100;
+  // The founder's own shares are paid straight back into the founder's purse, so only the other holders' part
+  // has to be there: the purse pays its share of the dividend net of the founder's own payout
+  const founderRow = holdersRes.rows.find((row) => String(row.user_id) === founderId);
+  const founderPayout = founderRow ? payoutOf(founderRow) : 0;
+  const othersDue = Math.round((totalDue - founderPayout) * 100) / 100;
 
   // A treasury below zero (from older data) pays nothing; it never makes the founder cover the gap
   const treasuryBalance = Math.max(0, Number(company.treasury_balance || 0));
@@ -427,10 +433,10 @@ export async function executeDividendPayout(reportId: string): Promise<{
   const founderCash = founderRes.rows.length > 0 ? Number(founderRes.rows[0].cash_balance) : 0;
   const totalAvailable = Math.round((treasuryBalance + founderCash) * 100) / 100;
 
-  if (totalAvailable < totalDue) {
+  if (totalAvailable < othersDue) {
     return {
       success: false,
-      message: `The corporate treasury holds ${treasuryBalance.toLocaleString()} gold (plus ${founderCash.toLocaleString()} in founder purse) but this dividend requires ${totalDue.toLocaleString()} gold.`,
+      message: `Other shareholders get ${othersDue.toLocaleString()} gold of this dividend, but the ${company.ticker} treasury and the founder's purse hold ${totalAvailable.toLocaleString()}. The founder's own ${founderPayout.toLocaleString()} needs no cover: it goes straight back.`,
       totalPaid: 0,
       shareholdersPaid: 0,
     };
@@ -445,9 +451,12 @@ export async function executeDividendPayout(reportId: string): Promise<{
     return { success: false, message: "Dividends for this period have already been distributed.", totalPaid: 0, shareholdersPaid: 0 };
   }
 
-  // Deduct from corporate treasury first, remainder from founder purse if needed
+  // Deduct from corporate treasury first, remainder from founder purse if needed. The founder's payout is netted
+  // against that remainder: the purse pays only what its own payout doesn't cover, or gains the difference.
   const fromTreasury = Math.min(treasuryBalance, totalDue);
   const fromFounder = Math.round((totalDue - fromTreasury) * 100) / 100;
+  const founderNet = Math.round((founderPayout - fromFounder) * 100) / 100;
+  const founderDebit = Math.max(0, -founderNet);
 
   if (fromTreasury > 0) {
     // Take the treasury's part only if it is still there: another payout may have spent it meanwhile
@@ -463,10 +472,10 @@ export async function executeDividendPayout(reportId: string): Promise<{
       return { success: false, message: "The treasury changed while this dividend was being paid. Try again.", totalPaid: 0, shareholdersPaid: 0 };
     }
   }
-  if (fromFounder > 0) {
+  if (founderDebit > 0) {
     const debit = await db.execute({
       sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ? AND cash_balance >= ?",
-      args: [fromFounder, founderId, fromFounder],
+      args: [founderDebit, founderId, founderDebit],
     });
     if (debit.rowsAffected === 0) {
       // Revert claim and treasury deduction
@@ -480,7 +489,7 @@ export async function executeDividendPayout(reportId: string): Promise<{
         sql: "UPDATE earnings_reports SET status = 'SCHEDULED', distributed_at = NULL WHERE id = ?",
         args: [reportId],
       });
-      return { success: false, message: `The founder's purse no longer covers the remaining dividend balance (${fromFounder.toLocaleString()} gold).`, totalPaid: 0, shareholdersPaid: 0 };
+      return { success: false, message: `The founder's purse no longer covers its part of the dividend (${founderDebit.toLocaleString()} gold).`, totalPaid: 0, shareholdersPaid: 0 };
     }
   }
 
@@ -511,13 +520,17 @@ export async function executeDividendPayout(reportId: string): Promise<{
     const userId = String(row.user_id);
     const shares = Number(row.shares);
     const payout = Math.round(shares * dividendPerShare * 100) / 100;
+    // The founder's payout was netted against the purse's part above: the purse gets only what is left of it
+    const credit = userId === founderId ? Math.max(0, founderNet) : payout;
 
     if (payout > 0) {
       // Credit gold to citizen or sovereign state wallet
-      await db.execute({
-        sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
-        args: [payout, userId],
-      });
+      if (credit > 0) {
+        await db.execute({
+          sql: "UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?",
+          args: [credit, userId],
+        });
+      }
 
       // Record payout item
       const payoutId = `payout_${crypto.randomUUID().slice(0, 8)}`;
