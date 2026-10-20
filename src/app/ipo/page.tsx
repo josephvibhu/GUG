@@ -211,7 +211,7 @@ export default function IpoPage() {
 
       <main className="max-w-6xl w-full mx-auto p-4 sm:p-6 md:p-8 flex flex-col gap-8">
         {/* Header */}
-        <div className="flex flex-col gap-2 border-b border-zinc-800 pb-6">
+        <div className="flex flex-col gap-2 border-b border-rule pb-6">
           <h1 className="condensed text-[28px] leading-none font-extrabold text-zinc-50 tracking-tight">
             List your company
           </h1>
@@ -221,151 +221,132 @@ export default function IpoPage() {
           </p>
         </div>
 
-        {/* Notice Banner */}
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 flex items-start sm:items-center gap-3 text-xs text-amber-200/90">
-          <Coins className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
-          <div className="leading-snug">
-            <strong className="text-amber-300">In-Game Economic Policy:</strong> Played with Parlamentum gold only. No real money goes in or comes out. Not run by the Parlamentum team.
-          </div>
-        </div>
-
-        {/* IPO Charter Underwriting Policy Banner */}
-        <div className="bg-gradient-to-r from-amber-500/15 via-zinc-900 to-emerald-500/10 border border-amber-500/40 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-lg">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
-              <Coins className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="font-bold text-amber-300 text-sm flex items-center gap-2">
-                <span>Zero Upfront Listing Fee • Underwritten From Float Proceeds</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">0g Out-Of-Pocket</span>
-              </div>
-              <p className="text-zinc-300 text-[12px] mt-1 leading-relaxed max-w-3xl">
-                Founders do not need gold in advance to list a company. The exchange&apos;s standard 200 gold IPO charter underwriting fee is <strong>automatically deducted from the funds raised</strong> as citizens buy your initial public float on the trading floor.
-              </p>
-            </div>
-          </div>
-        </div>
+        <p className="text-[13px] text-paper border-l-2 border-bullion pl-3 max-w-2xl leading-relaxed">
+          No fee up front. The exchange&apos;s 200-gold listing fee comes out of the first IPO share sales; the rest goes into your company&apos;s
+          treasury, and you can move it to your purse from the Founder tab.
+        </p>
 
         {/* Existing Applications Section */}
         {applications.length > 0 && (
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3">
-            <h2 className="font-bold text-white text-sm flex items-center gap-2">
-              <FileText className="w-4 h-4 text-amber-400" />
-              Your IPO Charter Applications ({applications.length})
+          <div className="bg-floor border border-rule rounded-[4px] p-5 flex flex-col gap-3">
+            <h2 className="font-bold text-zinc-50 text-sm flex items-center gap-2">
+              <FileText className="w-4 h-4 text-bullion" />
+              Your applications ({applications.length})
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {applications.map((app) => (
                 <div 
                   key={app.id} 
-                  className="bg-zinc-950 border border-zinc-800/80 rounded-xl p-4 flex flex-col justify-between gap-3 text-xs"
+                  className="bg-floor border border-rule rounded-[4px] p-4 flex flex-col justify-between gap-3 text-xs"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{app.logoUrl}</span>
                         <div>
-                          <div className="font-bold text-white flex items-center gap-1.5">
+                          <div className="font-bold text-zinc-50 flex items-center gap-1.5">
                             <span>{app.name}</span>
-                            <span className="font-mono text-amber-400">(${app.ticker})</span>
+                            <span className="tabular text-bullion">(${app.ticker})</span>
                           </div>
-                          <div className="flex items-center gap-2 text-[10px] text-zinc-400 mt-0.5">
+                          <div className="flex items-center gap-2 text-[12px] text-ash mt-0.5">
                             <span>{app.sector}</span>
                             <span>·</span>
-                            <span className="text-purple-300 font-mono">Discord: @{app.discordId || "N/A"}</span>
+                            <span className="text-paper tabular">Discord: @{app.discordId || "N/A"}</span>
                           </div>
                         </div>
                       </div>
 
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                      <span className={`px-2 py-0.5 rounded text-[12px] tabular font-bold ${
                         app.status === "PENDING"
-                          ? "bg-amber-500/10 text-amber-400 border border-amber-500/30"
+                          ? "bg-floor text-bullion border border-rule"
                           : app.status === "APPROVED"
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                          : "bg-rose-500/10 text-rose-400 border border-rose-500/30"
+                          ? "bg-floor text-paper border border-rule"
+                          : "bg-floor text-bear border border-rule"
                       }`}>
-                        {app.status === "PENDING" ? "🟡 Under Review" : app.status === "APPROVED" ? "🟢 Listed on Bourse" : "🔴 Rejected"}
+                        {app.status === "PENDING" ? "Under review" : app.status === "APPROVED" ? "Listed" : "Rejected"}
                       </span>
                     </div>
 
                     {/* Specific Metrics Badge */}
-                    <div className="mt-2.5 p-2 bg-zinc-900/60 rounded border border-zinc-800 text-[11px] flex flex-wrap items-center gap-3 text-zinc-300">
+                    <div className="mt-2.5 p-2 bg-floor rounded border border-rule text-[12px] flex flex-wrap items-center gap-3 text-paper">
                       <div>
-                        <span className="text-zinc-500 text-[10px] block">Weekly Rev</span>
-                        <span className="font-mono text-emerald-400 font-bold">{app.weeklyRevenue ? `${app.weeklyRevenue.toLocaleString()}g` : "0g"}</span>
+                        <span className="text-ash text-[12px] block">{app.status === "APPROVED" ? "Revenue/wk when applying" : "Revenue/wk"}</span>
+                        <span className="tabular text-paper font-bold">{app.weeklyRevenue ? `${app.weeklyRevenue.toLocaleString()}g` : "0g"}</span>
                       </div>
                       {app.businessType === "FACTORY" && (
                         <>
                           <div>
-                            <span className="text-zinc-500 text-[10px] block">Factory Lvl</span>
-                            <span className="font-mono text-white">Lvl {app.factoryLevel || 1}</span>
+                            <span className="text-ash text-[12px] block">Factory Lvl</span>
+                            <span className="tabular text-zinc-50">Lvl {app.factoryLevel || 1}</span>
                           </div>
                           <div>
-                            <span className="text-zinc-500 text-[10px] block">Workers</span>
-                            <span className="font-mono text-white">{app.workersCount || 0}</span>
+                            <span className="text-ash text-[12px] block">Workers</span>
+                            <span className="tabular text-zinc-50">{app.workersCount || 0}</span>
                           </div>
                           <div className="flex-1">
-                            <span className="text-zinc-500 text-[10px] block">Output</span>
-                            <span className="font-mono text-amber-300 truncate block">{app.productionOutput || "Standard"}</span>
+                            <span className="text-ash text-[12px] block">Output</span>
+                            <span className="tabular text-paper truncate block">{app.productionOutput || "Standard"}</span>
                           </div>
                         </>
                       )}
                       {app.businessType === "PRESS" && (
                         <>
                           <div>
-                            <span className="text-zinc-500 text-[10px] block">Readership</span>
-                            <span className="font-mono text-white">{app.pressViewers || "General"}</span>
+                            <span className="text-ash text-[12px] block">Readership</span>
+                            <span className="tabular text-zinc-50">{app.pressViewers || "General"}</span>
                           </div>
                           <div>
-                            <span className="text-zinc-500 text-[10px] block">Frequency</span>
-                            <span className="font-mono text-amber-300">{app.pressFrequency || "Weekly"}</span>
+                            <span className="text-ash text-[12px] block">Frequency</span>
+                            <span className="tabular text-paper">{app.pressFrequency || "Weekly"}</span>
                           </div>
                         </>
                       )}
                       {app.businessType === "SPECIAL" && (
                         <div className="flex-1">
-                          <span className="text-zinc-500 text-[10px] block">Special Lore</span>
-                          <span className="font-mono text-purple-300 truncate block">{app.specialNotes || "Special Enterprise"}</span>
+                          <span className="text-ash text-[12px] block">Special Lore</span>
+                          <span className="tabular text-paper truncate block">{app.specialNotes || "Special Enterprise"}</span>
                         </div>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-zinc-800/80 font-mono text-[11px]">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-rule tabular text-[12px]">
                       <div>
-                        <span className="text-zinc-500 block text-[10px] font-sans">Public Float</span>
-                        <span className="text-amber-400 font-bold">{(100 - Number(app.proposedFounderRetainPercent)).toFixed(2)}%</span>
+                        <span className="text-ash block text-[12px] font-sans">Public Float</span>
+                        <span className="text-bullion font-bold">{(100 - Number(app.proposedFounderRetainPercent)).toFixed(2)}%</span>
                       </div>
                       <div>
-                        <span className="text-zinc-500 block text-[10px] font-sans">Proposed Price</span>
-                        <span className="text-zinc-300">{app.proposedIpoPrice.toFixed(2)} gold</span>
+                        <span className="text-ash block text-[12px] font-sans">Proposed Price</span>
+                        <span className="text-paper">{app.proposedIpoPrice.toFixed(2)} gold</span>
                       </div>
                       <div>
-                        <span className="text-zinc-500 block text-[10px] font-sans">Final Price</span>
-                        <span className="text-emerald-400 font-bold">
+                        <span className="text-ash block text-[12px] font-sans">Final Price</span>
+                        <span className="text-paper font-bold">
                           {app.finalPrice ? `${app.finalPrice.toFixed(2)} gold` : "Pending"}
                         </span>
                       </div>
                       <div>
-                        <span className="text-zinc-500 block text-[10px] font-sans">Total Shares</span>
-                        <span className="text-zinc-300">{app.proposedTotalShares.toLocaleString()}</span>
+                        <span className="text-ash block text-[12px] font-sans">Total Shares</span>
+                        <span className="text-paper">{app.proposedTotalShares.toLocaleString()}</span>
                       </div>
                     </div>
 
                     {app.operatorNotes && (
-                      <div className="mt-2.5 p-2 bg-zinc-900 rounded border border-zinc-800 text-[11px] text-zinc-300 font-sans">
-                        <strong className="text-amber-400">Operator Note:</strong> {app.operatorNotes}
+                      <div className="mt-2.5 p-2 bg-pane rounded border border-rule text-[12px] text-paper font-sans">
+                        <strong className="text-bullion">Operator Note:</strong> {app.operatorNotes}
                       </div>
                     )}
                   </div>
 
                   {app.status === "APPROVED" && (
-                    <Link
-                      href={`/trade/${app.ticker}`}
-                      className="w-full py-1.5 text-center bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5"
-                    >
-                      Open Live Trading Terminal <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Link href={`/trade/${app.ticker}`} className="h-8 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold flex items-center justify-center">
+                        Trade {app.ticker}
+                      </Link>
+                      <Link href={`/trade/${app.ticker}?tab=founder`} className="h-8 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper flex items-center justify-center">
+                        Edit company
+                      </Link>
+                    </div>
                   )}
                 </div>
               ))}
@@ -375,17 +356,17 @@ export default function IpoPage() {
 
         {/* Application Form & Real-Time Pro-Forma Preview */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <form onSubmit={handleLaunchIpo} className="lg:col-span-7 flex flex-col gap-5 bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-xl">
+          <form onSubmit={handleLaunchIpo} className="lg:col-span-7 flex flex-col gap-5 bg-floor border border-rule rounded-[4px] p-5 sm:p-6">
             {error && (
-              <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-600/40 text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3.5 rounded-[4px] bg-floor border border-rule text-bear text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-bear shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {success && (
-              <div className="p-3.5 rounded-xl bg-emerald-950/60 border border-emerald-600/40 text-emerald-300 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="p-3.5 rounded-[4px] bg-floor border border-rule text-paper text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-paper shrink-0" />
                 <span>{success}</span>
               </div>
             )}
@@ -393,9 +374,9 @@ export default function IpoPage() {
             {/* Applicant In-Game Name & Discord ID */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-zinc-300 block mb-1.5 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-amber-400" />
-                  Founder In-Game Character Name
+                <label className="text-xs font-semibold text-paper block mb-1.5 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-bullion" />
+                  Your character name
                 </label>
                 <input
                   type="text"
@@ -403,14 +384,14 @@ export default function IpoPage() {
                   value={parlamentumName}
                   onChange={(e) => setParlamentumName(e.target.value)}
                   placeholder="Exact character name in Parlamentum"
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400 transition"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3.5 py-2.5 text-sm text-zinc-50 tabular focus:outline-none focus:border-rule transition"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-zinc-300 block mb-1.5 flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-purple-400" />
-                  Founder Discord ID (Handle)
+                <label className="text-xs font-semibold text-paper block mb-1.5 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-paper" />
+                  Your Discord handle
                 </label>
                 <input
                   type="text"
@@ -418,33 +399,33 @@ export default function IpoPage() {
                   value={discordId}
                   onChange={(e) => setDiscordId(e.target.value)}
                   placeholder="e.g. @josepharora or username#1234"
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-purple-400 transition"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3.5 py-2.5 text-sm text-zinc-50 tabular focus:outline-none focus:border-rule transition"
                 />
               </div>
             </div>
-            <span className="text-[11px] text-zinc-400 -mt-2 block">
-              The High Registrar coordinates IPO price approval and inspects in-game assets directly with you on Discord.
+            <span className="text-[12px] text-ash -mt-2 block">
+              The operator contacts you there to agree the price and check your assets.
             </span>
 
             {/* Business Model Category */}
             <div className="pt-1">
-              <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                Enterprise Classification & Backing Model
+              <label className="text-xs font-semibold text-paper block mb-1.5">
+                Kind of business
               </label>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setBusinessType("FACTORY")}
-                  className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col gap-1 ${
+                  className={`p-3 rounded-[4px] border text-left transition cursor-pointer flex flex-col gap-1 ${
                     businessType === "FACTORY"
-                      ? "bg-amber-500/10 border-amber-500/60 text-white"
-                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                      ? "bg-floor border-rule text-zinc-50"
+                      : "bg-floor border-rule text-ash hover:text-paper"
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-amber-400">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-bullion">
                     <Factory className="w-4 h-4" /> Industrial / Factory
                   </div>
-                  <span className="text-[10px] text-zinc-400 leading-snug">
+                  <span className="text-[12px] text-ash leading-snug">
                     Mines, metallurgy, farms & workshops
                   </span>
                 </button>
@@ -452,16 +433,16 @@ export default function IpoPage() {
                 <button
                   type="button"
                   onClick={() => setBusinessType("PRESS")}
-                  className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col gap-1 ${
+                  className={`p-3 rounded-[4px] border text-left transition cursor-pointer flex flex-col gap-1 ${
                     businessType === "PRESS"
-                      ? "bg-blue-500/10 border-blue-500/60 text-white"
-                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                      ? "bg-floor border-rule text-zinc-50"
+                      : "bg-floor border-rule text-ash hover:text-paper"
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-blue-400">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-paper">
                     <Newspaper className="w-4 h-4" /> Newspaper & Press
                   </div>
-                  <span className="text-[10px] text-zinc-400 leading-snug">
+                  <span className="text-[12px] text-ash leading-snug">
                     Gazettes, media circulation & journalism
                   </span>
                 </button>
@@ -469,16 +450,16 @@ export default function IpoPage() {
                 <button
                   type="button"
                   onClick={() => setBusinessType("SPECIAL")}
-                  className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col gap-1 ${
+                  className={`p-3 rounded-[4px] border text-left transition cursor-pointer flex flex-col gap-1 ${
                     businessType === "SPECIAL"
-                      ? "bg-purple-500/10 border-purple-500/60 text-white"
-                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                      ? "bg-floor border-rule text-zinc-50"
+                      : "bg-floor border-rule text-ash hover:text-paper"
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-purple-400">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-paper">
                     <Crown className="w-4 h-4" /> Special & Boutique
                   </div>
-                  <span className="text-[10px] text-zinc-400 leading-snug">
+                  <span className="text-[12px] text-ash leading-snug">
                     Mercenaries, banking & simplified lore
                   </span>
                 </button>
@@ -487,14 +468,14 @@ export default function IpoPage() {
 
             {/* Dynamic Specific Metrics Based on Category */}
             {businessType === "FACTORY" && (
-              <div className="p-4 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-400 border-b border-zinc-800/80 pb-2">
-                  <Factory className="w-4 h-4" /> Industrial Facility & Production Metrics
+              <div className="p-4 bg-floor/80 rounded-[4px] border border-rule space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-bullion border-b border-rule pb-2">
+                  <Factory className="w-4 h-4" /> Factory details
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                    <label className="text-[12px] font-semibold text-paper block mb-1">
                       Factory / Facility Level
                     </label>
                     <input
@@ -504,12 +485,12 @@ export default function IpoPage() {
                       value={factoryLevel}
                       onChange={(e) => setFactoryLevel(e.target.value)}
                       placeholder="1"
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-400"
+                      className="w-full bg-pane border border-rule rounded-[4px] px-3 py-2 text-sm text-zinc-50 tabular focus:outline-none focus:border-rule"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                    <label className="text-[12px] font-semibold text-paper block mb-1">
                       Number of Workers Employed
                     </label>
                     <input
@@ -518,13 +499,13 @@ export default function IpoPage() {
                       value={workersCount}
                       onChange={(e) => setWorkersCount(e.target.value)}
                       placeholder="5"
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-400"
+                      className="w-full bg-pane border border-rule rounded-[4px] px-3 py-2 text-sm text-zinc-50 tabular focus:outline-none focus:border-rule"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                  <label className="text-[12px] font-semibold text-paper block mb-1">
                     Weekly Production Output
                   </label>
                   <input
@@ -532,9 +513,9 @@ export default function IpoPage() {
                     value={productionOutput}
                     onChange={(e) => setProductionOutput(e.target.value)}
                     placeholder="e.g. 1,200 Raw Iron units / week or 400 Weapon armaments / week"
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-pane border border-rule rounded-[4px] px-3 py-2 text-xs text-zinc-50 focus:outline-none focus:border-rule"
                   />
-                  <span className="text-[10px] text-zinc-400 mt-1 block">
+                  <span className="text-[12px] text-ash mt-1 block">
                     Your production rate verifies the commodity flow that powers shareholder dividends.
                   </span>
                 </div>
@@ -542,14 +523,14 @@ export default function IpoPage() {
             )}
 
             {businessType === "PRESS" && (
-              <div className="p-4 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-blue-400 border-b border-zinc-800/80 pb-2">
+              <div className="p-4 bg-floor/80 rounded-[4px] border border-rule space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-paper border-b border-rule pb-2">
                   <Newspaper className="w-4 h-4" /> Press Readership & Publication Metrics
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                    <label className="text-[12px] font-semibold text-paper block mb-1">
                       Average Readers / Edition Views
                     </label>
                     <input
@@ -557,18 +538,18 @@ export default function IpoPage() {
                       value={pressViewers}
                       onChange={(e) => setPressViewers(e.target.value)}
                       placeholder="e.g. ~850 active readers per edition"
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400"
+                      className="w-full bg-pane border border-rule rounded-[4px] px-3 py-2 text-xs text-zinc-50 focus:outline-none focus:border-rule"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                    <label className="text-[12px] font-semibold text-paper block mb-1">
                       Publishing Frequency
                     </label>
                     <select
                       value={pressFrequency}
                       onChange={(e) => setPressFrequency(e.target.value)}
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer"
+                      className="w-full bg-pane border border-rule rounded-[4px] px-3 py-2 text-xs text-zinc-50 focus:outline-none focus:border-rule cursor-pointer"
                     >
                       <option value="Daily Edition">Daily Edition</option>
                       <option value="Weekly Edition">Weekly Edition</option>
@@ -581,15 +562,15 @@ export default function IpoPage() {
             )}
 
             {businessType === "SPECIAL" && (
-              <div className="p-4 bg-purple-950/20 rounded-xl border border-purple-500/30 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-purple-300 border-b border-purple-500/20 pb-2">
-                  <Sparkles className="w-4 h-4 text-purple-400" /> Simplified Special Enterprise Charter
+              <div className="p-4 bg-floor rounded-[4px] border border-rule space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-paper border-b border-rule pb-2">
+                  <Sparkles className="w-4 h-4 text-paper" /> Simplified Special Enterprise Charter
                 </div>
-                <p className="text-[11px] text-zinc-300 leading-relaxed">
+                <p className="text-[12px] text-paper leading-relaxed">
                   For mercenary syndicates, diplomatic bureaus, lore societies, or unique commodity traders that don&apos;t run a standard factory or printing press.
                 </p>
                 <div>
-                  <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
+                  <label className="text-[12px] font-semibold text-paper block mb-1">
                     Special Services & Collateral Notes
                   </label>
                   <input
@@ -597,7 +578,7 @@ export default function IpoPage() {
                     value={specialNotes}
                     onChange={(e) => setSpecialNotes(e.target.value)}
                     placeholder="e.g. 50-man mercenary contract syndicate backing or state vault deposits"
-                    className="w-full bg-zinc-900 border border-purple-500/40 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400"
+                    className="w-full bg-pane border border-rule rounded-[4px] px-3 py-2 text-xs text-zinc-50 focus:outline-none focus:border-rule"
                   />
                 </div>
               </div>
@@ -605,12 +586,12 @@ export default function IpoPage() {
 
             {/* Weekly Revenue */}
             <div>
-              <label className="text-xs font-semibold text-zinc-300 block mb-1.5 flex items-center justify-between">
+              <label className="text-xs font-semibold text-paper block mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                  Estimated Weekly Enterprise Revenue (Gold)
+                  <TrendingUp className="w-3.5 h-3.5 text-paper" />
+                  Estimated revenue per week (gold)
                 </span>
-                <span className="text-[11px] font-mono text-emerald-400">
+                <span className="text-[12px] tabular text-paper">
                   {numWeeklyRevenue > 0 ? `~${(numWeeklyRevenue * 52).toLocaleString()} gold / yr annualized` : "0 gold"}
                 </span>
               </label>
@@ -621,9 +602,9 @@ export default function IpoPage() {
                 value={weeklyRevenue}
                 onChange={(e) => setWeeklyRevenue(e.target.value)}
                 placeholder="500"
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-400 transition"
+                className="w-full bg-floor border border-rule rounded-[4px] px-3.5 py-2.5 text-sm text-paper tabular font-bold focus:outline-none focus:border-rule transition"
               />
-              <span className="text-[10px] text-zinc-400 mt-1 block">
+              <span className="text-[12px] text-ash mt-1 block">
                 Estimated gross or net gold earned by your business weekly in Parlamentum. Used by operators to evaluate dividend feasibility.
               </span>
             </div>
@@ -631,30 +612,30 @@ export default function IpoPage() {
             {/* Ticker & Logo */}
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
-                <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                  Requested Ticker Symbol
+                <label className="text-xs font-semibold text-paper block mb-1.5">
+                  Ticker
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-zinc-500 font-mono text-sm font-bold">$</span>
+                  <span className="absolute left-3.5 top-2.5 text-ash tabular text-sm font-bold">$</span>
                   <input
                     type="text"
                     maxLength={5}
                     value={ticker}
                     onChange={(e) => setTicker(e.target.value.toUpperCase())}
                     placeholder="FE"
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-xl pl-8 pr-3.5 py-2.5 text-sm text-white font-mono uppercase tracking-wider font-bold focus:outline-none focus:border-amber-400 transition"
+                    className="w-full bg-floor border border-rule rounded-[4px] pl-8 pr-3.5 py-2.5 text-sm text-zinc-50 tabular font-bold focus:outline-none focus:border-rule transition"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                  Charter Crest
+                <label className="text-xs font-semibold text-paper block mb-1.5">
+                  Logo
                 </label>
                 <select
                   value={logoEmoji}
                   onChange={(e) => setLogoEmoji(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-lg text-white focus:outline-none focus:border-amber-400 transition cursor-pointer"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2.5 text-lg text-zinc-50 focus:outline-none focus:border-rule transition cursor-pointer"
                 >
                   {emojiList.map((em) => (
                     <option key={em} value={em}>
@@ -667,27 +648,27 @@ export default function IpoPage() {
 
             {/* Company Name */}
             <div>
-              <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                Official Charter / Enterprise Name
+              <label className="text-xs font-semibold text-paper block mb-1.5">
+                Company name
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Ironworks Conglomerate of Parlamentum"
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400 transition"
+                className="w-full bg-floor border border-rule rounded-[4px] px-3.5 py-2.5 text-sm text-zinc-50 focus:outline-none focus:border-rule transition"
               />
             </div>
 
             {/* Sector */}
             <div>
-              <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                Economic Sector
+              <label className="text-xs font-semibold text-paper block mb-1.5">
+                Sector
               </label>
               <select
                 value={sector}
                 onChange={(e) => setSector(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-400 transition cursor-pointer"
+                className="w-full bg-floor border border-rule rounded-[4px] px-3.5 py-2.5 text-xs text-paper focus:outline-none focus:border-rule transition cursor-pointer"
               >
                 {sectors.map((s) => (
                   <option key={s} value={s}>
@@ -699,23 +680,23 @@ export default function IpoPage() {
 
             {/* Business Lore & Asset Backing */}
             <div>
-              <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                Business Plan & In-Game Backing Assets
+              <label className="text-xs font-semibold text-paper block mb-1.5">
+                What backs the company
               </label>
               <textarea
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Explain what in-game assets back your company (e.g. 5 Raw Iron mines, 12 couriers, territory ownership, dividend commitments to shareholders)."
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-amber-400 transition"
+                className="w-full bg-floor border border-rule rounded-[4px] p-3 text-xs text-paper focus:outline-none focus:border-rule transition"
               />
             </div>
 
             {/* Capital Structure */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                  Proposed Total Shares
+                <label className="text-xs font-semibold text-paper block mb-1.5">
+                  Total shares
                 </label>
                 <input
                   type="number"
@@ -723,13 +704,13 @@ export default function IpoPage() {
                   step="1000"
                   value={totalShares}
                   onChange={(e) => setTotalShares(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400 transition"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3.5 py-2.5 text-sm text-zinc-50 tabular focus:outline-none focus:border-rule transition"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                  Proposed Initial Price (Gold)
+                <label className="text-xs font-semibold text-paper block mb-1.5">
+                  Price per share (gold)
                 </label>
                 <input
                   type="number"
@@ -737,30 +718,30 @@ export default function IpoPage() {
                   step="0.5"
                   value={ipoPrice}
                   onChange={(e) => setIpoPrice(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400 transition"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3.5 py-2.5 text-sm text-zinc-50 tabular focus:outline-none focus:border-rule transition"
                 />
-                <span className="text-[10px] text-zinc-400 mt-1 block">
+                <span className="text-[12px] text-ash mt-1 block">
                   Negotiable with operator during review.
                 </span>
               </div>
             </div>
 
             {/* Public Float (% Putting Out) & Founder Equity Controls */}
-            <div className="p-4 bg-zinc-950/60 rounded-xl border border-zinc-800 space-y-3">
+            <div className="p-4 bg-floor/60 rounded-[4px] border border-rule space-y-3">
               <div className="flex justify-between items-center">
                 <div>
-                  <label className="text-xs font-bold text-amber-400 block">
-                    Public Float % (Percentage Putting Out to Bourse)
+                  <label className="text-xs font-bold text-bullion block">
+                    Shares offered to the public
                   </label>
-                  <span className="text-[10px] text-zinc-400">
+                  <span className="text-[12px] text-ash">
                     Supports micro-floats down to 0.10% (Founder keeps 99.90%)
                   </span>
                 </div>
-                <div className="text-right font-mono">
-                  <span className="text-xs font-bold text-amber-400">
+                <div className="text-right tabular">
+                  <span className="text-xs font-bold text-bullion">
                     {floatPercent.toFixed(2)}% Float
                   </span>
-                  <span className="text-[10px] text-zinc-400 block">
+                  <span className="text-[12px] text-ash block">
                     ({publicFloat.toLocaleString()} shares)
                   </span>
                 </div>
@@ -782,14 +763,14 @@ export default function IpoPage() {
                           setFloatPercent(Math.min(99.9, Math.max(0.1, Math.round(val * 100) / 100)));
                         }
                       }}
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg pl-3 pr-8 py-2 font-mono text-amber-400 font-bold text-sm focus:outline-none focus:border-amber-400"
+                      className="w-full bg-pane border border-rule rounded-[4px] pl-3 pr-8 py-2 tabular text-bullion font-bold text-sm focus:outline-none focus:border-rule"
                     />
-                    <Percent className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3" />
+                    <Percent className="w-3.5 h-3.5 text-ash absolute right-3 top-3" />
                   </div>
                 </div>
 
-                <div className="p-2 bg-zinc-900/60 rounded-lg border border-zinc-800 text-[11px] font-mono flex items-center justify-between">
-                  <span className="text-zinc-400 font-sans">Founder Retains:</span>
+                <div className="p-2 bg-floor rounded-[4px] border border-rule text-[12px] tabular flex items-center justify-between">
+                  <span className="text-ash font-sans">Founder Retains:</span>
                   <strong className="text-paper font-bold">{founderPercent.toFixed(2)}% ({founderShares.toLocaleString()} sh.)</strong>
                 </div>
               </div>
@@ -807,7 +788,7 @@ export default function IpoPage() {
 
               {/* Micro-Float Presets */}
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[10px] text-zinc-500 mr-1">Presets:</span>
+                <span className="text-[12px] text-ash mr-1">Presets:</span>
                 {[
                   { label: "0.10% (Micro)", val: 0.10 },
                   { label: "1.00%", val: 1.00 },
@@ -820,10 +801,10 @@ export default function IpoPage() {
                     key={pill.val}
                     type="button"
                     onClick={() => setFloatPercent(pill.val)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-mono transition cursor-pointer border ${
+                    className={`px-2 py-0.5 rounded text-[12px] tabular transition cursor-pointer border ${
                       floatPercent === pill.val
-                        ? "bg-amber-500 text-black font-bold border-amber-400"
-                        : "bg-zinc-800 text-zinc-300 hover:text-white border-zinc-700"
+                        ? "bg-amber-500 text-black font-bold border-rule"
+                        : "bg-zinc-800 text-paper hover:text-zinc-50 border-rule"
                     }`}
                   >
                     {pill.label}
@@ -845,91 +826,91 @@ export default function IpoPage() {
           </form>
 
           {/* Pro-Forma Prospectus Preview (5 cols) */}
-          <div className="lg:col-span-5 bg-zinc-900/40 border border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col gap-4">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2 border-b border-zinc-800 pb-3">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <div className="lg:col-span-5 bg-pane/40 border border-rule rounded-[4px] p-5 sm:p-6 flex flex-col gap-4">
+            <h3 className="font-bold text-zinc-50 text-sm flex items-center gap-2 border-b border-rule pb-3">
+              <ShieldCheck className="w-4 h-4 text-paper" />
               Listing preview
             </h3>
 
-            <div className="flex items-center gap-3 p-3 bg-zinc-950 rounded-xl border border-zinc-800">
-              <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-2xl">
+            <div className="flex items-center gap-3 p-3 bg-floor rounded-[4px] border border-rule">
+              <div className="w-12 h-12 rounded-[4px] bg-pane border border-rule flex items-center justify-center text-2xl">
                 {logoEmoji}
               </div>
               <div>
-                <div className="font-bold text-white text-base">
+                <div className="font-bold text-zinc-50 text-base">
                   {name || "Untitled Enterprise"}
                 </div>
-                <div className="font-mono text-xs text-amber-400 font-bold">
-                  ${ticker || "TICKER"} · <span className="text-zinc-400 font-sans font-normal">{sector}</span>
+                <div className="tabular text-xs text-bullion font-bold">
+                  ${ticker || "TICKER"} · <span className="text-ash font-sans font-normal">{sector}</span>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2.5 font-mono text-xs">
-              <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
-                <span className="text-zinc-400 font-sans">Enterprise Model:</span>
-                <span className="font-bold text-amber-400 font-sans">
+            <div className="space-y-2.5 tabular text-xs">
+              <div className="flex justify-between p-2 rounded bg-floor/60 border border-rule">
+                <span className="text-ash font-sans">Kind:</span>
+                <span className="font-bold text-bullion font-sans">
                   {businessType === "FACTORY" ? "🏭 Industrial / Factory" : businessType === "PRESS" ? "📰 Newspaper & Press" : "⚜️ Special & Lore"}
                 </span>
               </div>
 
-              <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
-                <span className="text-zinc-400 font-sans">Est. Weekly Revenue:</span>
-                <span className="font-bold text-emerald-400">{numWeeklyRevenue.toLocaleString()} gold / wk</span>
+              <div className="flex justify-between p-2 rounded bg-floor/60 border border-rule">
+                <span className="text-ash font-sans">Est. Weekly Revenue:</span>
+                <span className="font-bold text-paper">{numWeeklyRevenue.toLocaleString()} gold / wk</span>
               </div>
 
-              <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
-                <span className="text-zinc-400 font-sans">Initial Valuation (Market Cap):</span>
-                <span className="font-bold text-emerald-400">{initialMarketCap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold</span>
+              <div className="flex justify-between p-2 rounded bg-floor/60 border border-rule">
+                <span className="text-ash font-sans">Value at the IPO price:</span>
+                <span className="font-bold text-paper">{initialMarketCap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold</span>
               </div>
 
               {numWeeklyRevenue > 0 && (
-                <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
-                  <span className="text-zinc-400 font-sans">Valuation / Annual Revenue:</span>
-                  <span className="font-bold text-purple-300">{(initialMarketCap / (numWeeklyRevenue * 52)).toFixed(2)}x</span>
+                <div className="flex justify-between p-2 rounded bg-floor/60 border border-rule">
+                  <span className="text-ash font-sans">Value ÷ yearly revenue:</span>
+                  <span className="font-bold text-paper">{(initialMarketCap / (numWeeklyRevenue * 52)).toFixed(2)}x</span>
                 </div>
               )}
 
-              <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
-                <span className="text-zinc-400 font-sans">Public Float (% Putting Out):</span>
-                <span className="font-bold text-amber-400">{floatPercent.toFixed(2)}% ({publicFloat.toLocaleString()} shares)</span>
+              <div className="flex justify-between p-2 rounded bg-floor/60 border border-rule">
+                <span className="text-ash font-sans">Offered to the public:</span>
+                <span className="font-bold text-bullion">{floatPercent.toFixed(2)}% ({publicFloat.toLocaleString()} shares)</span>
               </div>
 
-              <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
-                <span className="text-zinc-400 font-sans">Founder Retained Stake:</span>
+              <div className="flex justify-between p-2 rounded bg-floor/60 border border-rule">
+                <span className="text-ash font-sans">You keep:</span>
                 <span className="font-bold text-paper">{founderPercent.toFixed(2)}% ({founderShares.toLocaleString()} shares)</span>
               </div>
 
-              <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
-                <span className="text-zinc-400 font-sans">Gross Capital To Be Raised:</span>
-                <span className="font-bold text-amber-300">{publicFloatVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold</span>
+              <div className="flex justify-between p-2 rounded bg-floor/60 border border-rule">
+                <span className="text-ash font-sans">Raised if every share sells:</span>
+                <span className="font-bold text-paper">{publicFloatVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold</span>
               </div>
 
-              <div className="flex justify-between p-2 rounded bg-amber-500/5 border border-amber-500/30">
+              <div className="flex justify-between p-2 rounded bg-floor border border-rule">
                 <div className="flex flex-col">
-                  <span className="text-amber-300 font-sans font-semibold">Less: IPO Charter Fee:</span>
-                  <span className="text-[10px] text-zinc-400">Deducted from float sales (0g upfront)</span>
+                  <span className="text-paper font-sans font-semibold">Listing fee:</span>
+                  <span className="text-[12px] text-ash">Taken from the first sales, nothing up front</span>
                 </div>
-                <span className="font-mono font-bold text-rose-400">-200.00 gold</span>
+                <span className="tabular font-bold text-bear">-200.00 gold</span>
               </div>
 
-              <div className="flex justify-between p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30">
+              <div className="flex justify-between p-2.5 rounded bg-floor border border-rule">
                 <div className="flex flex-col">
-                  <span className="text-emerald-300 font-sans font-bold">Est. raised for the company:</span>
-                  <span className="text-[10px] text-emerald-400/80">Goes into the company treasury as shares sell. Move it to your purse from the Founder tab.</span>
+                  <span className="text-paper font-sans font-bold">Est. raised for the company:</span>
+                  <span className="text-[12px] text-paper">Goes into the company treasury as shares sell. Move it to your purse from the Founder tab.</span>
                 </div>
-                <span className="font-mono font-black text-emerald-400 text-sm">
+                <span className="tabular font-black text-paper text-sm">
                   {Math.max(0, publicFloatVal - 200).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold
                 </span>
               </div>
 
-              <div className="flex justify-between p-2 rounded bg-zinc-950/60 border border-zinc-800/60">
-                <span className="text-zinc-400 font-sans">Standard Bourse Trading Fee:</span>
-                <span className="text-zinc-300">0.5% on matches</span>
+              <div className="flex justify-between p-2 rounded bg-floor/60 border border-rule">
+                <span className="text-ash font-sans">Trading fee:</span>
+                <span className="text-paper">0.5% on matches</span>
               </div>
             </div>
 
-            <div className="text-[11px] text-zinc-400 leading-relaxed border-t border-zinc-800 pt-3">
+            <div className="text-[12px] text-ash leading-relaxed border-t border-rule pt-3">
               Once submitted, the operator can adjust or renegotiate the initial price with you before the public book is opened.
             </div>
           </div>
