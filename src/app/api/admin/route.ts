@@ -30,7 +30,7 @@ export async function GET() {
     ] = await Promise.all([
       getSetting("tax_rate", "10"),
       getSetting("house_name", "JosephArora"),
-      getSetting("trade_fee_percent", "0.5"),
+      getSetting("trade_fee_percent", "1.0"),
       getSetting("ipo_listing_fee", "200"),
       getSetting("discord_webhook_url", ""),
       getSetting("discord_whale_threshold", "25"),

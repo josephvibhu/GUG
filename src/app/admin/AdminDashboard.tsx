@@ -91,7 +91,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   // Settings
   const [taxRate, setTaxRate] = useState<number>(10);
   const [houseName, setHouseName] = useState<string>("JosephArora");
-  const [tradeFee, setTradeFee] = useState<number>(0.5);
+  const [tradeFee, setTradeFee] = useState<number>(1.0);
   const [listingFee, setListingFee] = useState<number>(200);
 
   // Discord Webhook Engine
@@ -702,7 +702,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               </span>
             </div>
             <p className="text-xs text-zinc-400 mt-1">
-              Verify Parlamentum Raw Iron sales, credit citizen purses, negate game taxes, and configure webhooks.
+              Verify Parlamentum Raw Iron sales, credit citizen purses, fulfill withdrawals, and configure the automated watcher.
             </p>
           </div>
         </div>
@@ -825,7 +825,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               {/* Trade Fees Earned */}
               <div className="p-4 bg-floor/90 border border-rule rounded-[6px] flex flex-col justify-between gap-1 shadow-inner">
                 <div className="flex items-center justify-between text-[11px] font-sans text-zinc-300 font-semibold">
-                  <span>Trading Fees (0.5%)</span>
+                  <span>Trading Fees ({tradeFee}%)</span>
                   <TrendingUp className="w-3.5 h-3.5 text-paper" />
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-paper mt-1">
@@ -1581,7 +1581,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           <div className="flex items-center justify-between border-b border-rule pb-3">
             <h3 className="font-bold text-white text-sm flex items-center gap-2">
               <Settings className="w-4 h-4 text-bullion" />
-              Realm Market Tax Negation & House Configuration
+              Realm Market Tax Rate & House Configuration
             </h3>
             <button
               type="submit"
@@ -1609,7 +1609,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 <Percent className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3" />
               </div>
               <span className="text-[10px] text-zinc-400 mt-1 block">
-                Fallback tax negated on withdrawals. Citizens can select their specific regional tax rate (e.g. 3% in Kriti).
+                Default regional market tax rate for withdrawal calculations. Citizens pay this tax in-game to Parlamentum.
               </span>
             </div>
 
@@ -1630,7 +1630,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 <Percent className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3" />
               </div>
               <span className="text-[10px] text-zinc-400 mt-1 block">
-                Standard House cut across share matches (e.g. 0.5% or 0.10%).
+                Standard House cut across share matches (e.g. 1.0% or 0.5%).
               </span>
             </div>
 

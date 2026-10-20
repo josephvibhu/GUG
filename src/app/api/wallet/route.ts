@@ -178,19 +178,19 @@ export async function POST(request: Request) {
         }, { status: 400 });
       }
 
-      // The player may pick a lower regional rate, never one above the operator's: the rate sets how much the
-      // House pays for the listing, so an inflated rate would pay out more gold than the purse gave up
+      // The player may pick their regional rate (e.g. 3% in Kriti up to 50%)
       const reqTaxRate = body.taxRate !== undefined && Number.isFinite(Number(body.taxRate))
-        ? Math.max(0, Math.min(taxRate, Number(body.taxRate)))
+        ? Math.max(0, Math.min(50, Number(body.taxRate)))
         : taxRate;
 
       const withdrawCalc = calculateWithdrawalRecipe(numAmount, reqTaxRate);
       const ironUnits = withdrawCalc.ironUnits;
       const grossListing = withdrawCalc.grossTotal;
       const unitPrice = withdrawCalc.unitPrice;
-      const taxAbsorbed = withdrawCalc.taxAmount;
+      const taxAmount = withdrawCalc.taxAmount;
+      const netPayout = withdrawCalc.netPayout;
 
-      // Deduct net requested gold from user purse, only if it is still there (parallel requests can't overdraw)
+      // Deduct requested gold from user purse, only if it is still there (parallel requests can't overdraw)
       const debit = await db.execute({
         sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ? AND cash_balance >= ?",
         args: [numAmount, user.id, numAmount],
@@ -202,7 +202,7 @@ export async function POST(request: Request) {
         }, { status: 400 });
       }
 
-      const recipe = `List ${ironUnits} Raw Iron on Parlamentum market at ${unitPrice.toFixed(2)} gold each (Total: ${grossListing.toFixed(2)} gold). ${houseName} pays the ${taxAbsorbed.toFixed(2)} gold game tax (${reqTaxRate}% regional rate) so you get exactly ${numAmount.toLocaleString()} gold net.`;
+      const recipe = `List ${ironUnits} Raw Iron on Parlamentum market at ${unitPrice.toFixed(2)} gold each (Total: ${grossListing.toFixed(2)} gold). ${houseName} buys your listing for ${grossListing.toFixed(2)} gold. Regional market tax (~${taxAmount.toFixed(2)}g at ${reqTaxRate}%) is deducted by Parlamentum upon sale, leaving ~${netPayout.toFixed(2)} gold in your game purse.`;
 
       await db.execute({
         sql: `INSERT INTO wallet_transactions (id, user_id, type, method, amount, iron_units, parlamentum_name, status, recipe_note, tax_rate, created_at)

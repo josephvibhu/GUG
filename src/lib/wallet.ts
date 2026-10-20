@@ -51,16 +51,18 @@ export function calculateDepositRecipe(goldAmount: number, taxRate = 0): RecipeR
   };
 }
 
-// Withdrawal calculation with tax negation:
-// To ensure the player receives exactly goldAmount after Parlamentum sales tax deduction
+// Withdrawal calculation:
+// The player requests goldAmount to be withdrawn from their purse.
+// The House buys the player's Raw Iron listing for goldAmount gross.
+// Parlamentum deducts the regional sales tax upon purchase; the player receives the net gold in-game.
 export function calculateWithdrawalRecipe(goldAmount: number, taxRate = 10): RecipeResult {
   const t = Math.max(0, Math.min(50, taxRate)) / 100;
-  // Listing gross required so that after (1 - t) deduction, user receives goldAmount:
-  const gross = t < 1 ? Math.round((goldAmount / (1 - t)) * 100) / 100 : goldAmount;
-  const taxNegated = Math.round((gross - goldAmount) * 100) / 100;
+  const gross = Math.round(goldAmount * 100) / 100;
+  const taxDeducted = Math.round(gross * t * 100) / 100;
+  const netPayout = Math.max(0, Math.round((gross - taxDeducted) * 100) / 100);
   
   // Proportional 1 Raw Iron per ~10 gold (minimum 1 unit)
-  const ironUnits = Math.max(1, Math.ceil(goldAmount / IRON_UNIT_PRICE));
+  const ironUnits = Math.max(1, Math.ceil(gross / IRON_UNIT_PRICE));
   const unitPrice = Math.round((gross / ironUnits) * 100) / 100;
 
   return {
@@ -68,10 +70,10 @@ export function calculateWithdrawalRecipe(goldAmount: number, taxRate = 10): Rec
     ironUnits,
     unitPrice,
     grossTotal: gross,
-    taxAmount: taxNegated,
-    netPayout: goldAmount,
+    taxAmount: taxDeducted,
+    netPayout,
     taxRatePercent: taxRate,
-    instructions: `List ${ironUnits} Raw Iron on the market at ${unitPrice.toFixed(2)} gold each (Total: ${gross.toFixed(2)} gold). The House pays the extra ${taxNegated.toFixed(2)} gold to absorb the ${taxRate}% market tax so you receive exactly ${goldAmount} gold net!`,
+    instructions: `List ${ironUnits} Raw Iron on the market at ${unitPrice.toFixed(2)} gold each (Total: ${gross.toFixed(2)} gold). The House will buy your listing for ${gross.toFixed(2)} gold. Parlamentum deducts the regional sales tax (~${taxDeducted.toFixed(2)}g at ${taxRate}%), leaving ~${netPayout.toFixed(2)} gold in your game purse.`,
   };
 }
 

@@ -30,8 +30,8 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   await initDb();
   const db = getDb();
 
-  const feePercentStr = await getSetting("trade_fee_percent", "0.5");
-  const feePercent = parseFloat(feePercentStr) || 0.5;
+  const feePercentStr = await getSetting("trade_fee_percent", "1.0");
+  const feePercent = parseFloat(feePercentStr) || 1.0;
   const feeRate = feePercent / 100;
 
   const { userId, companyId, type, orderType } = params;

@@ -101,12 +101,12 @@ export default function WalletModal({
   const depositIronUnits = Math.max(1, Math.ceil(numDeposit / ironPrice));
   const depositGrossTotal = depositIronUnits * ironPrice;
 
-  // Withdrawal Calculations (Tax Negation Formula: Gross = Net / (1 - TaxRate))
-  // The exchange pays at most its own rate (the server caps it there too)
-  const tDecimal = Math.max(0, Math.min(taxRate, selectedTaxRate)) / 100;
-  const withdrawGross = tDecimal < 1 ? Math.round((numWithdraw / (1 - tDecimal)) * 100) / 100 : numWithdraw;
-  const withdrawTaxNegated = Math.round((withdrawGross - numWithdraw) * 100) / 100;
-  const withdrawIronUnits = numWithdraw >= 100 ? 100 : Math.max(10, Math.ceil(numWithdraw / ironPrice));
+  // Withdrawal Calculations: user pays in-game sales tax to Parlamentum
+  const tDecimal = Math.max(0, Math.min(50, selectedTaxRate)) / 100;
+  const withdrawGross = numWithdraw;
+  const withdrawTax = Math.round(withdrawGross * tDecimal * 100) / 100;
+  const withdrawNet = Math.max(0, Math.round((withdrawGross - withdrawTax) * 100) / 100);
+  const withdrawIronUnits = numWithdraw >= 100 ? 100 : Math.max(1, Math.ceil(numWithdraw / ironPrice));
   const withdrawUnitPrice = Math.round((withdrawGross / withdrawIronUnits) * 100) / 100;
 
   const handleDepositSubmit = async (e: React.FormEvent) => {
@@ -217,7 +217,7 @@ export default function WalletModal({
           </div>
           <div className="flex items-baseline justify-between">
             <p className="text-[12px] text-ash">
-              Transfer funds via <strong className="text-paper">Raw Iron ({ironPrice}g each)</strong> with automatic tax negation.
+              Transfer funds via <strong className="text-paper">Raw Iron ({ironPrice}g each)</strong>.
             </p>
             <div className="text-right">
               <span className="text-[12px] text-ash font-sans">Purse Balance</span>
@@ -443,7 +443,7 @@ export default function WalletModal({
             </form>
           )}
 
-          {/* TAB 2: TAKE GOLD OUT (WITHDRAW WITH TAX NEGATION) */}
+          {/* TAB 2: TAKE GOLD OUT (WITHDRAW TO PARLAMENTUM) */}
           {tab === "withdraw" && (
             <form onSubmit={handleWithdrawSubmit} className="flex flex-col gap-4">
               <div className="bg-floor border border-rule rounded-[4px] p-3.5 text-[12px] leading-relaxed">
@@ -453,7 +453,7 @@ export default function WalletModal({
                     How to Receive Your In-Game Gold:
                   </span>
                   <span className="px-2 py-0.5 rounded-[4px] bg-floor border border-rule text-bullion text-[12px] tabular flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3" /> Tax Negated ({selectedTaxRate}%)
+                    <Percent className="w-3 h-3 text-ash" /> Regional Tax ({selectedTaxRate}%)
                   </span>
                 </div>
                 <p className="text-paper mb-2">
@@ -461,25 +461,24 @@ export default function WalletModal({
                   The House Operator ({houseOperator}) buys your listing, transferring the gold to your character.
                 </p>
 
-                {/* Tax Negation Math Breakdown */}
+                {/* Withdrawal Math Breakdown */}
                 <div className="p-3 bg-pane rounded-[4px] border border-rule space-y-1.5 tabular text-[12px]">
                   <div className="flex justify-between text-paper">
-                    <span>You receive (Net target):</span>
-                    <strong className="text-bullion">{numWithdraw.toLocaleString()} gold</strong>
+                    <span>Withdrawal Amount (Gross):</span>
+                    <strong className="text-bullion">{withdrawGross.toLocaleString()} gold</strong>
                   </div>
                   <div className="flex justify-between text-ash text-[12px]">
                     <span className="flex items-center gap-1">
-                      <Percent className="w-3 h-3" /> Parlamentum Market Tax ({selectedTaxRate}%):
+                      <Percent className="w-3 h-3" /> In-Game Market Tax ({selectedTaxRate}%):
                     </span>
-                    <span className="text-bear">-{withdrawTaxNegated.toFixed(2)} gold</span>
+                    <span className="text-bear">-{withdrawTax.toFixed(2)} gold</span>
                   </div>
                   <div className="flex justify-between text-paper pt-1 border-t border-rule font-semibold">
-                    <span>House Listing Total (Gross):</span>
-                    <span>{withdrawGross.toFixed(2)} gold</span>
+                    <span>Estimated Net Gold Received:</span>
+                    <span className="text-bullion">~{withdrawNet.toFixed(2)} gold</span>
                   </div>
                   <div className="pt-2 text-[12px] text-ash leading-normal border-t border-rule font-sans">
-                    ✨ <strong className="text-paper">Tax Absorption:</strong> The House pays the extra{" "}
-                    <strong className="text-bullion">{withdrawTaxNegated.toFixed(2)} gold</strong> for you so that after the game taxes the sale, you keep exactly <strong className="text-zinc-50">{numWithdraw.toLocaleString()} gold</strong> in your pocket!
+                    ℹ️ <strong className="text-paper">In-Game Sales Tax:</strong> The House purchases your listing for the full <strong className="text-paper">{withdrawGross.toLocaleString()} gold</strong>. Parlamentum deducts your region&apos;s {selectedTaxRate}% market tax upon sale, leaving approximately <strong className="text-zinc-50">{withdrawNet.toFixed(2)} gold</strong> in your character purse.
                   </div>
                   <div className="p-2 bg-floor rounded border border-rule text-paper tabular text-[12px] mt-2">
                     Listing Recipe: {withdrawIronUnits} Raw Iron @ {withdrawUnitPrice.toFixed(2)} gold each.
@@ -562,7 +561,7 @@ export default function WalletModal({
 
               <div>
                 <div className="flex justify-between text-paper font-semibold mb-1">
-                  <span>Target Net Gold To Receive</span>
+                  <span>Withdrawal Amount (from purse)</span>
                   <span className="tabular text-ash text-[12px]">
                     Purse: {balance.toLocaleString()} gold
                   </span>
@@ -627,7 +626,7 @@ export default function WalletModal({
                   ? "Needs at least 20 gold to withdraw"
                   : numWithdraw > balance
                   ? `Exceeds available purse (${balance.toLocaleString()} gold)`
-                  : `Withdraw ${numWithdraw.toLocaleString()} Gold Net to Parlamentum`}
+                  : `Withdraw ${numWithdraw.toLocaleString()} Gold (~${withdrawNet.toFixed(2)}g in game)`}
               </button>
             </form>
           )}

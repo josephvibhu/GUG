@@ -626,7 +626,8 @@ export async function initDb(): Promise<void> {
     ('tax_rate', '10'),
     ('iron_price', '5'),
     ('house_name', 'JosephArora'),
-    ('ipo_listing_fee', '200');
+    ('ipo_listing_fee', '200'),
+    ('trade_fee_percent', '1.0');
   `);
 
   // The watcher is the only automatic deposit path now: the webhook key, the auto-approve switch and the cookie

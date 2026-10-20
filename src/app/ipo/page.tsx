@@ -906,7 +906,7 @@ export default function IpoPage() {
 
               <div className="flex justify-between p-2 rounded bg-floor/60 border border-rule">
                 <span className="text-ash font-sans">Trading fee:</span>
-                <span className="text-paper">0.5% on matches</span>
+                <span className="text-paper">1.0% on matches</span>
               </div>
             </div>
 

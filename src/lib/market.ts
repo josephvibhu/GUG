@@ -1,4 +1,5 @@
 import { getDb, initDb, scheduleBlobPersist } from "./db";
+import { getSetting } from "./wallet";
 import crypto from "crypto";
 
 export interface Company {
@@ -1184,7 +1185,9 @@ export async function executeShareBuyback(params: {
     totalSharesAcquired += fillQty;
     lastFillPrice = askPrice;
 
-    const fee = Math.round(cost * 0.005 * 100) / 100;
+    const feePercentStr = await getSetting("trade_fee_percent", "1.0");
+    const feeRate = (parseFloat(feePercentStr) || 1.0) / 100;
+    const fee = Math.round(cost * feeRate * 100) / 100;
     const netSellerProceeds = cost - fee;
 
     await db.execute({
