@@ -5,24 +5,17 @@ import { LEAKED_API_KEY } from "@/lib/db";
 import fs from "fs";
 import path from "path";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const keyParam = searchParams.get("key");
+    // Only a logged-in operator can download the script with the key filled in
     const user = await getCurrentUser();
+    if (!user?.isAdmin) {
+      return NextResponse.json({ success: false, message: "Log in as the operator to download the userscript." }, { status: 403 });
+    }
 
     const storedKey = await getSetting("api_key", "");
-
-    // Allow if user is admin OR if provided ?key matches active stored key
-    const isAuthorized = 
-      (user && user.isAdmin) || 
-      (Boolean(keyParam) && keyParam === storedKey && keyParam !== LEAKED_API_KEY);
-
-    if (!isAuthorized) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized: Admin session or valid key required to download configured userscript." },
-        { status: 403 }
-      );
+    if (!storedKey || storedKey === LEAKED_API_KEY) {
+      return NextResponse.json({ success: false, message: "Set an API key in the operator settings first." }, { status: 409 });
     }
 
     const scriptPath = path.join(process.cwd(), "public", "parlamentum-gug-verifier.user.js");

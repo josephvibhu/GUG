@@ -988,7 +988,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
             <div className="flex items-center gap-2">
               <a
-                href={`/api/admin/userscript?key=${apiKey}`}
+                href="/api/admin/userscript"
                 target="_blank"
                 className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold text-xs transition flex items-center gap-1.5"
                 title="Install / Update Tampermonkey script v2.1"
@@ -2206,15 +2206,15 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               <div>
                 <span className="font-bold text-zinc-200 block mb-1">⏰ 24/7 Cloud Cron Webhook</span>
                 <p className="text-[11px] text-zinc-400 leading-relaxed mb-2">
-                  Call this endpoint every 60s from free services like <a href="https://cron-job.org" target="_blank" rel="noreferrer" className="text-blue-400 underline">cron-job.org</a> or GitHub Actions:
+                  Set a <span className="font-mono text-zinc-300">CRON_SECRET</span> (32+ random characters) in Vercel&apos;s environment variables. Vercel&apos;s daily cron sends it on its own. An outside scheduler such as <a href="https://cron-job.org" target="_blank" rel="noreferrer" className="text-blue-400 underline">cron-job.org</a> must send the header <span className="font-mono text-zinc-300">Authorization: Bearer &lt;CRON_SECRET&gt;</span> to this URL, at most once a minute. Never put the API key in a URL.
                 </p>
                 <div className="bg-zinc-900 p-2 rounded border border-zinc-800 font-mono text-[10px] text-zinc-300 break-all select-all flex items-center justify-between gap-1">
-                  <span>https://growurgold.vercel.app/api/cron/sync-ledger?key={apiKey}</span>
+                  <span>https://growurgold.vercel.app/api/cron/sync-ledger</span>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => copyToClipboard(`https://growurgold.vercel.app/api/cron/sync-ledger?key=${apiKey}`)}
+                onClick={() => copyToClipboard(`https://growurgold.vercel.app/api/cron/sync-ledger`)}
                 className="mt-2 w-full py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center justify-center gap-1.5"
               >
                 <Copy className="w-3.5 h-3.5 text-zinc-400" />
@@ -2243,7 +2243,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </div>
 
             <a
-              href={`/api/admin/userscript?key=${apiKey}`}
+              href="/api/admin/userscript"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition shadow-lg shadow-emerald-500/20 shrink-0"

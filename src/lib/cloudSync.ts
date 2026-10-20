@@ -75,7 +75,7 @@ export function parseParlamentumLedgerHtml(html: string): LedgerEntryInput[] {
  * Connects to parlamentum.org in the cloud using the operator's saved session cookie,
  * parses recent market trade fills, and automatically credits citizen purses in Grow UR Gold.
  */
-export async function triggerCloudLedgerSync(): Promise<{
+export async function triggerCloudLedgerSync(force = false): Promise<{
   success: boolean;
   message: string;
   fillsFound: number;
@@ -95,6 +95,21 @@ export async function triggerCloudLedgerSync(): Promise<{
       fillsFound: 0,
       newCredits: [],
     };
+  }
+
+  // At most one scrape a minute, whatever triggers it (cron, deposit announcements); the operator's
+  // "sync now" button passes force. The slot is claimed in one statement, so parallel triggers can't all run.
+  if (!force) {
+    const db = getDb();
+    const nowMs = Date.now();
+    await db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_slot', '0')");
+    const slot = await db.execute({
+      sql: "UPDATE settings SET value = ? WHERE key = 'cloud_sync_slot' AND CAST(value AS INTEGER) <= ?",
+      args: [String(nowMs), nowMs - 60_000],
+    });
+    if (slot.rowsAffected === 0) {
+      return { success: true, message: "A sync ran less than a minute ago.", fillsFound: 0, newCredits: [] };
+    }
   }
 
   const now = new Date().toISOString();
