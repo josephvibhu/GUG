@@ -124,7 +124,8 @@ export async function GET() {
       const portfolioValue = port.portfolioValue;
       const tradingValue = port.tradingValue;
       const founderValue = port.founderValue;
-      const totalNetWorth = cash + lockedCash + portfolioValue;
+      // Total Platform Capital strictly excludes the founder's own company shares
+      const totalNetWorth = Math.round((cash + lockedCash + tradingValue) * 100) / 100;
       const founderCompanies = companies.filter((comp) => String(comp.creatorId) === uId);
       const corporateTreasuryBalance = founderCompanies.reduce((acc, comp) => acc + (comp.treasuryBalance || 0), 0);
       const totalProfitDeposited = founderCompanies.reduce((acc, comp) => acc + (comp.totalProfitDeposited || 0), 0);
@@ -149,6 +150,9 @@ export async function GET() {
         holdings: port.holdings,
       };
     });
+
+    // Rank citizens by true platform capital (highest liquid + secondary holdings first)
+    enrichedCitizens.sort((a, b) => (Number(b.total_net_worth) || 0) - (Number(a.total_net_worth) || 0));
 
     const { getEarningsReports, getNextFridayUtc, processScheduledDividends } = await import("@/lib/dividends");
     await processScheduledDividends().catch(() => {});

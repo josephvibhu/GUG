@@ -2750,11 +2750,11 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         {(() => {
           const totalPurseCash = citizens.reduce((sum, c) => sum + (Number(c.cash_balance) || 0), 0);
           const totalLockedCash = citizens.reduce((sum, c) => sum + (Number(c.locked_cash) || 0), 0);
-          const totalPortfolioValue = citizens.reduce((sum, c) => sum + (Number(c.portfolio_value) || 0), 0);
-          const totalNetWorth = citizens.reduce((sum, c) => sum + (Number(c.total_net_worth) || ((Number(c.cash_balance) || 0) + (Number(c.locked_cash) || 0))), 0);
+          const totalTradingValue = citizens.reduce((sum, c) => sum + (Number(c.trading_value) || 0), 0);
+          const totalNetWorth = citizens.reduce((sum, c) => sum + (Number(c.total_net_worth) || ((Number(c.cash_balance) || 0) + (Number(c.locked_cash) || 0) + (Number(c.trading_value) || 0))), 0);
 
           const filteredCitizens = citizens.filter((c) => {
-            if (citizenFilter === "WEALTHY" && ((Number(c.cash_balance) || 0) <= 0 && (!c.portfolio_value || c.portfolio_value <= 0))) return false;
+            if (citizenFilter === "WEALTHY" && ((Number(c.cash_balance) || 0) <= 0 && (!c.trading_value || c.trading_value <= 0))) return false;
             if (citizenFilter === "ADMIN" && !c.is_admin) return false;
 
             if (citizenSearch.trim()) {
@@ -2847,26 +2847,26 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
                   <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-purple-400">
                     <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Stock Holdings Value</span>
+                    <span>Circulating Stock Holdings</span>
                   </div>
                   <div className="font-mono text-lg font-black text-purple-300 mt-1">
-                    {totalPortfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                    {totalTradingValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                   </div>
                   <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
-                    Market value of citizen shares
+                    Traded secondary citizen shares
                   </div>
                 </div>
 
                 <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl col-span-2 sm:col-span-1">
                   <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-amber-300">
                     <Award className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Combined Net Worth</span>
+                    <span>Total Platform Capital</span>
                   </div>
                   <div className="font-mono text-lg font-black text-amber-400 mt-1">
                     {totalNetWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                   </div>
                   <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
-                    Purse + Locked + Stocks
+                    Cash + Locked + Traded Stocks
                   </div>
                 </div>
               </div>
@@ -2958,7 +2958,8 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                         const purseCash = Number(c.cash_balance || 0);
                         const lockedCash = Number(c.locked_cash || 0);
                         const portVal = Number(c.portfolio_value || 0);
-                        const netWorth = Number(c.total_net_worth || (purseCash + lockedCash + portVal));
+                        const tradingVal = Number(c.trading_value || 0);
+                        const netWorth = Number(c.total_net_worth !== undefined ? c.total_net_worth : (purseCash + lockedCash + tradingVal));
                         const holdings = c.holdings || [];
 
                         return (
@@ -3060,13 +3061,13 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                   <div className="w-full text-[10px] text-zinc-400 font-mono mt-0.5">
                                     {c.founder_value && c.founder_value > 0 ? (
                                       <span>
-                                        Valuation: <b className="text-zinc-200">{portVal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}g</b>
+                                        Circulating Holdings: <b className="text-emerald-300 font-bold">{tradingVal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}g</b>
                                         <span className="text-zinc-500 ml-1">
-                                          (Trading: {(c.trading_value || 0).toFixed(1)}g · 👑 Founder: {(c.founder_value || 0).toFixed(1)}g)
+                                          · 👑 Company Stock: {(c.founder_value || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}g (Excluded from Capital)
                                         </span>
                                       </span>
                                     ) : (
-                                      <span>Valuation: {portVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g</span>
+                                      <span>Holdings Valuation: {tradingVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g</span>
                                     )}
                                   </div>
                                 </div>
