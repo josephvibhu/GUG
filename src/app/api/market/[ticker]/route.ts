@@ -3,6 +3,7 @@ import { getCompanyByTicker, getOrderBook, getRecentTrades, getUserHolding, getU
 import { getCurrentUser } from "@/lib/auth";
 import { seedMarketData } from "@/lib/seed";
 import { getMarketSchedule } from "@/lib/marketHours";
+import { getCompanyDiscordHandle } from "@/lib/companyTreasury";
 
 export async function GET(
   request: Request,
@@ -54,12 +55,17 @@ export async function GET(
 
     let userHolding = null;
     let userOrders: any[] = [];
+    // Founder-only details for the Founder tab (the Discord contact is for the operator, not public)
+    let founderView: { discordHandle: string } | null = null;
 
     if (user) {
       [userHolding, userOrders] = await Promise.all([
         getUserHolding(user.id, company.id),
         getUserOrders(user.id, company.id),
       ]);
+      if (user.id === company.creatorId || user.isAdmin) {
+        founderView = { discordHandle: await getCompanyDiscordHandle(company.id) };
+      }
     }
 
     return NextResponse.json({
@@ -76,6 +82,7 @@ export async function GET(
       earningsReports,
       nextFriday: getNextFridayUtc().toISOString(),
       shareholders,
+      founderView,
     });
   } catch (error: any) {
     console.error("API /api/market/[ticker] error:", error);

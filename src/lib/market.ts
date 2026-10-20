@@ -85,6 +85,8 @@ export interface PortfolioPosition {
   floatShares?: number;
   ownershipPercent?: number;
   ipoFeeCollected?: number;
+  // Founder positions only: gold held in the company's treasury
+  treasuryBalance?: number;
 }
 
 interface DayStats {
@@ -511,7 +513,7 @@ export async function getUserPortfolio(userId: string): Promise<{
   const lockedCash = userRes.rows.length > 0 ? Number(userRes.rows[0].locked_cash) : 0;
 
   const res = await db.execute({
-    sql: `SELECT p.*, c.ticker, c.name, c.current_price, c.creator_id, c.total_shares, c.float_shares, c.ipo_fee_collected 
+    sql: `SELECT p.*, c.ticker, c.name, c.current_price, c.creator_id, c.total_shares, c.float_shares, c.ipo_fee_collected, c.treasury_balance 
           FROM portfolios p
           JOIN companies c ON p.company_id = c.id
           WHERE p.user_id = ? AND (p.shares > 0 OR p.locked_shares > 0)
@@ -562,6 +564,7 @@ export async function getUserPortfolio(userId: string): Promise<{
       floatShares,
       ownershipPercent,
       ipoFeeCollected,
+      treasuryBalance: isCreator ? Number(r.treasury_balance || 0) : undefined,
     };
 
     if (isCreator) {
@@ -963,6 +966,14 @@ export async function approveAndListIPO(
 
   if (!listRes.success) {
     return { success: false, message: listRes.message || "Failed to list company" };
+  }
+
+  // Carry the application's revenue estimate and Discord contact over to the listed company
+  if (listRes.company) {
+    await db.execute({
+      sql: "UPDATE companies SET weekly_revenue = ?, discord_handle = ? WHERE id = ?",
+      args: [Math.max(0, Number(app.weekly_revenue || 0)), app.discord_id ? String(app.discord_id) : null, listRes.company.id],
+    });
   }
 
   // Update application status

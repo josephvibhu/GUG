@@ -743,9 +743,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
+      <div className="min-h-screen bg-floor text-white flex flex-col">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center font-mono text-xs text-amber-400">
+        <div className="flex-1 flex items-center justify-center tabular text-xs text-bullion">
           Verifying operator credentials...
         </div>
       </div>
@@ -754,7 +754,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex flex-col font-sans">
+      <div className="min-h-screen bg-floor text-white flex flex-col font-sans">
         <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center max-w-md mx-auto">
           <Shield className="w-12 h-12 text-rose-500 mb-3" />
@@ -764,7 +764,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           </p>
           <Link
             href="/login"
-            className="px-5 py-2.5 bg-amber-500 text-black font-bold rounded-xl text-xs hover:bg-amber-400 transition"
+            className="px-5 py-2.5 bg-amber-500 text-black font-bold rounded-[6px] text-xs hover:bg-amber-400 transition"
           >
             Log in as Operator
           </Link>
@@ -784,19 +784,19 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   }'`;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-floor text-zinc-100 flex flex-col font-sans">
       <Navbar onUserRefresh={fetchAdminData} />
 
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6 flex-1">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-rule">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xl">🏛️</span>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 Operator Control Panel
               </h1>
-              <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-mono font-bold">
+              <span className="text-[10px] bg-floor text-bullion border border-rule px-2 py-0.5 rounded tabular font-bold">
                 PARLAMENTUM TREASURY
               </span>
             </div>
@@ -809,10 +809,10 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         {/* Feedback Alert */}
         {feedback && (
           <div
-            className={`p-3 rounded-xl flex items-center gap-2 text-xs border ${
+            className={`p-3 rounded-[6px] flex items-center gap-2 text-xs border ${
               feedback.type === "success"
-                ? "bg-emerald-950/60 border-emerald-600/40 text-emerald-300"
-                : "bg-rose-950/60 border-rose-600/40 text-rose-300"
+                ? "bg-floor border-rule text-paper"
+                : "bg-floor border-rule text-bear"
             }`}
           >
             {feedback.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
@@ -822,10 +822,10 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
         {/* Operator Financial Ledger & Vault Profits */}
         {financialSummary && (
-          <div className="bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-amber-950/20 border border-amber-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/80 pb-4">
+          <div className="bg-pane border border-rule rounded-[6px] p-5 sm:p-6 flex flex-col gap-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rule pb-4">
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                <div className="h-11 w-11 rounded-[6px] bg-floor border border-rule flex items-center justify-center text-bullion shrink-0">
                   <Coins className="w-6 h-6" />
                 </div>
                 <div>
@@ -833,7 +833,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     <h2 className="font-extrabold text-white text-lg tracking-tight">
                       Operator Vault & Exchange Profit Ledger
                     </h2>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    <span className="px-2 py-0.5 rounded text-[10px] tabular font-bold bg-floor text-paper border border-rule">
                       LIVE AUDIT
                     </span>
                   </div>
@@ -847,69 +847,69 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 <span className="text-[10px] font-sans text-zinc-400 uppercase tracking-wider block">
                   Total Platform Net Profit
                 </span>
-                <span className="font-mono text-xl sm:text-2xl font-black text-emerald-400">
+                <span className="tabular text-xl sm:text-2xl font-black text-paper">
                   +{Number(financialSummary.totalPlatformProfit || 0).toLocaleString()} gold
                 </span>
               </div>
             </div>
 
             {/* Key Metric Pillars */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 font-mono">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 tabular">
               {/* Operator Personal Purse */}
-              <div className="p-4 bg-zinc-950/90 border border-amber-500/30 rounded-xl flex flex-col justify-between gap-1 shadow-inner">
-                <div className="flex items-center justify-between text-[11px] font-sans text-amber-300 font-semibold">
+              <div className="p-4 bg-floor/90 border border-rule rounded-[6px] flex flex-col justify-between gap-1 shadow-inner">
+                <div className="flex items-center justify-between text-[11px] font-sans text-paper font-semibold">
                   <span>Your Operator Purse</span>
-                  <Wallet className="w-3.5 h-3.5 text-amber-400" />
+                  <Wallet className="w-3.5 h-3.5 text-bullion" />
                 </div>
-                <div className="text-xl sm:text-2xl font-black text-amber-400 mt-1">
-                  {Number(financialSummary.operatorCash || 0).toLocaleString()} <span className="text-xs text-amber-300/80 font-normal">gold</span>
+                <div className="text-xl sm:text-2xl font-black text-bullion mt-1">
+                  {Number(financialSummary.operatorCash || 0).toLocaleString()} <span className="text-xs text-paper font-normal">gold</span>
                 </div>
-                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
+                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-rule">
                   <span>In Open Orders:</span>
-                  <span className="text-zinc-300 font-mono">{Number(financialSummary.operatorLocked || 0).toLocaleString()} gold</span>
+                  <span className="text-zinc-300 tabular">{Number(financialSummary.operatorLocked || 0).toLocaleString()} gold</span>
                 </div>
               </div>
 
               {/* Exchange Treasury Vault */}
-              <div className="p-4 bg-zinc-950/90 border border-zinc-800 rounded-xl flex flex-col justify-between gap-1 shadow-inner">
+              <div className="p-4 bg-floor/90 border border-rule rounded-[6px] flex flex-col justify-between gap-1 shadow-inner">
                 <div className="flex items-center justify-between text-[11px] font-sans text-zinc-300 font-semibold">
                   <span>Exchange Treasury</span>
-                  <Landmark className="w-3.5 h-3.5 text-cyan-400" />
+                  <Landmark className="w-3.5 h-3.5 text-paper" />
                 </div>
-                <div className="text-xl sm:text-2xl font-black text-cyan-300 mt-1">
-                  {Number(financialSummary.treasuryBalance || 0).toLocaleString()} <span className="text-xs text-cyan-400/80 font-normal">gold</span>
+                <div className="text-xl sm:text-2xl font-black text-paper mt-1">
+                  {Number(financialSummary.treasuryBalance || 0).toLocaleString()} <span className="text-xs text-paper font-normal">gold</span>
                 </div>
-                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
+                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-rule">
                   <span>Vault Account:</span>
-                  <span className="text-zinc-400 font-mono">usr_treasury</span>
+                  <span className="text-zinc-400 tabular">usr_treasury</span>
                 </div>
               </div>
 
               {/* Trade Fees Earned */}
-              <div className="p-4 bg-zinc-950/90 border border-zinc-800 rounded-xl flex flex-col justify-between gap-1 shadow-inner">
+              <div className="p-4 bg-floor/90 border border-rule rounded-[6px] flex flex-col justify-between gap-1 shadow-inner">
                 <div className="flex items-center justify-between text-[11px] font-sans text-zinc-300 font-semibold">
                   <span>Trading Fees (0.5%)</span>
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                  <TrendingUp className="w-3.5 h-3.5 text-paper" />
                 </div>
-                <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
-                  +{Number(financialSummary.totalTradeFees || 0).toLocaleString()} <span className="text-xs text-emerald-300/80 font-normal">gold</span>
+                <div className="text-xl sm:text-2xl font-black text-paper mt-1">
+                  +{Number(financialSummary.totalTradeFees || 0).toLocaleString()} <span className="text-xs text-paper font-normal">gold</span>
                 </div>
-                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
+                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-rule">
                   <span>Vol: {Number(financialSummary.totalTradeVolume || 0).toLocaleString()}g</span>
                   <span className="text-zinc-300">{financialSummary.tradeCount || 0} trades</span>
                 </div>
               </div>
 
               {/* Citizen Gold Liabilities */}
-              <div className="p-4 bg-zinc-950/90 border border-zinc-800 rounded-xl flex flex-col justify-between gap-1 shadow-inner">
+              <div className="p-4 bg-floor/90 border border-rule rounded-[6px] flex flex-col justify-between gap-1 shadow-inner">
                 <div className="flex items-center justify-between text-[11px] font-sans text-zinc-300 font-semibold">
                   <span>Total Citizen Gold</span>
-                  <Users className="w-3.5 h-3.5 text-purple-400" />
+                  <Users className="w-3.5 h-3.5 text-paper" />
                 </div>
-                <div className="text-xl sm:text-2xl font-black text-purple-300 mt-1">
-                  {Number(financialSummary.totalCitizenGold || 0).toLocaleString()} <span className="text-xs text-purple-300/80 font-normal">gold</span>
+                <div className="text-xl sm:text-2xl font-black text-paper mt-1">
+                  {Number(financialSummary.totalCitizenGold || 0).toLocaleString()} <span className="text-xs text-paper font-normal">gold</span>
                 </div>
-                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-zinc-800/60">
+                <div className="text-[10px] text-zinc-400 font-sans flex items-center justify-between pt-1 border-t border-rule">
                   <span>Circulating Supply</span>
                   <span className="text-zinc-300">{financialSummary.citizenCount || 0} citizens</span>
                 </div>
@@ -918,40 +918,40 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
             {/* Inflow vs Outflow Ledger Breakdown */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
-              <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex items-center justify-between">
+              <div className="p-3 bg-floor/60 border border-rule rounded-[6px] flex items-center justify-between">
                 <div>
                   <span className="text-[10px] uppercase text-zinc-400 font-sans block">Total Gold Deposited (Inflow)</span>
-                  <span className="font-mono text-sm font-bold text-emerald-400">
+                  <span className="tabular text-sm font-bold text-paper">
                     +{Number(financialSummary.totalDepositedGold || 0).toLocaleString()} gold
                   </span>
                 </div>
-                <span className="text-[10px] text-zinc-500 font-mono bg-zinc-900 px-2 py-1 rounded border border-rule">
+                <span className="text-[10px] text-zinc-500 tabular bg-pane px-2 py-1 rounded border border-rule">
                   {Number(financialSummary.totalIronUnitsDeposited || 0).toLocaleString()} Raw Iron
                 </span>
               </div>
 
-              <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex items-center justify-between">
+              <div className="p-3 bg-floor/60 border border-rule rounded-[6px] flex items-center justify-between">
                 <div>
                   <span className="text-[10px] uppercase text-zinc-400 font-sans block">Total Gold Withdrawn (Outflow)</span>
-                  <span className="font-mono text-sm font-bold text-rose-400">
+                  <span className="tabular text-sm font-bold text-bear">
                     -{Number(financialSummary.totalWithdrawnGold || 0).toLocaleString()} gold
                   </span>
                 </div>
                 {Number(financialSummary.pendingWithdrawalsGold || 0) > 0 && (
-                  <span className="text-[10px] text-amber-300 font-mono bg-amber-500/10 px-2 py-1 rounded border border-amber-500/30">
+                  <span className="text-[10px] text-paper tabular bg-floor px-2 py-1 rounded border border-rule">
                     {financialSummary.pendingWithdrawalsGold}g pending
                   </span>
                 )}
               </div>
 
-              <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex items-center justify-between">
+              <div className="p-3 bg-floor/60 border border-rule rounded-[6px] flex items-center justify-between">
                 <div>
                   <span className="text-[10px] uppercase text-zinc-400 font-sans block">Net Gold Held Under Custody</span>
-                  <span className="font-mono text-sm font-bold text-zinc-100">
+                  <span className="tabular text-sm font-bold text-zinc-100">
                     {Number(financialSummary.netGoldInCustody || 0).toLocaleString()} gold
                   </span>
                 </div>
-                <span className="text-[10px] text-bullion font-mono bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
+                <span className="text-[10px] text-bullion tabular bg-floor px-2 py-1 rounded border border-rule">
                   IPO Fees: +{Number(financialSummary.totalIpoFees || financialSummary.totalListingFees || 0).toLocaleString()}g
                 </span>
               </div>
@@ -960,15 +960,15 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         )}
 
         {/* Section 0: Parlamentum In-Game Trade Ledger & Audit Feed (/trade/ledger) */}
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+        <div className="bg-pane/60 border border-rule rounded-[6px] p-5 flex flex-col gap-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rule pb-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xl">📜</span>
                 <h2 className="font-bold text-white text-base">
                   Parlamentum In-Game Trade Ledger Feed
                 </h2>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                <span className="px-2 py-0.5 rounded text-[10px] tabular font-bold bg-floor text-paper border border-rule">
                   LIVE SYNC ACTIVE
                 </span>
               </div>
@@ -978,7 +978,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   href="https://parlamentum.org/trade/ledger"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-amber-400 hover:underline font-mono inline-flex items-center gap-1"
+                  className="text-bullion hover:underline tabular inline-flex items-center gap-1"
                 >
                   parlamentum.org/trade/ledger <ExternalLink className="w-3 h-3" />
                 </a>
@@ -988,9 +988,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
             <div className="flex items-center gap-2">
               <a
-                href={`/api/admin/userscript?key=${apiKey}`}
+                href="/api/admin/userscript"
                 target="_blank"
-                className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold text-xs transition flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-[6px] bg-floor hover:bg-floor border border-rule text-paper font-bold text-xs transition flex items-center gap-1.5"
                 title="Install / Update Tampermonkey script v2.1"
               >
                 <Zap className="w-3.5 h-3.5" />
@@ -1000,7 +1000,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 href="https://parlamentum.org/trade/ledger"
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-[6px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center gap-1.5"
               >
                 Open Ledger <ExternalLink className="w-3.5 h-3.5" />
               </a>
@@ -1008,31 +1008,31 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           </div>
 
           {/* High-level Insights from Image 1 */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
-            <div className="p-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tabular">
+            <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
               <span className="text-[10px] uppercase font-sans text-zinc-400 block">Total Fills</span>
               <span className="text-xl font-bold text-white">
                 {tradeInsights?.totalFills || ledgerEntries.length}
               </span>
               <span className="text-[10px] text-zinc-500 block font-sans">on both books</span>
             </div>
-            <div className="p-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl">
+            <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
               <span className="text-[10px] uppercase font-sans text-zinc-400 block">Bought</span>
-              <span className="text-xl font-bold text-emerald-400">
+              <span className="text-xl font-bold text-paper">
                 {tradeInsights?.boughtFills || ledgerEntries.filter((e) => e.side === "BOUGHT").length}
               </span>
               <span className="text-[10px] text-zinc-500 block font-sans">fills executed</span>
             </div>
-            <div className="p-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl">
+            <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
               <span className="text-[10px] uppercase font-sans text-zinc-400 block">Sold</span>
-              <span className="text-xl font-bold text-cyan-400">
+              <span className="text-xl font-bold text-paper">
                 {tradeInsights?.soldFills || ledgerEntries.filter((e) => e.side === "SOLD").length}
               </span>
               <span className="text-[10px] text-zinc-500 block font-sans">fills executed</span>
             </div>
-            <div className="p-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl">
+            <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
               <span className="text-[10px] uppercase font-sans text-zinc-400 block">Items Traded</span>
-              <span className="text-xl font-bold text-amber-400">
+              <span className="text-xl font-bold text-bullion">
                 {tradeInsights?.itemsCount || 11}
               </span>
               <span className="text-[10px] text-zinc-500 block font-sans">different goods</span>
@@ -1045,14 +1045,14 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               {tradeInsights.itemsBreakdown.map((b: any, idx: number) => (
                 <div
                   key={idx}
-                  className="shrink-0 p-2.5 bg-zinc-950/60 border border-zinc-800 rounded-lg flex items-center gap-2 font-mono text-[11px]"
+                  className="shrink-0 p-2.5 bg-floor/60 border border-rule rounded-[4px] flex items-center gap-2 tabular text-[11px]"
                 >
                   <span className="font-sans font-bold text-zinc-200">{b.item}</span>
                   <span className="text-zinc-500">·</span>
                   <span className="text-zinc-400">{b.sold} sold</span>
                   <span
                     className={`font-bold ${
-                      b.net >= 0 ? "text-emerald-400" : "text-rose-400"
+                      b.net >= 0 ? "text-paper" : "text-bear"
                     }`}
                   >
                     {b.net >= 0 ? "+" : ""}{b.net.toLocaleString()} {b.currency}
@@ -1063,9 +1063,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           )}
 
           {/* In-Game Transaction Ledger Table matching Image 2 */}
-          <div className="overflow-x-auto border border-zinc-800/80 rounded-xl bg-zinc-950/60 max-h-[380px] overflow-y-auto">
-            <table className="w-full text-left font-mono text-xs">
-              <thead className="sticky top-0 bg-zinc-900 border-b border-zinc-800 text-[10px] uppercase tracking-wider text-zinc-400 font-sans">
+          <div className="overflow-x-auto border border-rule rounded-[6px] bg-floor/60 max-h-[380px] overflow-y-auto">
+            <table className="w-full text-left tabular text-xs">
+              <thead className="sticky top-0 bg-pane border-b border-rule text-[10px] uppercase tracking-wider text-zinc-400 font-sans">
                 <tr>
                   <th className="py-2.5 px-3">Date</th>
                   <th className="py-2.5 px-3">Side</th>
@@ -1098,11 +1098,11 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                         </td>
                         <td className="py-2.5 px-3 font-bold whitespace-nowrap">
                           {isSold ? (
-                            <span className="text-cyan-400 flex items-center gap-1 font-sans text-[10px]">
+                            <span className="text-paper flex items-center gap-1 font-sans text-[10px]">
                               ↗ SOLD
                             </span>
                           ) : (
-                            <span className="text-amber-400 flex items-center gap-1 font-sans text-[10px]">
+                            <span className="text-bullion flex items-center gap-1 font-sans text-[10px]">
                               ↙ BOUGHT
                             </span>
                           )}
@@ -1124,22 +1124,22 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                         </td>
                         <td className="py-2.5 px-3 font-sans font-bold text-zinc-300 whitespace-nowrap">
                           {row.withUser ? (
-                            <span className="text-amber-300">@{row.withUser}</span>
+                            <span className="text-paper">@{row.withUser}</span>
                           ) : (
                             <span className="text-zinc-600">—</span>
                           )}
                         </td>
                         <td className="py-2.5 px-3 whitespace-nowrap">
                           {isCredited ? (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-sans">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-floor text-paper border border-rule font-sans">
                               ✅ CREDITED
                             </span>
                           ) : row.status === "UNREGISTERED_CITIZEN" ? (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 font-sans">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-floor text-paper border border-rule font-sans">
                               ⚠️ UNREGISTERED
                             </span>
                           ) : isRawIron && isSold ? (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30 font-sans">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-floor text-paper border border-rule font-sans">
                               RAW IRON SALE
                             </span>
                           ) : (
@@ -1154,7 +1154,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                               type="button"
                               onClick={() => handleCreditLedgerEntry(row.id, row.withUser || "")}
                               disabled={ledgerCreditingId === row.id}
-                              className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-sans font-bold transition cursor-pointer disabled:opacity-50"
+                              className="px-2 py-0.5 rounded bg-bullion hover:bg-amber-300 text-floor text-[10px] font-sans font-bold transition cursor-pointer disabled:opacity-50"
                               title="Credit gold to citizen purse"
                             >
                               {ledgerCreditingId === row.id ? "Crediting..." : "Credit Purse"}
@@ -1173,13 +1173,13 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         {/* Section 1: Live Pending Deposit Queue & Manual Credit Tool */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Manual Purse Loader (5 cols) */}
-          <div className="lg:col-span-5 bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <div className="lg:col-span-5 bg-pane/60 border border-rule rounded-[6px] p-5 flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-rule pb-3">
               <h2 className="font-bold text-white text-sm flex items-center gap-2">
-                <Coins className="w-4 h-4 text-emerald-400" />
+                <Coins className="w-4 h-4 text-paper" />
                 Load Citizen Purse from Game Sale
               </h2>
-              <span className="text-[10px] text-zinc-400 font-mono">1 Raw Iron = 10g</span>
+              <span className="text-[10px] text-zinc-400 tabular">1 Raw Iron = 10g</span>
             </div>
 
             <p className="text-[11px] text-zinc-400 leading-relaxed">
@@ -1197,14 +1197,14 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   placeholder="e.g. Trader_Vance"
                   value={targetCitizen}
                   onChange={(e) => setTargetCitizen(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 text-xs tabular text-white focus:outline-none focus:border-rule"
                 />
               </div>
 
               <div>
                 <div className="flex justify-between text-[11px] font-semibold text-zinc-300 mb-1">
                   <span>Gold Amount to Credit</span>
-                  <span className="font-mono text-zinc-400">
+                  <span className="tabular text-zinc-400">
                     = {Math.ceil(parseFloat(creditAmount || "0") / 10)} Raw Iron
                   </span>
                 </div>
@@ -1214,7 +1214,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   step="10"
                   value={creditAmount}
                   onChange={(e) => setCreditAmount(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono text-emerald-400 font-bold focus:outline-none focus:border-amber-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 text-sm tabular text-paper font-bold focus:outline-none focus:border-rule"
                 />
 
                 {/* Quick Raw Iron units presets */}
@@ -1229,7 +1229,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                       key={preset.iron}
                       type="button"
                       onClick={() => setCreditAmount(preset.gold.toString())}
-                      className="py-1 text-[10px] font-mono bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-300 transition cursor-pointer"
+                      className="py-1 text-[10px] tabular bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-300 transition cursor-pointer"
                     >
                       {preset.iron} Fe ({preset.gold}g)
                     </button>
@@ -1245,13 +1245,13 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   type="text"
                   value={creditReason}
                   onChange={(e) => setCreditReason(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-rule"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs tracking-wide transition shadow-lg shadow-emerald-500/20 cursor-pointer mt-1"
+                className="w-full py-2.5 rounded-[6px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs tracking-wide transition cursor-pointer mt-1"
               >
                 Credit {creditAmount} Gold to {targetCitizen || "Citizen"}
               </button>
@@ -1259,13 +1259,13 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           </div>
 
           {/* Pending Deposit Announcements (7 cols) */}
-          <div className="lg:col-span-7 bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-3">
+          <div className="lg:col-span-7 bg-pane/60 border border-rule rounded-[6px] p-5 flex flex-col">
+            <div className="flex items-center justify-between border-b border-rule pb-3 mb-3">
               <h2 className="font-bold text-white text-sm flex items-center gap-2">
-                <RefreshCw className="w-4 h-4 text-amber-400" />
+                <RefreshCw className="w-4 h-4 text-bullion" />
                 Pending In-Game Deposit Announcements
               </h2>
-              <span className="text-[11px] font-mono text-zinc-400">
+              <span className="text-[11px] tabular text-zinc-400">
                 {pendingDeposits.length} awaiting review
               </span>
             </div>
@@ -1285,37 +1285,37 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   return (
                     <div
                       key={tx.id}
-                      className={`p-3 bg-zinc-950 border rounded-xl flex items-center justify-between gap-3 text-xs ${
-                        isWithdrawal ? "border-amber-500/30 bg-amber-950/10" : "border-zinc-800"
+                      className={`p-3 bg-floor border rounded-[6px] flex items-center justify-between gap-3 text-xs ${
+                        isWithdrawal ? "border-rule bg-floor" : "border-rule"
                       }`}
                     >
                       <div>
                         <div className="font-bold text-white flex items-center gap-2">
                           {isWithdrawal ? (
                             <>
-                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold">
+                              <span className="px-1.5 py-0.5 rounded bg-floor text-paper tabular text-[10px] font-bold">
                                 🔻 WITHDRAWAL PAYOUT
                               </span>
                               {tx.tax_rate !== undefined && (
-                                <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono text-[10px] font-bold">
+                                <span className="px-1.5 py-0.5 rounded bg-floor text-paper tabular text-[10px] font-bold">
                                   🏛️ {tx.tax_rate}% Regional Tax
                                 </span>
                               )}
                             </>
                           ) : (
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded bg-floor text-paper tabular text-[10px] font-bold">
                               🟢 DEPOSIT
                             </span>
                           )}
                           <span>@{tx.parlamentum_name}</span>
-                          <span className={`font-mono font-bold ${isWithdrawal ? "text-amber-400" : "text-emerald-400"}`}>
+                          <span className={`tabular font-bold ${isWithdrawal ? "text-bullion" : "text-paper"}`}>
                             {isWithdrawal ? "-" : "+"}{tx.amount.toLocaleString()} gold ({tx.iron_units} Raw Iron)
                           </span>
                         </div>
                         <div className="text-[11px] text-zinc-300 mt-1 line-clamp-2">
                           {tx.recipe_note}
                         </div>
-                        <div className="text-[10px] text-zinc-500 mt-1 font-mono">
+                        <div className="text-[10px] text-zinc-500 mt-1 tabular">
                           {new Date(tx.created_at).toLocaleTimeString()}
                         </div>
                       </div>
@@ -1326,7 +1326,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                             <button
                               type="button"
                               onClick={() => handleRejectTransaction(tx.id)}
-                              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-rose-950 text-rose-300 text-xs font-semibold transition cursor-pointer"
+                              className="px-2.5 py-1.5 rounded-[4px] bg-zinc-800 hover:bg-rose-950 text-bear text-xs font-semibold transition cursor-pointer"
                               title="Cancel withdrawal and refund gold to purse"
                             >
                               Refund
@@ -1334,7 +1334,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                             <button
                               type="button"
                               onClick={() => handleApproveDeposit(tx.id)}
-                              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition cursor-pointer shadow-lg shadow-amber-500/20"
+                              className="px-3 py-1.5 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs transition cursor-pointer"
                               title="Confirm you purchased their Raw Iron in Parlamentum"
                             >
                               Confirm Bought
@@ -1345,14 +1345,14 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                             <button
                               type="button"
                               onClick={() => handleRejectTransaction(tx.id)}
-                              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-rose-950 text-rose-300 text-xs font-semibold transition cursor-pointer"
+                              className="px-2.5 py-1.5 rounded-[4px] bg-zinc-800 hover:bg-rose-950 text-bear text-xs font-semibold transition cursor-pointer"
                             >
                               Reject
                             </button>
                             <button
                               type="button"
                               onClick={() => handleApproveDeposit(tx.id)}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition cursor-pointer shadow-lg shadow-emerald-500/20"
+                              className="px-3 py-1.5 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs transition cursor-pointer"
                             >
                               Approve & Credit
                             </button>
@@ -1368,13 +1368,13 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         </div>
 
         {/* Section 2: Automated Bot / Webhook Integration Guide */}
-        <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3">
-          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <div className="bg-pane/40 border border-rule rounded-[6px] p-5 flex flex-col gap-3">
+          <div className="flex items-center justify-between border-b border-rule pb-3">
             <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-purple-400" />
+              <Terminal className="w-4 h-4 text-paper" />
               Automated Game Sale Webhook (Zero Manual Work)
             </h3>
-            <span className="text-[10px] bg-purple-500/10 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded font-mono">
+            <span className="text-[10px] bg-floor text-paper border border-rule px-2 py-0.5 rounded tabular">
               REST Webhook
             </span>
           </div>
@@ -1384,12 +1384,12 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             you can automatically credit buyers by sending an HTTP POST request to this webhook:
           </p>
 
-          <div className="relative bg-zinc-950 border border-zinc-800 rounded-xl p-3 font-mono text-[11px] text-zinc-300 overflow-x-auto">
+          <div className="relative bg-floor border border-rule rounded-[6px] p-3 tabular text-[11px] text-zinc-300 overflow-x-auto">
             <button
               onClick={() => copyToClipboard(curlExample)}
               className="absolute right-3 top-3 px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[10px] flex items-center gap-1 cursor-pointer transition"
             >
-              {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+              {copied ? <Check className="w-3 h-3 text-paper" /> : <Copy className="w-3 h-3" />}
               {copied ? "Copied" : "Copy cURL"}
             </button>
             <pre className="pr-16">{curlExample}</pre>
@@ -1397,11 +1397,11 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         </div>
 
         {/* Section 2.5: Market Trading Hours & Floor Controls (UTC) */}
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-800 pb-3 gap-2">
+        <div className="bg-pane/60 border border-rule rounded-[6px] p-5 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-rule pb-3 gap-2">
             <div>
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald-400" />
+                <Clock className="w-4 h-4 text-paper" />
                 Parlamentum Bourse Trading Hours (UTC)
               </h3>
               <p className="text-[11px] text-zinc-400 mt-0.5">
@@ -1410,9 +1410,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </div>
 
             {marketSchedule && (
-              <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl font-mono text-xs">
+              <div className="flex items-center gap-2 bg-floor border border-rule px-3 py-1.5 rounded-[6px] tabular text-xs">
                 <span className={`w-2.5 h-2.5 rounded-full ${marketSchedule.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
-                <span className={marketSchedule.isOpen ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                <span className={marketSchedule.isOpen ? "text-paper font-bold" : "text-bear font-bold"}>
                   {marketSchedule.isOpen ? "FLOOR OPEN" : "FLOOR CLOSED"}
                 </span>
                 <span className="text-zinc-400 text-[11px]">
@@ -1432,7 +1432,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 value={openTime}
                 onChange={(e) => setOpenTime(e.target.value)}
                 placeholder="15:30 (3:30 PM UTC)"
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 font-mono text-white text-sm focus:outline-none focus:border-amber-400"
+                className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 tabular text-white text-sm focus:outline-none focus:border-rule"
               />
               <span className="text-[10px] text-zinc-400 mt-1 block">
                 Format: 24h HH:MM (e.g. 15:30 for 3:30 PM UTC)
@@ -1448,7 +1448,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 value={closeTime}
                 onChange={(e) => setCloseTime(e.target.value)}
                 placeholder="16:30 (4:30 PM UTC)"
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 font-mono text-white text-sm focus:outline-none focus:border-amber-400"
+                className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 tabular text-white text-sm focus:outline-none focus:border-rule"
               />
               <span className="text-[10px] text-zinc-400 mt-1 block">
                 Format: 24h HH:MM (e.g. 16:30 for 1-hour window, 17:30 for 2-hour)
@@ -1466,7 +1466,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     setOpenTime("15:30");
                     setCloseTime("16:30");
                   }}
-                  className="flex-1 py-2 px-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg font-mono text-[11px] text-amber-300 text-center transition cursor-pointer"
+                  className="flex-1 py-2 px-2 bg-zinc-800 hover:bg-zinc-700 rounded-[4px] tabular text-[11px] text-paper text-center transition cursor-pointer"
                 >
                   1h (15:30-16:30 UTC)
                 </button>
@@ -1476,7 +1476,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     setOpenTime("15:30");
                     setCloseTime("17:30");
                   }}
-                  className="flex-1 py-2 px-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg font-mono text-[11px] text-zinc-300 text-center transition cursor-pointer"
+                  className="flex-1 py-2 px-2 bg-zinc-800 hover:bg-zinc-700 rounded-[4px] tabular text-[11px] text-zinc-300 text-center transition cursor-pointer"
                 >
                   2h (15:30-17:30 UTC)
                 </button>
@@ -1488,13 +1488,13 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           </div>
 
           {/* Quick Override Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-zinc-800">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-rule">
             <div className="flex items-center gap-2 text-xs">
               <span className="text-zinc-400 font-semibold">Floor Mode:</span>
               <button
                 type="button"
                 onClick={() => handleSaveSchedule("auto")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-[4px] text-xs tabular font-bold transition cursor-pointer ${
                   scheduleOverride === "auto"
                     ? "bg-blue-600 text-white"
                     : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
@@ -1505,7 +1505,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               <button
                 type="button"
                 onClick={() => handleSaveSchedule("force_open")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-[4px] text-xs tabular font-bold transition cursor-pointer ${
                   scheduleOverride === "force_open"
                     ? "bg-emerald-600 text-white"
                     : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
@@ -1516,7 +1516,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               <button
                 type="button"
                 onClick={() => handleSaveSchedule("force_closed")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-[4px] text-xs tabular font-bold transition cursor-pointer ${
                   scheduleOverride === "force_closed"
                     ? "bg-rose-600 text-white"
                     : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
@@ -1529,7 +1529,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             <button
               type="button"
               onClick={() => handleSaveSchedule()}
-              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition shadow-lg shadow-emerald-500/10 cursor-pointer"
+              className="px-4 py-2 rounded-[6px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs transition cursor-pointer"
             >
               Save Schedule ({openTime} – {closeTime} UTC)
             </button>
@@ -1537,18 +1537,18 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         </div>
 
         {/* Section 2.8: IPO Applications & Price Negotiation Queue */}
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <div className="bg-pane/60 border border-rule rounded-[6px] p-5 flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-rule pb-3">
             <div>
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-purple-400" />
+                <Building2 className="w-4 h-4 text-paper" />
                 IPO Charter Applications & Price Negotiation Queue
               </h3>
               <p className="text-[11px] text-zinc-400 mt-0.5">
                 Companies cannot list independently. Review founder applications, negotiate IPO prices, and approve them onto the bourse floor.
               </p>
             </div>
-            <span className="text-[11px] font-mono text-purple-400 font-bold bg-purple-500/10 border border-purple-500/30 px-2.5 py-1 rounded-lg">
+            <span className="text-[11px] tabular text-paper font-bold bg-floor border border-rule px-2.5 py-1 rounded-[4px]">
               {ipoApplications.length} Pending Charters
             </span>
           </div>
@@ -1558,7 +1558,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               <CheckCircle2 className="w-8 h-8 text-zinc-600" />
               <span>No pending IPO applications. All corporate filings are processed!</span>
               <span className="text-[10px] text-zinc-500">
-                Founders submit charter requests on the <Link href="/ipo" className="text-amber-400 underline">Launch IPO</Link> page.
+                Founders submit charter requests on the <Link href="/ipo" className="text-bullion underline">Launch IPO</Link> page.
               </span>
             </div>
           ) : (
@@ -1603,50 +1603,50 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 const negotiatedTotalValuation = parsedShares * parsedPrice;
 
                 return (
-                  <div key={app.id} className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex flex-col gap-4 text-xs">
+                  <div key={app.id} className="bg-floor border border-rule rounded-[6px] p-4 flex flex-col gap-4 text-xs">
                     {/* Header: Company info and Applicant */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rule pb-3">
                       <div className="flex items-center gap-3">
-                        <span className="text-3xl p-1.5 bg-zinc-900 border border-zinc-800 rounded-lg">{app.logoUrl}</span>
+                        <span className="text-3xl p-1.5 bg-pane border border-rule rounded-[4px]">{app.logoUrl}</span>
                         <div>
                           <div className="font-bold text-white text-sm flex items-center gap-2">
                             <span>{app.name}</span>
-                            <span className="font-mono text-amber-400 font-bold">(${app.ticker})</span>
+                            <span className="tabular text-bullion font-bold">(${app.ticker})</span>
                           </div>
                           <div className="text-[11px] text-zinc-400 mt-0.5 flex flex-wrap items-center gap-2">
                             <span>Sector: <strong className="text-zinc-300">{app.sector}</strong></span>
                             <span>·</span>
-                            <span>Applicant: <strong className="text-purple-300">@{app.parlamentumName}</strong></span>
+                            <span>Applicant: <strong className="text-paper">@{app.parlamentumName}</strong></span>
                             <span>·</span>
-                            <span className="px-2 py-0.5 rounded bg-indigo-950/60 border border-indigo-500/40 text-indigo-300 font-mono font-bold text-[10px]">
+                            <span className="px-2 py-0.5 rounded bg-floor border border-rule text-paper tabular font-bold text-[10px]">
                               💬 Discord: {app.discordId ? `@${app.discordId}` : "None"}
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="text-right font-mono text-[11px] text-zinc-400">
+                      <div className="text-right tabular text-[11px] text-zinc-400">
                         <div>Submitted: {new Date(app.createdAt).toLocaleDateString()} {new Date(app.createdAt).toLocaleTimeString()}</div>
                       </div>
                     </div>
 
                     {/* Rich Metrics & Backing Assets Breakdown */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 bg-zinc-900/80 rounded-lg border border-zinc-800 text-[11px]">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 bg-pane/80 rounded-[4px] border border-rule text-[11px]">
                       <div>
                         <span className="text-zinc-500 text-[10px] uppercase font-bold block">Model & Classification</span>
-                        <span className="text-amber-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <span className="text-bullion font-semibold flex items-center gap-1 mt-0.5">
                           {app.businessType === "FACTORY" ? "🏭 Industrial / Factory" : app.businessType === "PRESS" ? "📰 Newspaper & Press" : "⚜️ Special Enterprise"}
                         </span>
                       </div>
                       <div>
                         <span className="text-zinc-500 text-[10px] uppercase font-bold block">Est. Weekly Revenue</span>
-                        <span className="font-mono text-emerald-400 font-bold text-xs mt-0.5 block">
+                        <span className="tabular text-paper font-bold text-xs mt-0.5 block">
                           {app.weeklyRevenue ? `${Number(app.weeklyRevenue).toLocaleString()} gold / wk` : "0 gold"}
                         </span>
                       </div>
                       <div>
                         <span className="text-zinc-500 text-[10px] uppercase font-bold block">Specific Production / Metrics</span>
-                        <span className="font-mono text-zinc-300 text-xs mt-0.5 block truncate">
+                        <span className="tabular text-zinc-300 text-xs mt-0.5 block truncate">
                           {app.businessType === "FACTORY" 
                             ? `Lvl ${app.factoryLevel || 1} · ${app.workersCount || 0} workers · ${app.productionOutput || "Standard"}`
                             : app.businessType === "PRESS"
@@ -1657,65 +1657,65 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     </div>
 
                     {/* Business Lore & In-Game Backing */}
-                    <div className="p-3 bg-zinc-900/60 rounded-lg border border-zinc-800 text-[11px] leading-relaxed text-zinc-300">
-                      <strong className="text-amber-400 font-sans block mb-1">Business Lore & Backing Assets:</strong>
+                    <div className="p-3 bg-pane/60 rounded-[4px] border border-rule text-[11px] leading-relaxed text-zinc-300">
+                      <strong className="text-bullion font-sans block mb-1">Business Lore & Backing Assets:</strong>
                       {app.description}
                     </div>
 
                     {/* Applicant's Proposed Equity & Valuation Breakdown */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-                        <span className="text-[10px] uppercase font-bold text-amber-300 block">
+                      <div className="p-2.5 bg-floor border border-rule rounded-[6px]">
+                        <span className="text-[10px] uppercase font-bold text-paper block">
                           🪙 Public Float (% Putting Out)
                         </span>
-                        <div className="font-mono text-base font-extrabold text-amber-400 mt-0.5">
+                        <div className="tabular text-base font-extrabold text-bullion mt-0.5">
                           {proposedFloat.toFixed(2)}%
                         </div>
-                        <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                        <div className="text-[10px] text-zinc-400 tabular mt-0.5">
                           {proposedFloatShares.toLocaleString()} shares to list
                         </div>
                       </div>
 
-                      <div className="p-2.5 bg-purple-500/10 border border-purple-500/30 rounded-xl">
-                        <span className="text-[10px] uppercase font-bold text-purple-300 block">
+                      <div className="p-2.5 bg-floor border border-rule rounded-[6px]">
+                        <span className="text-[10px] uppercase font-bold text-paper block">
                           🏛️ Founder Retained Stake
                         </span>
-                        <div className="font-mono text-base font-extrabold text-purple-300 mt-0.5">
+                        <div className="tabular text-base font-extrabold text-paper mt-0.5">
                           {proposedFounderPct.toFixed(2)}%
                         </div>
-                        <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                        <div className="text-[10px] text-zinc-400 tabular mt-0.5">
                           {proposedFounderShares.toLocaleString()} shares kept
                         </div>
                       </div>
 
-                      <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
-                        <span className="text-[10px] uppercase font-bold text-emerald-300 block">
+                      <div className="p-2.5 bg-floor border border-rule rounded-[6px]">
+                        <span className="text-[10px] uppercase font-bold text-paper block">
                           💰 Float Capital Raised
                         </span>
-                        <div className="font-mono text-base font-extrabold text-emerald-400 mt-0.5">
+                        <div className="tabular text-base font-extrabold text-paper mt-0.5">
                           {proposedFloatCap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                         </div>
-                        <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                        <div className="text-[10px] text-zinc-400 tabular mt-0.5">
                           at {proposedPrice.toFixed(2)}g / share
                         </div>
                       </div>
 
-                      <div className="p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <div className="p-2.5 bg-pane border border-rule rounded-[6px]">
                         <span className="text-[10px] uppercase font-bold text-zinc-400 block">
                           📊 Total Valuation
                         </span>
-                        <div className="font-mono text-base font-extrabold text-white mt-0.5">
+                        <div className="tabular text-base font-extrabold text-white mt-0.5">
                           {proposedTotalValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                         </div>
-                        <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                        <div className="text-[10px] text-zinc-400 tabular mt-0.5">
                           {proposedShares.toLocaleString()} total shares
                         </div>
                       </div>
                     </div>
 
                     {/* Sovereign Negotiation & Float Adjuster */}
-                    <div className="p-3 bg-zinc-900/40 rounded-xl border border-zinc-800/80 space-y-3">
-                      <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                    <div className="p-3 bg-pane/40 rounded-[6px] border border-rule space-y-3">
+                      <div className="flex items-center justify-between border-b border-rule pb-2">
                         <span className="font-bold text-zinc-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
                           ⚖️ Sovereign Negotiation & Micro-Float Adjuster
                         </span>
@@ -1728,10 +1728,10 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                         {/* Public Float % Input with Micro-Float capability down to 0.10% */}
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <label className="text-[10px] uppercase font-bold text-amber-400">
+                            <label className="text-[10px] uppercase font-bold text-bullion">
                               Public Float % (Putting Out)
                             </label>
-                            <span className="font-mono text-[10px] text-zinc-400">
+                            <span className="tabular text-[10px] text-zinc-400">
                               Prop: {proposedFloat.toFixed(2)}%
                             </span>
                           </div>
@@ -1743,7 +1743,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                               max="99.90"
                               value={formState.floatPercent}
                               onChange={(e) => updateForm("floatPercent", e.target.value)}
-                              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-2.5 pr-8 py-1.5 font-mono text-amber-400 font-bold text-xs focus:outline-none focus:border-amber-400"
+                              className="w-full bg-floor border border-rule rounded-[4px] pl-2.5 pr-8 py-1.5 tabular text-bullion font-bold text-xs focus:outline-none focus:border-rule"
                             />
                             <Percent className="w-3.5 h-3.5 text-zinc-500 absolute right-2.5 top-2" />
                           </div>
@@ -1762,10 +1762,10 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                 key={pill.val}
                                 type="button"
                                 onClick={() => updateForm("floatPercent", pill.val)}
-                                className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition cursor-pointer border ${
+                                className={`px-1.5 py-0.5 rounded text-[9px] tabular transition cursor-pointer border ${
                                   formState.floatPercent === pill.val
-                                    ? "bg-amber-500 text-black font-bold border-amber-400"
-                                    : "bg-zinc-800 text-zinc-400 hover:text-white border-zinc-700"
+                                    ? "bg-amber-500 text-black font-bold border-rule"
+                                    : "bg-zinc-800 text-zinc-400 hover:text-white border-rule"
                                 }`}
                                 title={pill.tip}
                               >
@@ -1778,10 +1778,10 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                         {/* Negotiated IPO Price */}
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <label className="text-[10px] uppercase font-bold text-emerald-400">
+                            <label className="text-[10px] uppercase font-bold text-paper">
                               IPO Price (Gold / Share)
                             </label>
-                            <span className="font-mono text-[10px] text-zinc-400">
+                            <span className="tabular text-[10px] text-zinc-400">
                               Prop: {app.proposedIpoPrice}g
                             </span>
                           </div>
@@ -1791,7 +1791,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                             min="0.1"
                             value={formState.price}
                             onChange={(e) => updateForm("price", e.target.value)}
-                            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 font-mono text-emerald-400 font-bold text-xs focus:outline-none focus:border-amber-400"
+                            className="w-full bg-floor border border-rule rounded-[4px] px-2.5 py-1.5 tabular text-paper font-bold text-xs focus:outline-none focus:border-rule"
                           />
                           <span className="text-[10px] text-zinc-400 mt-1.5 block">
                             Valuation: {negotiatedTotalValuation.toLocaleString()}g
@@ -1804,7 +1804,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                             <label className="text-[10px] uppercase font-bold text-zinc-300">
                               Total Shares
                             </label>
-                            <span className="font-mono text-[10px] text-zinc-400">
+                            <span className="tabular text-[10px] text-zinc-400">
                               Prop: {app.proposedTotalShares.toLocaleString()}
                             </span>
                           </div>
@@ -1814,9 +1814,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                             min="1000"
                             value={formState.shares}
                             onChange={(e) => updateForm("shares", e.target.value)}
-                            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 font-mono text-white text-xs focus:outline-none focus:border-amber-400"
+                            className="w-full bg-floor border border-rule rounded-[4px] px-2.5 py-1.5 tabular text-white text-xs focus:outline-none focus:border-rule"
                           />
-                          <span className="text-[10px] text-zinc-400 mt-1.5 block font-mono">
+                          <span className="text-[10px] text-zinc-400 mt-1.5 block tabular">
                             Founder retains {negotiatedFounderShares.toLocaleString()} sh.
                           </span>
                         </div>
@@ -1831,7 +1831,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                             value={formState.notes}
                             onChange={(e) => updateForm("notes", e.target.value)}
                             placeholder="e.g. Terms agreed via Discord"
-                            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-400"
+                            className="w-full bg-floor border border-rule rounded-[4px] px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-rule"
                           />
                           <span className="text-[10px] text-zinc-400 mt-1.5 block">
                             Visible on company floor dossier
@@ -1840,16 +1840,16 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                       </div>
 
                       {/* Live Listing Execution Breakdown */}
-                      <div className="p-2.5 bg-zinc-950 rounded-lg border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
+                      <div className="p-2.5 bg-floor rounded-[4px] border border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                           <span className="text-zinc-400">Opening Bourse Float:</span>
-                          <strong className="text-amber-400 font-mono">{negotiatedFloatShares.toLocaleString()} shares ({parsedFloat.toFixed(2)}%)</strong>
+                          <strong className="text-bullion tabular">{negotiatedFloatShares.toLocaleString()} shares ({parsedFloat.toFixed(2)}%)</strong>
                           <span className="text-zinc-600">·</span>
                           <span className="text-zinc-400">Founder Retains:</span>
-                          <strong className="text-purple-300 font-mono">{negotiatedFounderShares.toLocaleString()} shares ({parsedFounderPct.toFixed(2)}%)</strong>
+                          <strong className="text-paper tabular">{negotiatedFounderShares.toLocaleString()} shares ({parsedFounderPct.toFixed(2)}%)</strong>
                           <span className="text-zinc-600">·</span>
                           <span className="text-zinc-400">Float Capital Raised:</span>
-                          <strong className="text-emerald-400 font-mono">{negotiatedFloatCap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold</strong>
+                          <strong className="text-paper tabular">{negotiatedFloatCap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold</strong>
                         </div>
                       </div>
                     </div>
@@ -1859,7 +1859,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                       <button
                         type="button"
                         onClick={() => handleRejectIPO(app.id)}
-                        className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-rose-950 text-rose-400 border border-zinc-700 font-semibold text-xs transition cursor-pointer"
+                        className="px-4 py-2 rounded-[4px] bg-zinc-800 hover:bg-rose-950 text-bear border border-rule font-semibold text-xs transition cursor-pointer"
                       >
                         Reject Charter
                       </button>
@@ -1867,7 +1867,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                       <button
                         type="button"
                         onClick={() => handleApproveIPO(app.id)}
-                        className="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition shadow-lg shadow-emerald-500/20 cursor-pointer flex items-center gap-1.5"
+                        className="px-5 py-2 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
                       >
                         <span>Approve & Open ${app.ticker} Float ({parsedFloat.toFixed(2)}%) on Bourse</span>
                       </button>
@@ -1880,15 +1880,15 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         </div>
 
         {/* Section 3: Realm Tax Negation & Operator Settings */}
-        <form onSubmit={handleSaveSettings} className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <form onSubmit={handleSaveSettings} className="bg-pane/60 border border-rule rounded-[6px] p-5 flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-rule pb-3">
             <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <Settings className="w-4 h-4 text-amber-400" />
+              <Settings className="w-4 h-4 text-bullion" />
               Realm Market Tax Negation & House Configuration
             </h3>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition cursor-pointer"
+              className="px-4 py-1.5 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs transition cursor-pointer"
             >
               Save Settings
             </button>
@@ -1907,7 +1907,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   step="0.01"
                   value={taxRate}
                   onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-3 pr-8 py-2 font-mono text-white text-sm focus:outline-none focus:border-amber-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] pl-3 pr-8 py-2 tabular text-white text-sm focus:outline-none focus:border-rule"
                 />
                 <Percent className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3" />
               </div>
@@ -1928,7 +1928,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   step="0.01"
                   value={tradeFee}
                   onChange={(e) => setTradeFee(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-3 pr-8 py-2 font-mono text-emerald-400 font-bold text-sm focus:outline-none focus:border-amber-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] pl-3 pr-8 py-2 tabular text-paper font-bold text-sm focus:outline-none focus:border-rule"
                 />
                 <Percent className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3" />
               </div>
@@ -1949,7 +1949,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   step="50"
                   value={listingFee}
                   onChange={(e) => setListingFee(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-3 pr-8 py-2 font-mono text-amber-300 font-bold text-sm focus:outline-none focus:border-amber-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] pl-3 pr-8 py-2 tabular text-paper font-bold text-sm focus:outline-none focus:border-rule"
                 />
                 <Coins className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3" />
               </div>
@@ -1966,7 +1966,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 type="text"
                 value={houseName}
                 onChange={(e) => setHouseName(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 font-mono text-white text-sm focus:outline-none focus:border-amber-400"
+                className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 tabular text-white text-sm focus:outline-none focus:border-rule"
               />
               <span className="text-[10px] text-zinc-400 mt-1 block">
                 In-game character name where players buy Raw Iron from.
@@ -1980,7 +1980,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               <select
                 value={autoApprove ? "true" : "false"}
                 onChange={(e) => setAutoApprove(e.target.value === "true")}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 text-xs text-white focus:outline-none focus:border-rule"
               >
                 <option value="true">Instant (Auto-credit on announce)</option>
                 <option value="false">Manual Review (Approve in queue)</option>
@@ -1993,15 +1993,15 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         </form>
 
         {/* Section 3.25: Discord Webhooks & Community Hype Engine */}
-        <div className="bg-gradient-to-r from-indigo-950/40 via-zinc-900/60 to-zinc-900/60 border border-indigo-500/30 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+        <div className="bg-pane border border-rule rounded-[6px] p-5 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rule pb-3">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg">📢</span>
                 <h3 className="font-bold text-white text-sm">
                   Discord Webhooks &amp; Community Hype Engine
                 </h3>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${discordWebhookUrl ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-zinc-800 text-zinc-400"}`}>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${discordWebhookUrl ? "bg-floor text-paper border border-rule" : "bg-zinc-800 text-zinc-400"}`}>
                   {discordWebhookUrl ? "Active" : "Not Configured"}
                 </span>
               </div>
@@ -2015,7 +2015,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 type="button"
                 onClick={handleTestDiscordWebhook}
                 disabled={discordTesting}
-                className="px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-300 font-bold text-xs transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                className="px-3 py-1.5 rounded-[6px] bg-floor hover:bg-floor border border-rule text-paper font-bold text-xs transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
               >
                 {discordTesting ? (
                   <>
@@ -2024,7 +2024,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   </>
                 ) : (
                   <>
-                    <Zap className="w-3.5 h-3.5 text-indigo-400" />
+                    <Zap className="w-3.5 h-3.5 text-paper" />
                     <span>Send Test Alert</span>
                   </>
                 )}
@@ -2042,7 +2042,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 placeholder="https://discord.com/api/webhooks/..."
                 value={discordWebhookUrl}
                 onChange={(e) => setDiscordWebhookUrl(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 font-mono text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-400"
+                className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 tabular text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-rule"
               />
               <span className="text-[10px] text-zinc-400 mt-1 block">
                 Paste the Webhook URL from your Discord channel settings (Integrations → Webhooks). Remember to click &ldquo;Save Settings&rdquo; above!
@@ -2060,7 +2060,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   step="5"
                   value={discordWhaleThreshold}
                   onChange={(e) => setDiscordWhaleThreshold(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-3 pr-8 py-2 font-mono text-amber-300 font-bold text-xs focus:outline-none focus:border-indigo-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] pl-3 pr-8 py-2 tabular text-paper font-bold text-xs focus:outline-none focus:border-rule"
                 />
                 <Coins className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-2.5" />
               </div>
@@ -2076,7 +2076,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               <select
                 value={discordAlertsEnabled ? "true" : "false"}
                 onChange={(e) => setDiscordAlertsEnabled(e.target.value === "true")}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-400"
+                className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 text-xs text-white focus:outline-none focus:border-rule"
               >
                 <option value="true">Enabled (Broadcasting)</option>
                 <option value="false">Muted (Disabled)</option>
@@ -2087,25 +2087,25 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[11px] text-zinc-400 border-t border-zinc-800/60">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[11px] text-zinc-400 border-t border-rule">
             <div className="flex items-start gap-2">
-              <span className="text-emerald-400 font-bold">🚨</span>
+              <span className="text-paper font-bold">🚨</span>
               <span><strong>Whale Trades:</strong> Sweeping order book floats and large block trades post immediately.</span>
             </div>
             <div className="flex items-start gap-2">
-              <span className="text-amber-400 font-bold">📥</span>
+              <span className="text-bullion font-bold">📥</span>
               <span><strong>Deposit Pings:</strong> Alerts you the second a citizen announces a deposit on GUG.</span>
             </div>
             <div className="flex items-start gap-2">
-              <span className="text-purple-400 font-bold">🚀</span>
+              <span className="text-paper font-bold">🚀</span>
               <span><strong>IPO Launches:</strong> Welcomes newly chartered companies and alerts traders to initial floats.</span>
             </div>
           </div>
         </div>
 
         {/* Section 3.4: 100% Cloud Auto-Sync (Zero Desktop / No Browser Required) */}
-        <div className="bg-gradient-to-r from-blue-950/40 via-zinc-900/60 to-zinc-900/60 border border-blue-500/30 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+        <div className="bg-pane border border-rule rounded-[6px] p-5 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rule pb-3">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xl">☁️</span>
@@ -2114,18 +2114,18 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 </h3>
                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                   lastCloudSyncStatus === "SUCCESS"
-                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                    ? "bg-floor text-paper border-rule"
                     : lastCloudSyncStatus === "EXPIRED"
-                    ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                    ? "bg-floor text-bear border-rule"
                     : hasParlamentumCookie
-                    ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                    : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                    ? "bg-floor text-paper border-rule"
+                    : "bg-floor text-bullion border-rule"
                 }`}>
                   {lastCloudSyncStatus === "SUCCESS" ? "🟢 24/7 Cloud Active" : lastCloudSyncStatus === "EXPIRED" ? "🔴 Cookie Expired" : hasParlamentumCookie ? "🔵 Configured" : "🟡 Cookie Not Set"}
                 </span>
               </div>
               <p className="text-xs text-zinc-400 mt-1">
-                The exchange queries <span className="font-mono text-zinc-300">parlamentum.org/trade/ledger</span> directly in the cloud. Deposits are auto-credited instantly even if your browser is closed and your PC is powered off!
+                The exchange queries <span className="tabular text-zinc-300">parlamentum.org/trade/ledger</span> directly in the cloud. Deposits are auto-credited instantly even if your browser is closed and your PC is powered off!
               </p>
             </div>
 
@@ -2134,7 +2134,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 type="button"
                 onClick={handleTriggerCloudSync}
                 disabled={cloudSyncing || (!hasParlamentumCookie && !parlamentumCookie.trim())}
-                className="px-4 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 font-bold text-xs transition cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 rounded-[6px] bg-floor hover:bg-floor border border-rule text-paper font-bold text-xs transition cursor-pointer flex items-center gap-2 disabled:opacity-50"
               >
                 {cloudSyncing ? (
                   <>
@@ -2143,7 +2143,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   </>
                 ) : (
                   <>
-                    <Zap className="w-3.5 h-3.5 text-blue-400" />
+                    <Zap className="w-3.5 h-3.5 text-paper" />
                     <span>Save & Sync Cloud Now</span>
                   </>
                 )}
@@ -2153,16 +2153,16 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
           {/* Sync status alert */}
           {lastCloudSyncAt && (
-            <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 ${
-              lastCloudSyncStatus === "SUCCESS" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" :
-              lastCloudSyncStatus === "EXPIRED" ? "bg-rose-500/10 border-rose-500/20 text-rose-300" :
-              "bg-zinc-900 border-zinc-800 text-zinc-300"
+            <div className={`p-3 rounded-[6px] border text-xs flex items-center justify-between gap-3 ${
+              lastCloudSyncStatus === "SUCCESS" ? "bg-floor border-rule text-paper" :
+              lastCloudSyncStatus === "EXPIRED" ? "bg-floor border-rule text-bear" :
+              "bg-pane border-rule text-zinc-300"
             }`}>
               <div className="flex items-center gap-2">
                 <span>{lastCloudSyncStatus === "SUCCESS" ? "✅" : lastCloudSyncStatus === "EXPIRED" ? "⚠️" : "ℹ️"}</span>
                 <span><strong>Status:</strong> {lastCloudSyncMessage || "Cloud synchronizer operational."}</span>
               </div>
-              <span className="text-[11px] text-zinc-400 font-mono shrink-0">
+              <span className="text-[11px] text-zinc-400 tabular shrink-0">
                 Last checked: {new Date(lastCloudSyncAt).toLocaleTimeString()}
               </span>
             </div>
@@ -2176,7 +2176,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   Parlamentum Session Cookie (Required for Cloud Access)
                 </label>
                 {hasParlamentumCookie && (
-                  <span className="text-[11px] text-emerald-400 font-mono">
+                  <span className="text-[11px] text-paper tabular">
                     ✓ Cookie currently saved in database
                   </span>
                 )}
@@ -2187,7 +2187,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   placeholder={hasParlamentumCookie ? "Paste new cookie here to update..." : "Paste full Cookie header string from browser..."}
                   value={parlamentumCookie}
                   onChange={(e) => setParlamentumCookie(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-3 pr-20 py-2.5 font-mono text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-blue-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] pl-3 pr-20 py-2.5 tabular text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-rule"
                 />
                 <button
                   type="button"
@@ -2198,24 +2198,24 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 </button>
               </div>
               <span className="text-[10px] text-zinc-400 mt-1 block">
-                How to get in 10s: Open <span className="text-zinc-300">parlamentum.org</span> &rarr; Press <kbd className="px-1 bg-zinc-800 rounded">F12</kbd> &rarr; Network tab &rarr; Click any request &rarr; Copy <span className="font-mono text-zinc-300">Cookie</span> header &rarr; Paste here &rarr; Click &ldquo;Save Settings&rdquo; above!
+                How to get in 10s: Open <span className="text-zinc-300">parlamentum.org</span> &rarr; Press <kbd className="px-1 bg-zinc-800 rounded">F12</kbd> &rarr; Network tab &rarr; Click any request &rarr; Copy <span className="tabular text-zinc-300">Cookie</span> header &rarr; Paste here &rarr; Click &ldquo;Save Settings&rdquo; above!
               </span>
             </div>
 
-            <div className="lg:col-span-4 flex flex-col justify-between p-3 bg-zinc-950/60 rounded-xl border border-zinc-800">
+            <div className="lg:col-span-4 flex flex-col justify-between p-3 bg-floor/60 rounded-[6px] border border-rule">
               <div>
                 <span className="font-bold text-zinc-200 block mb-1">⏰ 24/7 Cloud Cron Webhook</span>
                 <p className="text-[11px] text-zinc-400 leading-relaxed mb-2">
-                  Call this endpoint every 60s from free services like <a href="https://cron-job.org" target="_blank" rel="noreferrer" className="text-blue-400 underline">cron-job.org</a> or GitHub Actions:
+                  Set a <span className="tabular text-zinc-300">CRON_SECRET</span> (32+ random characters) in Vercel&apos;s environment variables. Vercel&apos;s daily cron sends it on its own. An outside scheduler such as <a href="https://cron-job.org" target="_blank" rel="noreferrer" className="text-paper underline">cron-job.org</a> must send the header <span className="tabular text-zinc-300">Authorization: Bearer &lt;CRON_SECRET&gt;</span> to this URL, at most once a minute. Never put the API key in a URL.
                 </p>
-                <div className="bg-zinc-900 p-2 rounded border border-zinc-800 font-mono text-[10px] text-zinc-300 break-all select-all flex items-center justify-between gap-1">
-                  <span>https://growurgold.vercel.app/api/cron/sync-ledger?key={apiKey}</span>
+                <div className="bg-pane p-2 rounded border border-rule tabular text-[10px] text-zinc-300 break-all select-all flex items-center justify-between gap-1">
+                  <span>https://growurgold.vercel.app/api/cron/sync-ledger</span>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => copyToClipboard(`https://growurgold.vercel.app/api/cron/sync-ledger?key=${apiKey}`)}
-                className="mt-2 w-full py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center justify-center gap-1.5"
+                onClick={() => copyToClipboard(`https://growurgold.vercel.app/api/cron/sync-ledger`)}
+                className="mt-2 w-full py-1.5 rounded-[4px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center justify-center gap-1.5"
               >
                 <Copy className="w-3.5 h-3.5 text-zinc-400" />
                 <span>Copy Cron Webhook URL</span>
@@ -2225,15 +2225,15 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         </div>
 
         {/* Section 3.5: In-Game Deposit Auto-Verifier (Method 2 Userscript) */}
-        <div className="bg-gradient-to-r from-emerald-950/40 via-zinc-900/60 to-zinc-900/60 border border-emerald-500/30 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+        <div className="bg-pane border border-rule rounded-[6px] p-5 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rule pb-3">
             <div>
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-emerald-400" />
+                <Zap className="w-4 h-4 text-paper" />
                 <h3 className="font-bold text-white text-sm">
                   In-Game Deposit Auto-Verifier (Method 2 Userscript)
                 </h3>
-                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                <span className="text-[10px] bg-floor text-paper border border-rule px-2 py-0.5 rounded tabular font-bold">
                   ZERO RISK & MULTI-TAB SAFE
                 </span>
               </div>
@@ -2243,10 +2243,10 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </div>
 
             <a
-              href={`/api/admin/userscript?key=${apiKey}`}
+              href="/api/admin/userscript"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition shadow-lg shadow-emerald-500/20 shrink-0"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[6px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs transition shrink-0"
             >
               <span>Install Userscript v2.1</span>
               <ExternalLink className="w-3.5 h-3.5" />
@@ -2254,26 +2254,26 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="p-3 bg-zinc-950/60 rounded-xl border border-zinc-800">
+            <div className="p-3 bg-floor/60 rounded-[6px] border border-rule">
               <span className="font-bold text-zinc-200 block mb-1">🛡️ Multi-Account Isolation</span>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
-                If you keep multiple accounts open in different tabs, the script checks the active player card and only activates on <span className="font-mono text-amber-300 font-bold">JosephArora</span>. Tabs for other characters (e.g. CardinalSanjay) remain completely dormant.
+                If you keep multiple accounts open in different tabs, the script checks the active player card and only activates on <span className="tabular text-paper font-bold">JosephArora</span>. Tabs for other characters (e.g. CardinalSanjay) remain completely dormant.
               </p>
             </div>
 
-            <div className="p-3 bg-zinc-950/60 rounded-xl border border-zinc-800">
+            <div className="p-3 bg-floor/60 rounded-[6px] border border-rule">
               <span className="font-bold text-zinc-200 block mb-1">🎯 Smart Queue Matcher</span>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
                 Because Parlamentum market notifications are anonymous (e.g. <span className="text-zinc-300 italic">&ldquo;2× Raw Iron sold — 10 gold&rdquo;</span>), the backend instantly matches the sale to the oldest citizen pending deposit requesting that amount.
               </p>
             </div>
 
-            <div className="p-3 bg-zinc-950/60 rounded-xl border border-zinc-800">
+            <div className="p-3 bg-floor/60 rounded-[6px] border border-rule">
               <span className="font-bold text-zinc-200 block mb-1">🔑 Secret Webhook Key</span>
               <p className="text-[11px] text-zinc-400 leading-relaxed mb-2">
                 Embedded directly in the script for authenticated webhook callbacks:
               </p>
-              <div className="flex items-center justify-between bg-zinc-900 px-2.5 py-1.5 rounded font-mono text-[11px] text-amber-300 border border-zinc-700">
+              <div className="flex items-center justify-between bg-pane px-2.5 py-1.5 rounded tabular text-[11px] text-paper border border-rule">
                 <span className="truncate">{apiKey || "not set"}</span>
                 <button
                   type="button"
@@ -2285,7 +2285,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   className="ml-2 text-zinc-400 hover:text-white"
                   title="Copy Key"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? <Check className="w-3.5 h-3.5 text-paper" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </div>
@@ -2293,27 +2293,27 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         </div>
 
         {/* Section 4: Listed Companies & Ticker Controls (Method 5) */}
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <div className="bg-pane/60 border border-rule rounded-[6px] p-5 flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-rule pb-3">
             <div>
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-amber-400" />
+                <Building2 className="w-4 h-4 text-bullion" />
                 Listed Companies & Ticker Floor Controls (Method 5)
               </h3>
               <p className="text-[11px] text-zinc-400 mt-0.5">
                 Operator power over tickers: temporarily halt trading for price stabilization or flag defaulting/scam companies.
               </p>
             </div>
-            <span className="text-[11px] font-mono text-zinc-400">
+            <span className="text-[11px] tabular text-zinc-400">
               {companies.length} chartered
             </span>
           </div>
 
           {/* IPO Float & Sales Summary KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-zinc-950/70 border-b border-zinc-800/80">
-            <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-floor/70 border-b border-rule">
+            <div className="p-3 bg-pane/60 rounded-[6px] border border-rule">
               <div className="text-[10px] uppercase font-sans font-bold text-zinc-400">Total Shares Listed</div>
-              <div className="text-lg font-mono font-black text-white mt-0.5">
+              <div className="text-lg tabular font-black text-white mt-0.5">
                 {companies.reduce((sum, c) => sum + (c.floatShares || 0), 0).toLocaleString()} <span className="text-xs font-normal text-zinc-500">shares</span>
               </div>
               <div className="text-[10px] text-zinc-400 font-sans mt-0.5">
@@ -2321,9 +2321,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               </div>
             </div>
 
-            <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800">
-              <div className="text-[10px] uppercase font-sans font-bold text-emerald-400">Shares Sold (Filled)</div>
-              <div className="text-lg font-mono font-black text-emerald-400 mt-0.5">
+            <div className="p-3 bg-pane/60 rounded-[6px] border border-rule">
+              <div className="text-[10px] uppercase font-sans font-bold text-paper">Shares Sold (Filled)</div>
+              <div className="text-lg tabular font-black text-paper mt-0.5">
                 {companies.reduce((sum, c) => sum + (c.sharesSold || 0), 0).toLocaleString()} <span className="text-xs font-normal text-emerald-500">
                   ({(() => {
                     const totalListed = companies.reduce((sum, c) => sum + (c.floatShares || 0), 0);
@@ -2337,9 +2337,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               </div>
             </div>
 
-            <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800">
-              <div className="text-[10px] uppercase font-sans font-bold text-amber-300">Not Yet Sold (Float Left)</div>
-              <div className="text-lg font-mono font-black text-amber-300 mt-0.5">
+            <div className="p-3 bg-pane/60 rounded-[6px] border border-rule">
+              <div className="text-[10px] uppercase font-sans font-bold text-paper">Not Yet Sold (Float Left)</div>
+              <div className="text-lg tabular font-black text-paper mt-0.5">
                 {companies.reduce((sum, c) => sum + (c.sharesRemaining || 0), 0).toLocaleString()} <span className="text-xs font-normal text-amber-500">
                   ({(() => {
                     const totalListed = companies.reduce((sum, c) => sum + (c.floatShares || 0), 0);
@@ -2353,9 +2353,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               </div>
             </div>
 
-            <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800">
-              <div className="text-[10px] uppercase font-sans font-bold text-cyan-300">Corporate Treasuries</div>
-              <div className="text-lg font-mono font-black text-cyan-300 mt-0.5">
+            <div className="p-3 bg-pane/60 rounded-[6px] border border-rule">
+              <div className="text-[10px] uppercase font-sans font-bold text-paper">Corporate Treasuries</div>
+              <div className="text-lg tabular font-black text-paper mt-0.5">
                 {companies.reduce((sum, c) => sum + (c.treasuryBalance || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs font-normal text-cyan-500">gold</span>
               </div>
               <div className="text-[10px] text-zinc-400 font-sans mt-0.5">
@@ -2370,9 +2370,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left font-mono text-xs">
+              <table className="w-full text-left tabular text-xs">
                 <thead>
-                  <tr className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
+                  <tr className="bg-pane/80 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-rule font-sans">
                     <th className="py-3 px-4">Company</th>
                     <th className="py-3 px-4">Founder</th>
                     <th className="py-3 px-4 text-right">Last Price</th>
@@ -2392,14 +2392,14 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                         <div className="flex items-center gap-2">
                           <span className="text-base">{cmp.logoUrl || "🏛️"}</span>
                           <div>
-                            <Link href={`/trade/${cmp.ticker}`} className="text-white font-bold font-sans hover:text-amber-400 transition">
+                            <Link href={`/trade/${cmp.ticker}`} className="text-white font-bold font-sans hover:text-bullion transition">
                               {cmp.name}
                             </Link>
-                            <span className="font-mono text-amber-400 font-bold ml-1.5 text-[11px]">
+                            <span className="tabular text-bullion font-bold ml-1.5 text-[11px]">
                               ${cmp.ticker}
                             </span>
                             {cmp.weeklyRevenue ? (
-                              <span className="text-[10px] text-emerald-400 font-mono ml-2 font-normal">
+                              <span className="text-[10px] text-paper tabular ml-2 font-normal">
                                 · ~{Number(cmp.weeklyRevenue).toLocaleString()}g/wk
                               </span>
                             ) : null}
@@ -2413,59 +2413,59 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                         {cmp.currentPrice.toFixed(2)}g
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <div className="font-bold text-white font-mono">
+                        <div className="font-bold text-white tabular">
                           {(cmp.floatShares || 0).toLocaleString()}
                         </div>
-                        <div className="text-[10px] text-zinc-400 font-mono">
+                        <div className="text-[10px] text-zinc-400 tabular">
                           of {(cmp.totalShares || 0).toLocaleString()} total
                         </div>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <div className="font-bold text-emerald-400 font-mono">
+                        <div className="font-bold text-paper tabular">
                           {(cmp.sharesSold || 0).toLocaleString()}
                         </div>
-                        <div className="text-[10px] text-zinc-400 font-mono">
+                        <div className="text-[10px] text-zinc-400 tabular">
                           {cmp.floatShares > 0 ? `${Math.round(((cmp.sharesSold || 0) / cmp.floatShares) * 100)}%` : "0%"}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-right">
                         {(cmp.sharesRemaining || 0) === 0 ? (
-                          <span className="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30 text-[10px] font-bold font-mono">
+                          <span className="px-1.5 py-0.5 rounded bg-floor text-bear border border-rule text-[10px] font-bold tabular">
                             0 (Sold Out 🔥)
                           </span>
                         ) : (
                           <div>
-                            <div className="font-bold text-amber-300 font-mono">
+                            <div className="font-bold text-paper tabular">
                               {(cmp.sharesRemaining || 0).toLocaleString()}
                             </div>
-                            <div className="text-[10px] text-zinc-400 font-mono">
+                            <div className="text-[10px] text-zinc-400 tabular">
                               available
                             </div>
                           </div>
                         )}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <div className="font-bold text-amber-300 font-mono">
+                        <div className="font-bold text-paper tabular">
                           {(cmp.treasuryBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                         </div>
-                        <div className="text-[10px] text-zinc-400 font-mono">
+                        <div className="text-[10px] text-zinc-400 tabular">
                           +{(cmp.totalProfitDeposited || 0).toFixed(2)}g profit
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-right text-emerald-400">
+                      <td className="py-3 px-4 text-right text-paper">
                         {cmp.sharesBoughtBack ? `${cmp.sharesBoughtBack.toLocaleString()} shares` : "0"}
                       </td>
                       <td className="py-3 px-4 text-center">
                         {cmp.status === "HALTED" ? (
-                          <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded bg-floor text-paper border border-rule text-[10px] font-bold">
                             ⏸️ HALTED
                           </span>
                         ) : cmp.status === "DEFAULTED" ? (
-                          <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded bg-floor text-bear border border-rule text-[10px] font-bold">
                             🚨 DEFAULTED
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded bg-floor text-paper border border-rule text-[10px] font-bold">
                             🟢 ACTIVE
                           </span>
                         )}
@@ -2479,7 +2479,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                               setDepositProfitAmount("");
                               setDepositProfitNotes("");
                             }}
-                            className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-[10px] font-semibold transition cursor-pointer"
+                            className="px-2.5 py-1 rounded bg-floor hover:bg-amber-500 text-paper hover:text-black border border-rule text-[10px] font-semibold transition cursor-pointer"
                             title="Deposit operating profits into corporate treasury"
                           >
                             💰 Deposit Profit
@@ -2487,7 +2487,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                           {cmp.status === "HALTED" ? (
                             <button
                               onClick={() => handleSetCompanyStatus(cmp.id, "ACTIVE")}
-                              className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-semibold transition cursor-pointer"
+                              className="px-2.5 py-1 rounded bg-bullion hover:bg-amber-300 text-floor text-[10px] font-semibold transition cursor-pointer"
                             >
                               Resume
                             </button>
@@ -2502,7 +2502,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                           {cmp.status !== "DEFAULTED" && (
                             <button
                               onClick={() => handleSetCompanyStatus(cmp.id, "DEFAULTED")}
-                              className="px-2.5 py-1 rounded bg-rose-950 hover:bg-rose-800 text-rose-300 border border-rose-700/50 text-[10px] font-semibold transition cursor-pointer"
+                              className="px-2.5 py-1 rounded bg-rose-950 hover:bg-rose-800 text-bear border border-rule text-[10px] font-semibold transition cursor-pointer"
                             >
                               Flag Scam
                             </button>
@@ -2518,15 +2518,15 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         </div>
 
         {/* Section 5: Corporate Earnings & Friday 50% Profit Dividend Desk */}
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col gap-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+        <div className="bg-pane/60 border border-rule rounded-[6px] p-5 flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rule pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <Coins className="w-5 h-5 text-amber-400" />
+                <Coins className="w-5 h-5 text-bullion" />
                 <h3 className="font-bold text-white text-base">
                   Corporate Earnings & Friday 50% Profit Dividend Desk
                 </h3>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                <span className="px-2 py-0.5 rounded text-[10px] tabular font-bold bg-floor text-paper border border-rule">
                   WEEKLY UTC 00:00 PAYOUT
                 </span>
               </div>
@@ -2536,9 +2536,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="bg-zinc-950 px-3 py-1.5 rounded-xl border border-zinc-800 text-right font-mono text-xs">
+              <div className="bg-floor px-3 py-1.5 rounded-[6px] border border-rule text-right tabular text-xs">
                 <span className="text-[10px] text-zinc-400 block font-sans uppercase">Next Friday Payout</span>
-                <span className="text-amber-400 font-bold">
+                <span className="text-bullion font-bold">
                   {nextFriday ? new Date(nextFriday).toUTCString().slice(0, 22) : "Calculating..."}
                 </span>
               </div>
@@ -2547,9 +2547,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 type="button"
                 onClick={handleProcessScheduledDividends}
                 disabled={processScheduledLoading}
-                className="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-3.5 py-2 rounded-[6px] bg-floor hover:bg-floor border border-rule text-paper font-bold text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                <Zap className="w-4 h-4 text-amber-400" />
+                <Zap className="w-4 h-4 text-bullion" />
                 {processScheduledLoading ? "Sweeping Dividends..." : "Force Friday Sweeper"}
               </button>
             </div>
@@ -2557,9 +2557,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
           {/* Form to report earnings */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <form onSubmit={handleReportEarnings} className="lg:col-span-5 bg-zinc-950/80 border border-zinc-800/80 rounded-xl p-4 flex flex-col gap-3 font-sans text-xs">
+            <form onSubmit={handleReportEarnings} className="lg:col-span-5 bg-floor/80 border border-rule rounded-[6px] p-4 flex flex-col gap-3 font-sans text-xs">
               <h4 className="font-bold text-zinc-200 text-sm flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-amber-400" />
+                <Award className="w-4 h-4 text-bullion" />
                 Declare Corporate Earnings & Dividend
               </h4>
 
@@ -2570,7 +2570,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 <select
                   value={divCompanyId}
                   onChange={(e) => setDivCompanyId(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                  className="w-full bg-pane border border-rule rounded-[4px] px-3 py-2 text-white tabular text-xs focus:outline-none focus:border-rule"
                 >
                   {companies.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -2590,7 +2590,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     placeholder="e.g. 5000"
                     value={divGrossRev}
                     onChange={(e) => setDivGrossRev(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                    className="w-full bg-pane border border-rule rounded-[4px] px-3 py-1.5 text-white tabular text-xs focus:outline-none focus:border-rule"
                   />
                 </div>
                 <div>
@@ -2602,7 +2602,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     placeholder="e.g. 2000"
                     value={divExpenses}
                     onChange={(e) => setDivExpenses(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                    className="w-full bg-pane border border-rule rounded-[4px] px-3 py-1.5 text-white tabular text-xs focus:outline-none focus:border-rule"
                   />
                 </div>
               </div>
@@ -2612,7 +2612,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   <label className="text-[11px] font-semibold text-zinc-300">
                     Net Audited Profit (gold) *
                   </label>
-                  <span className="text-[10px] text-amber-400 font-mono font-bold">
+                  <span className="text-[10px] text-bullion tabular font-bold">
                     50% Pool = {(parseFloat(divNetProfit || "0") * 0.5).toFixed(1)}g
                   </span>
                 </div>
@@ -2624,7 +2624,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   placeholder="e.g. 3000"
                   value={divNetProfit}
                   onChange={(e) => setDivNetProfit(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-emerald-400 font-mono text-sm font-bold focus:outline-none focus:border-amber-400"
+                  className="w-full bg-pane border border-rule rounded-[4px] px-3 py-2 text-paper tabular text-sm font-bold focus:outline-none focus:border-rule"
                 />
               </div>
 
@@ -2637,11 +2637,11 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   value={divNotes}
                   onChange={(e) => setDivNotes(e.target.value)}
                   placeholder="e.g. Iron trade surplus from Milan route"
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-white font-sans text-xs focus:outline-none focus:border-amber-400"
+                  className="w-full bg-pane border border-rule rounded-[4px] px-3 py-1.5 text-white font-sans text-xs focus:outline-none focus:border-rule"
                 />
               </div>
 
-              <div className="p-2.5 bg-zinc-900/90 rounded-lg border border-zinc-800 flex items-center justify-between">
+              <div className="p-2.5 bg-pane/90 rounded-[4px] border border-rule flex items-center justify-between">
                 <div>
                   <div className="font-semibold text-zinc-200 text-xs">Immediate Distribution?</div>
                   <div className="text-[10px] text-zinc-400">
@@ -2659,7 +2659,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               <button
                 type="submit"
                 disabled={divSubmitting || !divCompanyId}
-                className="mt-1 w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+                className="mt-1 w-full py-2.5 rounded-[6px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs transition cursor-pointer disabled:opacity-50"
               >
                 {divSubmitting ? "Committing Report..." : divImmediate ? "Declare & Distribute 50% Profit Now" : "Schedule 50% Profit for Next Friday (00:00 UTC)"}
               </button>
@@ -2674,14 +2674,14 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               </div>
 
               {earningsReports.length === 0 ? (
-                <div className="py-12 text-center text-zinc-500 font-mono text-xs border border-dashed border-zinc-800 rounded-xl">
+                <div className="py-12 text-center text-zinc-500 tabular text-xs border border-dashed border-rule rounded-[6px]">
                   No earnings reports logged yet. Submit the audit report on the left to schedule the upcoming Friday distribution.
                 </div>
               ) : (
-                <div className="overflow-x-auto border border-zinc-800/80 rounded-xl bg-zinc-950/60 max-h-[360px] overflow-y-auto">
-                  <table className="w-full text-left font-mono text-xs">
-                    <thead className="sticky top-0 bg-zinc-900">
-                      <tr className="text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
+                <div className="overflow-x-auto border border-rule rounded-[6px] bg-floor/60 max-h-[360px] overflow-y-auto">
+                  <table className="w-full text-left tabular text-xs">
+                    <thead className="sticky top-0 bg-pane">
+                      <tr className="text-zinc-400 uppercase text-[10px] tracking-wider border-b border-rule font-sans">
                         <th className="py-2.5 px-3">Enterprise</th>
                         <th className="py-2.5 px-3">Audited Profit</th>
                         <th className="py-2.5 px-3">50% Pool</th>
@@ -2707,19 +2707,19 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                             <td className="py-2.5 px-3 font-bold text-zinc-200">
                               {Number(r.netProfit).toFixed(0)}g
                             </td>
-                            <td className="py-2.5 px-3 font-bold text-amber-400">
+                            <td className="py-2.5 px-3 font-bold text-bullion">
                               {Number(r.dividendPool).toFixed(1)}g
                             </td>
-                            <td className="py-2.5 px-3 text-emerald-400">
+                            <td className="py-2.5 px-3 text-paper">
                               {Number(r.dividendPerShare).toFixed(4)}g
                             </td>
                             <td className="py-2.5 px-3">
                               {isPaid ? (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-sans">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-floor text-paper border border-rule font-sans">
                                   PAID OUT
                                 </span>
                               ) : (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 font-sans animate-pulse">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-floor text-bullion border border-rule font-sans animate-pulse">
                                   SCHEDULED
                                 </span>
                               )}
@@ -2729,7 +2729,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                 <button
                                   type="button"
                                   onClick={() => handleDistributeNow(r.id)}
-                                  className="px-2 py-1 rounded bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-bold font-sans transition cursor-pointer"
+                                  className="px-2 py-1 rounded bg-bullion hover:bg-amber-300 text-floor text-[10px] font-bold font-sans transition cursor-pointer"
                                 >
                                   Distribute Now
                                 </button>
@@ -2773,16 +2773,16 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           });
 
           return (
-            <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col gap-5 p-5">
+            <div className="bg-pane/40 border border-rule rounded-[6px] overflow-hidden flex flex-col gap-5 p-5">
               {/* Header and Title */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-rule pb-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Wallet className="w-5 h-5 text-amber-400" />
+                    <Wallet className="w-5 h-5 text-bullion" />
                     <h3 className="font-bold text-white text-base flex items-center gap-2">
                       Citizen Wealth Inspector
                     </h3>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    <span className="px-2 py-0.5 rounded text-[10px] tabular font-bold bg-floor text-paper border border-rule">
                       LIVE PURSE & EQUITY BALANCES
                     </span>
                   </div>
@@ -2795,7 +2795,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   <button
                     type="button"
                     onClick={() => fetchAdminData()}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-1.5 rounded-[6px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-rule text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
                   >
                     <RefreshCw className="w-3.5 h-3.5 text-zinc-400" />
                     Refresh Balances
@@ -2805,74 +2805,74 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
               {/* Platform-Wide Wealth Aggregates */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
+                <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
                   <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-zinc-400">
-                    <Users className="w-3.5 h-3.5 text-blue-400" />
+                    <Users className="w-3.5 h-3.5 text-paper" />
                     <span>Registered Accounts</span>
                   </div>
-                  <div className="font-mono text-lg font-black text-white mt-1">
+                  <div className="tabular text-lg font-black text-white mt-1">
                     {citizens.length}
                   </div>
-                  <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                  <div className="text-[10px] text-zinc-500 tabular mt-0.5">
                     Individual Player Purses
                   </div>
                 </div>
 
-                <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-emerald-400">
-                    <Coins className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
+                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-paper">
+                    <Coins className="w-3.5 h-3.5 text-paper" />
                     <span>Purse Gold (Cash)</span>
                   </div>
-                  <div className="font-mono text-lg font-black text-emerald-400 mt-1">
+                  <div className="tabular text-lg font-black text-paper mt-1">
                     {totalPurseCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                   </div>
-                  <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                  <div className="text-[10px] text-zinc-500 tabular mt-0.5">
                     Available in player purses
                   </div>
                 </div>
 
-                <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-amber-400">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
+                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-bullion">
+                    <Clock className="w-3.5 h-3.5 text-bullion" />
                     <span>Locked in Orders</span>
                   </div>
-                  <div className="font-mono text-lg font-black text-amber-400 mt-1">
+                  <div className="tabular text-lg font-black text-bullion mt-1">
                     {totalLockedCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                   </div>
-                  <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                  <div className="text-[10px] text-zinc-500 tabular mt-0.5">
                     Committed in active limit bids
                   </div>
                 </div>
 
-                <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-purple-400">
-                    <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
+                <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
+                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-paper">
+                    <TrendingUp className="w-3.5 h-3.5 text-paper" />
                     <span>Circulating Stock Holdings</span>
                   </div>
-                  <div className="font-mono text-lg font-black text-purple-300 mt-1">
+                  <div className="tabular text-lg font-black text-paper mt-1">
                     {totalTradingValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                   </div>
-                  <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                  <div className="text-[10px] text-zinc-500 tabular mt-0.5">
                     Traded secondary citizen shares
                   </div>
                 </div>
 
-                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl col-span-2 sm:col-span-1">
-                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-amber-300">
-                    <Award className="w-3.5 h-3.5 text-amber-400" />
+                <div className="p-3 bg-floor border border-rule rounded-[6px] col-span-2 sm:col-span-1">
+                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-paper">
+                    <Award className="w-3.5 h-3.5 text-bullion" />
                     <span>Total Platform Capital</span>
                   </div>
-                  <div className="font-mono text-lg font-black text-amber-400 mt-1">
+                  <div className="tabular text-lg font-black text-bullion mt-1">
                     {totalNetWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                   </div>
-                  <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                  <div className="text-[10px] text-zinc-400 tabular mt-0.5">
                     Cash + Locked + Traded Stocks
                   </div>
                 </div>
               </div>
 
               {/* Search & Filter Toolbar */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-floor/60 p-3 rounded-[6px] border border-rule">
                 <div className="relative flex-1">
                   <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
                   <input
@@ -2880,7 +2880,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     value={citizenSearch}
                     onChange={(e) => setCitizenSearch(e.target.value)}
                     placeholder="Search by username, display name, realm title, or stock holding (e.g. GUG)..."
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-8 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400 font-sans"
+                    className="w-full bg-pane border border-rule rounded-[4px] pl-9 pr-8 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-rule font-sans"
                   />
                   {citizenSearch && (
                     <button
@@ -2898,7 +2898,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   <button
                     type="button"
                     onClick={() => setCitizenFilter("ALL")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-[4px] text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                       citizenFilter === "ALL"
                         ? "bg-amber-500 text-black font-bold"
                         : "bg-zinc-800 text-zinc-400 hover:text-white"
@@ -2909,7 +2909,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   <button
                     type="button"
                     onClick={() => setCitizenFilter("WEALTHY")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-[4px] text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                       citizenFilter === "WEALTHY"
                         ? "bg-amber-500 text-black font-bold"
                         : "bg-zinc-800 text-zinc-400 hover:text-white"
@@ -2920,7 +2920,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   <button
                     type="button"
                     onClick={() => setCitizenFilter("ADMIN")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-[4px] text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                       citizenFilter === "ADMIN"
                         ? "bg-amber-500 text-black font-bold"
                         : "bg-zinc-800 text-zinc-400 hover:text-white"
@@ -2932,10 +2932,10 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               </div>
 
               {/* Wealth & Purse Balances Table */}
-              <div className="overflow-x-auto border border-zinc-800/80 rounded-xl bg-zinc-950/40">
-                <table className="w-full text-left font-mono text-xs">
+              <div className="overflow-x-auto border border-rule rounded-[6px] bg-floor/40">
+                <table className="w-full text-left tabular text-xs">
                   <thead>
-                    <tr className="bg-zinc-900/90 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-sans">
+                    <tr className="bg-pane/90 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-rule font-sans">
                       <th className="py-3 px-4">Citizen</th>
                       <th className="py-3 px-3">Role</th>
                       <th className="py-3 px-3 text-right">Purse Gold (Cash)</th>
@@ -2971,13 +2971,13 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                   <div className="text-white font-bold font-sans flex items-center gap-1.5">
                                     <span>{c.display_name || c.username}</span>
                                     {c.is_admin ? (
-                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] tabular font-bold bg-floor text-paper border border-rule">
                                         🛡️ ADMIN
                                       </span>
                                     ) : null}
                                   </div>
                                   <div className="text-[10px] text-zinc-400 font-sans flex items-center gap-1.5 mt-0.5">
-                                    <span className="font-mono text-zinc-300">@{c.username}</span>
+                                    <span className="tabular text-zinc-300">@{c.username}</span>
                                     {c.parlamentum_name && c.parlamentum_name !== c.username && (
                                       <span className="text-zinc-500">· Game: {c.parlamentum_name}</span>
                                     )}
@@ -2988,7 +2988,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
                             <td className="py-3 px-3 text-[11px] font-sans whitespace-nowrap">
                               {c.is_admin ? (
-                                <span className="px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold whitespace-nowrap inline-flex items-center gap-1">
+                                <span className="px-2 py-0.5 rounded bg-floor text-paper border border-rule font-bold whitespace-nowrap inline-flex items-center gap-1">
                                   🛡️ Operator
                                 </span>
                               ) : (
@@ -2999,16 +2999,16 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                             </td>
 
                             <td className="py-3 px-3 text-right whitespace-nowrap">
-                              <div className="font-mono font-black text-emerald-400 text-sm">
+                              <div className="tabular font-black text-paper text-sm">
                                 {purseCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                               </div>
                               <div className="text-[10px] text-zinc-500 font-sans">
                                 Personal Purse
                               </div>
                               {c.founder_companies && c.founder_companies.length > 0 && (
-                                <div className="mt-1 pt-1 border-t border-zinc-800/60 space-y-0.5">
+                                <div className="mt-1 pt-1 border-t border-rule space-y-0.5">
                                   {c.founder_companies.map((fc: any) => (
-                                    <div key={fc.id} className="text-[10px] font-mono text-amber-300 font-bold">
+                                    <div key={fc.id} className="text-[10px] tabular text-paper font-bold">
                                       🏢 ${fc.ticker}: {Number(fc.treasuryBalance || 0).toFixed(2)}g
                                     </div>
                                   ))}
@@ -3021,16 +3021,16 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                   setAdjustBalanceValue(String(purseCash));
                                   setAdjustReason(`Operator purse adjustment for @${c.username}`);
                                 }}
-                                className="text-[10px] font-sans text-amber-400/80 hover:text-amber-300 underline cursor-pointer mt-1 block ml-auto"
+                                className="text-[10px] font-sans text-bullion/80 hover:text-paper underline cursor-pointer mt-1 block ml-auto"
                                 title="Adjust this citizen's purse balance"
                               >
                                 Adjust Purse
                               </button>
                             </td>
 
-                            <td className="py-3 px-3 text-right font-mono text-zinc-400 whitespace-nowrap">
+                            <td className="py-3 px-3 text-right tabular text-zinc-400 whitespace-nowrap">
                               {lockedCash > 0 ? (
-                                <span className="text-amber-300 font-semibold">
+                                <span className="text-paper font-semibold">
                                   {lockedCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                                 </span>
                               ) : (
@@ -3046,22 +3046,22 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                   {holdings.map((h, idx) => (
                                     <span
                                       key={idx}
-                                      className={`px-2 py-0.5 rounded text-[10px] font-mono whitespace-nowrap inline-flex items-center gap-1 ${
+                                      className={`px-2 py-0.5 rounded text-[10px] tabular whitespace-nowrap inline-flex items-center gap-1 ${
                                         h.isCreator
-                                          ? "bg-amber-500/15 border border-amber-500/40 text-amber-300"
-                                          : "bg-purple-500/10 border border-purple-500/30 text-purple-300"
+                                          ? "bg-floor border border-rule text-paper"
+                                          : "bg-floor border border-rule text-paper"
                                       }`}
                                       title={`${h.isCreator ? "👑 Founder Stake: " : ""}${h.companyName} (${h.totalShares.toLocaleString()} shares @ ${h.currentPrice.toFixed(2)}g)`}
                                     >
                                       {h.isCreator ? <span>👑</span> : null}
-                                      <b className={h.isCreator ? "text-amber-300" : "text-amber-400"}>${h.ticker}</b>: {h.totalShares.toLocaleString()} sh
+                                      <b className={h.isCreator ? "text-paper" : "text-bullion"}>${h.ticker}</b>: {h.totalShares.toLocaleString()} sh
                                       <span className="text-zinc-400">({h.holdingValue.toFixed(1)}g)</span>
                                     </span>
                                   ))}
-                                  <div className="w-full text-[10px] text-zinc-400 font-mono mt-0.5">
+                                  <div className="w-full text-[10px] text-zinc-400 tabular mt-0.5">
                                     {c.founder_value && c.founder_value > 0 ? (
                                       <span>
-                                        Circulating Holdings: <b className="text-emerald-300 font-bold">{tradingVal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}g</b>
+                                        Circulating Holdings: <b className="text-paper font-bold">{tradingVal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}g</b>
                                         <span className="text-zinc-500 ml-1">
                                           · 👑 Company Stock: {(c.founder_value || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}g (Excluded from Capital)
                                         </span>
@@ -3075,21 +3075,21 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                             </td>
 
                             <td className="py-3 px-3 text-right">
-                              <div className="font-mono font-black text-amber-400 text-sm">
+                              <div className="tabular font-black text-bullion text-sm">
                                 {netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                               </div>
-                              <div className="text-[9px] text-zinc-500 font-mono">
+                              <div className="text-[9px] text-zinc-500 tabular">
                                 Total Platform Capital
                               </div>
                             </td>
 
                             <td className="py-3 px-3 text-center text-[11px] font-sans">
                               {Number(c.is_frozen || 0) === 1 ? (
-                                <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
+                                <span className="px-2 py-0.5 rounded bg-floor text-bear border border-rule font-bold">
                                   ❄️ FROZEN
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
+                                <span className="px-2 py-0.5 rounded bg-floor text-paper font-medium">
                                   Active
                                 </span>
                               )}
@@ -3104,7 +3104,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                     setAdjustBalanceValue(String(purseCash));
                                     setAdjustReason(`Operator purse adjustment for @${c.username}`);
                                   }}
-                                  className="px-2 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-medium transition cursor-pointer"
+                                  className="px-2 py-1 rounded bg-floor hover:bg-floor text-paper border border-rule text-[10px] font-medium transition cursor-pointer"
                                   title="Adjust Purse Gold"
                                 >
                                   ⚡ Adjust
@@ -3124,7 +3124,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                   <button
                                     type="button"
                                     onClick={() => handleFreezeUser(c.id, false)}
-                                    className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-semibold transition cursor-pointer"
+                                    className="px-2 py-1 rounded bg-bullion hover:bg-amber-300 text-floor text-[10px] font-semibold transition cursor-pointer"
                                     title="Unfreeze Account"
                                   >
                                     Unfreeze
@@ -3133,7 +3133,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                   <button
                                     type="button"
                                     onClick={() => handleFreezeUser(c.id, true)}
-                                    className="px-2 py-1 rounded bg-rose-950 hover:bg-rose-800 text-rose-300 border border-rose-700/50 text-[10px] font-semibold transition cursor-pointer"
+                                    className="px-2 py-1 rounded bg-rose-950 hover:bg-rose-800 text-bear border border-rule text-[10px] font-semibold transition cursor-pointer"
                                     title="Freeze Wallet Hammer"
                                   >
                                     Freeze
@@ -3155,17 +3155,17 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         {/* Modal: Adjust Citizen Purse Balance */}
         {adjustingCitizen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <div className="bg-pane border border-rule rounded-[6px] max-w-md w-full p-6 relative">
               <button
                 type="button"
                 onClick={() => setAdjustingCitizen(null)}
-                className="absolute right-4 top-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
+                className="absolute right-4 top-4 text-zinc-400 hover:text-white p-1 rounded-[4px] hover:bg-zinc-800 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
 
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl">
+                <div className="w-10 h-10 rounded-[6px] bg-floor border border-rule flex items-center justify-center text-xl">
                   💰
                 </div>
                 <div>
@@ -3179,9 +3179,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               </div>
 
               <form onSubmit={handleAdjustBalance} className="space-y-4 text-xs font-sans">
-                <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between font-mono">
+                <div className="p-3 bg-floor rounded-[6px] border border-rule flex items-center justify-between tabular">
                   <span className="text-zinc-400">Current Purse Balance:</span>
-                  <span className="text-emerald-400 font-bold text-sm">
+                  <span className="text-paper font-bold text-sm">
                     {Number(adjustingCitizen.cash_balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold
                   </span>
                 </div>
@@ -3197,7 +3197,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     required
                     value={adjustBalanceValue}
                     onChange={(e) => setAdjustBalanceValue(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono text-base font-bold focus:outline-none focus:border-amber-400"
+                    className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 text-white tabular text-base font-bold focus:outline-none focus:border-rule"
                   />
 
                   {/* Quick Delta Adjust Buttons */}
@@ -3215,7 +3215,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                           const cur = parseFloat(adjustBalanceValue) || 0;
                           setAdjustBalanceValue(Math.max(0, cur + btn.delta).toString());
                         }}
-                        className="py-1 text-[10px] font-mono bg-zinc-800 hover:bg-zinc-700 rounded text-emerald-400 transition cursor-pointer"
+                        className="py-1 text-[10px] tabular bg-zinc-800 hover:bg-zinc-700 rounded text-paper transition cursor-pointer"
                       >
                         {btn.label}
                       </button>
@@ -3233,7 +3233,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     value={adjustReason}
                     onChange={(e) => setAdjustReason(e.target.value)}
                     placeholder="e.g. Operator direct balance correction"
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-sans text-xs focus:outline-none focus:border-amber-400"
+                    className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 text-white font-sans text-xs focus:outline-none focus:border-rule"
                   />
                 </div>
 
@@ -3241,14 +3241,14 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   <button
                     type="button"
                     onClick={() => setAdjustingCitizen(null)}
-                    className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition cursor-pointer"
+                    className="px-4 py-2 rounded-[6px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={adjustLoading}
-                    className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+                    className="px-5 py-2 rounded-[6px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs transition cursor-pointer disabled:opacity-50"
                   >
                     {adjustLoading ? "Saving Balance..." : "Save Purse Balance"}
                   </button>
@@ -3261,33 +3261,33 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         {/* Modal: Deposit Corporate Operating Profit */}
         {depositProfitComp && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <div className="bg-pane border border-rule rounded-[6px] max-w-md w-full p-6 relative">
               <button
                 type="button"
                 onClick={() => setDepositProfitComp(null)}
-                className="absolute right-4 top-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
+                className="absolute right-4 top-4 text-zinc-400 hover:text-white p-1 rounded-[4px] hover:bg-zinc-800 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
 
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-xl">
+                <div className="w-10 h-10 rounded-[6px] bg-floor border border-rule flex items-center justify-center text-xl">
                   🏛️
                 </div>
                 <div>
                   <h3 className="font-bold text-white text-base">
                     Deposit Corporate Profit
                   </h3>
-                  <p className="text-zinc-400 text-xs font-mono">
+                  <p className="text-zinc-400 text-xs tabular">
                     ${depositProfitComp.ticker} · {depositProfitComp.name}
                   </p>
                 </div>
               </div>
 
               <form onSubmit={handleDepositProfitSubmit} className="space-y-4 text-xs font-sans">
-                <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between font-mono">
+                <div className="p-3 bg-floor rounded-[6px] border border-rule flex items-center justify-between tabular">
                   <span className="text-zinc-400">Current Corporate Treasury:</span>
-                  <span className="text-amber-400 font-bold text-sm">
+                  <span className="text-bullion font-bold text-sm">
                     {Number(depositProfitComp.treasuryBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold
                   </span>
                 </div>
@@ -3304,7 +3304,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     placeholder="e.g. 500"
                     value={depositProfitAmount}
                     onChange={(e) => setDepositProfitAmount(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono text-base font-bold focus:outline-none focus:border-amber-400"
+                    className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 text-white tabular text-base font-bold focus:outline-none focus:border-rule"
                   />
 
                   {/* Quick Preset Buttons */}
@@ -3314,7 +3314,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                         key={amt}
                         type="button"
                         onClick={() => setDepositProfitAmount(amt.toString())}
-                        className="py-1 text-[10px] font-mono bg-zinc-800 hover:bg-zinc-700 rounded text-amber-300 transition cursor-pointer"
+                        className="py-1 text-[10px] tabular bg-zinc-800 hover:bg-zinc-700 rounded text-paper transition cursor-pointer"
                       >
                         +{amt}g
                       </button>
@@ -3330,25 +3330,25 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     <button
                       type="button"
                       onClick={() => setDepositProfitSource("DIRECT")}
-                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                      className={`p-2.5 rounded-[6px] border text-left transition cursor-pointer ${
                         depositProfitSource === "DIRECT"
-                          ? "bg-amber-500/15 border-amber-500 text-white font-bold"
-                          : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                          ? "bg-floor border-rule text-white font-bold"
+                          : "bg-floor border-rule text-zinc-400 hover:text-zinc-200"
                       }`}
                     >
-                      <div className="text-[11px] font-semibold text-amber-300">Direct In-Game / Gross</div>
+                      <div className="text-[11px] font-semibold text-paper">Direct In-Game / Gross</div>
                       <div className="text-[10px] text-zinc-400 mt-0.5">Does not debit personal purse</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => setDepositProfitSource("WALLET")}
-                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                      className={`p-2.5 rounded-[6px] border text-left transition cursor-pointer ${
                         depositProfitSource === "WALLET"
-                          ? "bg-emerald-500/15 border-emerald-500 text-white font-bold"
-                          : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                          ? "bg-floor border-rule text-white font-bold"
+                          : "bg-floor border-rule text-zinc-400 hover:text-zinc-200"
                       }`}
                     >
-                      <div className="text-[11px] font-semibold text-emerald-300">From Personal Wallet</div>
+                      <div className="text-[11px] font-semibold text-paper">From Personal Wallet</div>
                       <div className="text-[10px] text-zinc-400 mt-0.5">Deducts from user gold</div>
                     </button>
                   </div>
@@ -3363,7 +3363,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     value={depositProfitNotes}
                     onChange={(e) => setDepositProfitNotes(e.target.value)}
                     placeholder="e.g. Weekly net factory profits & in-game sales"
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-sans text-xs focus:outline-none focus:border-amber-400"
+                    className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 text-white font-sans text-xs focus:outline-none focus:border-rule"
                   />
                 </div>
 
@@ -3371,14 +3371,14 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   <button
                     type="button"
                     onClick={() => setDepositProfitComp(null)}
-                    className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition cursor-pointer"
+                    className="px-4 py-2 rounded-[6px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submittingProfit}
-                    className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition shadow-lg shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+                    className="px-5 py-2 rounded-[6px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs transition cursor-pointer disabled:opacity-50"
                   >
                     {submittingProfit ? "Crediting Treasury..." : "💰 Credit Corporate Treasury"}
                   </button>

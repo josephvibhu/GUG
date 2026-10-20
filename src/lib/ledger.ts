@@ -90,13 +90,16 @@ export async function syncLedgerData(
     const currency = (item.currency || (priceStr.toLowerCase().includes("usd") ? "USD" : "gold")).toLowerCase();
     const withUser = (item.withUser || "").trim().replace(/^[@—\-\s]+|[@—\-\s]+$/g, "");
 
-    // Generate unique signature to avoid duplicate crediting
-    const signature = item.signature || `ledger_${cleanDate}_${cleanSide}_${cleanItem.replace(/\s+/g, "_")}_${qty}_${totalAmount}_${currency}_${withUser}`;
+    // One signature per fill whichever parser read it (the userscript and the cloud scrape format dates and
+    // spaces differently). Fills stored before this change are still found under their old signature.
+    const norm = (v: unknown) => String(v ?? "").normalize("NFKC").replace(/&nbsp;|&#160;/gi, " ").replace(/\s+/gu, " ").trim().toLowerCase();
+    const signature = `ledger2|${norm(cleanDate)}|${cleanSide}|${norm(cleanItem)}|${qty}|${totalAmount}|${currency}|${norm(withUser)}`;
+    const legacySignature = item.signature || `ledger_${cleanDate}_${cleanSide}_${cleanItem.replace(/\s+/g, "_")}_${qty}_${totalAmount}_${currency}_${withUser}`;
 
     // Check if already logged
     const existing = await db.execute({
-      sql: "SELECT id, status FROM parlamentum_ledger_entries WHERE signature = ? LIMIT 1",
-      args: [signature],
+      sql: "SELECT id, status FROM parlamentum_ledger_entries WHERE signature IN (?, ?) LIMIT 1",
+      args: [signature, legacySignature],
     });
 
     if (existing.rows.length > 0) {
@@ -135,19 +138,23 @@ export async function syncLedgerData(
     let entryStatus = "LOGGED";
     let matchedUserId: string | null = null;
 
-    // Check if this is a Raw Iron sale to an exchange citizen
-    const isRawIronSale = cleanSide === "SOLD" && cleanItem.toLowerCase().includes("raw iron") && totalAmount > 0;
+    // Check if this is a Raw Iron sale to an exchange citizen. Only gold sales count, and the purse is credited
+    // with what the House actually received: the total less the tax the game took from it.
+    const isRawIronSale = cleanSide === "SOLD" && cleanItem.toLowerCase().includes("raw iron") && totalAmount > 0 && currency === "gold";
+    const netReceived = Math.max(0, Math.round((totalAmount - taxAmount) * 100) / 100);
 
     if (isRawIronSale && withUser && withUser !== "—") {
       // Find matching user in Grow UR Gold
+      // The in-game name wins over a matching username or display name
       const userRes = await db.execute({
-        sql: `SELECT id, username, cash_balance FROM users 
+        sql: `SELECT id, username, parlamentum_name, cash_balance FROM users 
               WHERE LOWER(username) = ? 
                  OR LOWER(parlamentum_name) = ? 
                  OR LOWER(display_name) = ? 
                  OR LOWER(state_realm_name) = ?
+              ORDER BY CASE WHEN LOWER(parlamentum_name) = ? THEN 0 WHEN LOWER(username) = ? THEN 1 ELSE 2 END, created_at ASC
               LIMIT 1`,
-        args: [withUser.toLowerCase(), withUser.toLowerCase(), withUser.toLowerCase(), withUser.toLowerCase()],
+        args: [withUser.toLowerCase(), withUser.toLowerCase(), withUser.toLowerCase(), withUser.toLowerCase(), withUser.toLowerCase(), withUser.toLowerCase()],
       });
 
       if (userRes.rows.length > 0) {
@@ -165,11 +172,16 @@ export async function syncLedgerData(
 
         if (pending.rows.length > 0) {
           const pendingTx = pending.rows[0];
+          // Credit what arrived, not what was announced
+          await db.execute({
+            sql: "UPDATE wallet_transactions SET amount = ? WHERE id = ? AND status = 'PENDING'",
+            args: [netReceived, pendingTx.id],
+          });
           await approveDeposit(String(pendingTx.id));
           entryStatus = "MATCHED_PENDING";
           newCredits.push({
             user: String(citizen.username),
-            gold: totalAmount,
+            gold: netReceived,
             item: cleanItem,
             reason: `Auto-verified pending deposit via /trade/ledger (${qty} ${cleanItem} · ${totalAmount}g)`,
           });
@@ -198,25 +210,26 @@ export async function syncLedgerData(
 
           const autoApprove = (await getSetting("auto_approve_deposits", "false")) === "true";
 
-          if (!isFromToday || alreadyCredited.rows.length > 0) {
-            // Already credited historically or from a past date: log only, never duplicate credit
+          if (!isFromToday) {
+            // From a past date: log only, never credit automatically
             entryStatus = "HISTORICAL_SYNC";
-          } else if (autoApprove) {
+          } else if (autoApprove && alreadyCredited.rows.length === 0) {
             // New unannounced fill from today AND auto-approve is explicitly enabled
             await manualCreditCitizen(
               String(citizen.username),
-              totalAmount,
+              netReceived,
               `Verified in-game sale on /trade/ledger (${qty}x ${cleanItem} at ${priceStr})`
             );
             entryStatus = "AUTO_CREDITED";
             newCredits.push({
               user: String(citizen.username),
-              gold: totalAmount,
+              gold: netReceived,
               item: cleanItem,
-              reason: `Direct ledger credit: ${qty}x ${cleanItem} sold for ${totalAmount}g`,
+              reason: `Direct ledger credit: ${qty}x ${cleanItem} sold for ${totalAmount}g (${netReceived}g after tax)`,
             });
           } else {
-            // Auto-approve is disabled: queue as PENDING deposit for operator review
+            // Auto-approve is off, or a same-size deposit was already credited (a repeat deposit or a duplicate):
+            // queue it as a PENDING deposit for the operator instead of dropping it
             const txId = `tx_${crypto.randomUUID().slice(0, 8)}`;
             await db.execute({
               sql: `INSERT INTO wallet_transactions (
@@ -225,7 +238,7 @@ export async function syncLedgerData(
               args: [
                 txId,
                 citizen.id,
-                totalAmount,
+                netReceived,
                 qty,
                 String(citizen.parlamentum_name || citizen.username),
                 `Auto-detected unannounced sale on /trade/ledger (${qty}x ${cleanItem} for ${totalAmount}g). Awaiting operator approval.`,

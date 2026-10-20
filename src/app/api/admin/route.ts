@@ -358,107 +358,6 @@ export async function POST(request: Request) {
       }, { headers: corsHeaders });
     }
 
-    if (action === "test_blob") {
-      const { apiKey } = body;
-      if (!(await isValidApiKey(apiKey))) {
-        return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
-      }
-      const { persistDbToBlob, getDbPath, getDb, syncDbFromBlob } = await import("@/lib/db");
-      const fs = await import("fs");
-      const dbPath = getDbPath();
-      const exists = fs.existsSync(dbPath);
-      const walExists = fs.existsSync(dbPath + "-wal");
-      const shmExists = fs.existsSync(dbPath + "-shm");
-      const syncRes = await syncDbFromBlob(true);
-      const db = getDb();
-      const users = await db.execute("SELECT id, username FROM users");
-      const persistResult = await persistDbToBlob();
-      return NextResponse.json({
-        success: true,
-        tokenExists: !!process.env.BLOB_READ_WRITE_TOKEN,
-        tokenPrefix: process.env.BLOB_READ_WRITE_TOKEN ? process.env.BLOB_READ_WRITE_TOKEN.slice(0, 15) : null,
-        isVercel: !!process.env.VERCEL,
-        dbPath,
-        exists,
-        walExists,
-        shmExists,
-        users: users.rows,
-        persistResult,
-      }, { headers: corsHeaders });
-    }
-
-    // Direct Purge & Admin Setup (secured by API key)
-    if (action === "purge_users_and_create_admin") {
-      const { apiKey } = body;
-      if (!(await isValidApiKey(apiKey))) {
-        return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
-      }
-
-      const db = getDb();
-      const now = new Date().toISOString();
-      const passHash = "$2b$10$xRYixtfhwn2eJesmqVhZFOUGQVZLjjqza9XfR7A4EcwCHgjL53EWe";
-
-      // 1. Create or update JosephArora
-      await db.execute({
-        sql: `INSERT OR REPLACE INTO users (id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, avatar, is_admin, created_at)
-              VALUES ('usr_josepharora', 'JosephArora', ?, 'Joseph Arora', 'JosephArora', 0.0, 0.0, '🏛️', 1, ?)`,
-        args: [passHash, now]
-      });
-
-      // 2. Ensure CardinalSanjay exists with exact 5 gold and 5 shares
-      const sanjayRes = await db.execute("SELECT id FROM users WHERE LOWER(username) = 'cardinalsanjay'");
-      const sanjayId = sanjayRes.rows.length > 0 ? String(sanjayRes.rows[0].id) : 'usr_2eb75326';
-      await db.execute({
-        sql: `UPDATE users SET cash_balance = 5.0, locked_cash = 0.0, password_hash = ? WHERE id = ?`,
-        args: [passHash, sanjayId]
-      });
-
-      // 3. Reassign companies, announcements, orders to usr_josepharora
-      await db.execute(`UPDATE companies SET creator_id = 'usr_josepharora';`);
-      await db.execute(`UPDATE announcements SET author_id = 'usr_josepharora';`);
-      await db.execute(`UPDATE orders SET user_id = 'usr_josepharora' WHERE user_id IN ('usr_house', 'usr_treasury');`);
-
-      // 4. Recreate portfolios
-      await db.execute(`DELETE FROM portfolios WHERE user_id IN ('usr_house', 'usr_treasury');`);
-      await db.execute({
-        sql: `INSERT OR REPLACE INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
-              VALUES ('port_cardinalsanjay_GUG', ?, 'cmp_gug_001', 5, 0, 3.0)`,
-        args: [sanjayId]
-      });
-      await db.execute(`
-        INSERT OR REPLACE INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
-        VALUES ('port_usr_josepharora_GUG', 'usr_josepharora', 'cmp_gug_001', 9995, 1000, 3.0);
-      `);
-
-      // 4. Delete all other users and their data except CardinalSanjay and JosephArora
-      await db.execute(`
-        DELETE FROM wallet_transactions WHERE user_id NOT IN (
-          SELECT id FROM users WHERE LOWER(username) IN ('cardinalsanjay', 'josepharora')
-        );
-      `);
-      await db.execute(`
-        DELETE FROM orders WHERE user_id NOT IN (
-          SELECT id FROM users WHERE LOWER(username) IN ('cardinalsanjay', 'josepharora')
-        );
-      `);
-      await db.execute(`
-        DELETE FROM portfolios WHERE user_id NOT IN (
-          SELECT id FROM users WHERE LOWER(username) IN ('cardinalsanjay', 'josepharora')
-        );
-      `);
-      await db.execute(`
-        DELETE FROM users WHERE LOWER(username) NOT IN ('cardinalsanjay', 'josepharora');
-      `);
-
-      const remainingUsers = await db.execute(`SELECT id, username, display_name, is_admin, cash_balance FROM users;`);
-
-      return NextResponse.json({
-        success: true,
-        message: "All users purged except CardinalSanjay, and admin JosephArora created successfully!",
-        users: remainingUsers.rows,
-      }, { headers: corsHeaders });
-    }
-
     // Otherwise require logged-in admin
     const user = await getCurrentUser();
     if (!user || !user.isAdmin) {
@@ -481,9 +380,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: "No citizen username specified for credit." }, { status: 400 });
       }
       // Claim the entry before crediting so it can only ever be paid out once
+      if (entry.status === "QUEUED_FOR_APPROVAL") {
+        return NextResponse.json({ success: false, message: "This fill is waiting in the deposit queue. Approve it there." }, { status: 409 });
+      }
       const claim = await db.execute({
         sql: `UPDATE parlamentum_ledger_entries SET status = 'AUTO_CREDITED', with_user = ?
-              WHERE id = ? AND status NOT IN ('AUTO_CREDITED', 'MATCHED_PENDING')`,
+              WHERE id = ? AND status NOT IN ('AUTO_CREDITED', 'MATCHED_PENDING', 'QUEUED_FOR_APPROVAL')`,
         args: [String(targetUser), entryId],
       });
       if (claim.rowsAffected === 0) {
@@ -526,7 +428,11 @@ export async function POST(request: Request) {
 
     if (action === "manual_credit") {
       const { parlamentumName, goldAmount, reason } = body;
-      const res = await manualCreditCitizen(parlamentumName, Number(goldAmount), reason);
+      const amount = Number(goldAmount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return NextResponse.json({ success: false, message: "Enter a credit above 0. To lower a purse, use the balance editor." }, { status: 400 });
+      }
+      const res = await manualCreditCitizen(parlamentumName, amount, reason);
       const { scheduleBlobPersist } = await import("@/lib/db");
       scheduleBlobPersist();
       return NextResponse.json(res);
@@ -551,10 +457,14 @@ export async function POST(request: Request) {
       const oldBalance = Number(targetUser.cash_balance);
       const diff = targetBalance - oldBalance;
 
-      await db.execute({
-        sql: "UPDATE users SET cash_balance = ? WHERE id = ?",
-        args: [targetBalance, userId],
+      // Set the balance only if it is still what the operator saw: a trade or deposit in between would be overwritten
+      const set = await db.execute({
+        sql: "UPDATE users SET cash_balance = ? WHERE id = ? AND cash_balance = ?",
+        args: [targetBalance, userId, oldBalance],
       });
+      if (set.rowsAffected === 0) {
+        return NextResponse.json({ success: false, message: "The balance changed meanwhile. Reload and try again." }, { status: 409 });
+      }
 
       const now = new Date().toISOString();
       const txId = `tx_adj_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -604,7 +514,7 @@ export async function POST(request: Request) {
 
     if (action === "trigger_cloud_sync") {
       const { triggerCloudLedgerSync } = await import("@/lib/cloudSync");
-      const res = await triggerCloudLedgerSync();
+      const res = await triggerCloudLedgerSync(true);
       const { scheduleBlobPersist } = await import("@/lib/db");
       scheduleBlobPersist();
       return NextResponse.json(res);

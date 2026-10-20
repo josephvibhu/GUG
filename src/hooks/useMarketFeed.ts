@@ -16,6 +16,7 @@ export interface FeedUser {
   isAdmin?: boolean;
   termsAccepted?: boolean;
   adjustmentNoticeSeen?: boolean;
+  adjustment?: import("@/components/DepositAdjustmentModal").RecalibratedInfo;
 }
 
 export interface MarketFeed {

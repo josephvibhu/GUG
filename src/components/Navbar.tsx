@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import WalletModal from "./WalletModal";
 import TermsModal from "./TermsModal";
-import DepositAdjustmentModal, { RECALIBRATED_CITIZENS } from "./DepositAdjustmentModal";
+import DepositAdjustmentModal from "./DepositAdjustmentModal";
 import { FloorClock } from "./FloorClock";
 import { CoinMark } from "./CoinMark";
 import { useMarketFeed, refreshMarketFeed } from "@/hooks/useMarketFeed";
@@ -92,10 +92,12 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
     { href: tradeHref, label: "Trade", icon: ChartCandlestick, active: pathname.startsWith("/trade") },
     { href: "/portfolio", label: "Portfolio", icon: Briefcase, active: pathname === "/portfolio" },
     { href: "/ipo", label: "List a company", short: "List", icon: CirclePlus, active: pathname === "/ipo" },
-    { href: "/crypto", label: "Crypto", icon: Coins, active: pathname === "/crypto", badge: "SOON" },
-    { href: "/funds", label: "Mutual Funds", short: "Funds", icon: Landmark, active: pathname === "/funds", badge: "SOON" },
+    { href: "/crypto", label: "Crypto", icon: Coins, active: pathname === "/crypto", soon: true },
+    { href: "/funds", label: "Funds", icon: Landmark, active: pathname === "/funds", soon: true },
   ];
   const name = user ? (user.displayName || user.username) : "";
+  // Founders see each company's treasury next to their purse
+  const founded = user ? companies.filter((c) => c.creatorId === user.id) : [];
 
   return (
     <>
@@ -117,11 +119,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                 }`}
               >
                 <span>{l.label}</span>
-                {l.badge && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 leading-none">
-                    {l.badge}
-                  </span>
-                )}
+                {l.soon && <span className="text-[11px] text-ash/70">soon</span>}
               </Link>
             ))}
             {user?.isAdmin && (
@@ -177,6 +175,22 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                           In game as {user.parlamentumName || user.username}
                         </div>
                       </div>
+                      <dl className="px-3 py-2 border-b border-rule flex flex-col gap-1">
+                        <div className="flex justify-between gap-3">
+                          <dt className="text-ash">Purse</dt>
+                          <dd className="tabular text-bullion font-semibold">{fmtGold(user.cashBalance)}</dd>
+                        </div>
+                        {founded.map((c) => (
+                          <div key={c.id} className="flex justify-between gap-3">
+                            <dt>
+                              <Link href={`/trade/${c.ticker}?tab=founder`} onClick={() => setMenuOpen(false)} className="text-ash hover:text-paper">
+                                {c.ticker} treasury
+                              </Link>
+                            </dt>
+                            <dd className="tabular text-bullion font-semibold">{fmtGold(c.treasuryBalance || 0)}</dd>
+                          </div>
+                        ))}
+                      </dl>
                       <button role="menuitem" onClick={() => openWallet("deposit")} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
                         <ArrowDownToLine className="h-4 w-4 text-ash" /> Deposit gold
                       </button>
@@ -224,8 +238,8 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
       </header>
 
       {/* Phones: the main sections as a bottom tab bar (the header has no room for them) */}
-      <nav className="mobile-tabbar md:hidden fixed bottom-0 inset-x-0 z-40 h-14 border-t border-rule bg-floor grid grid-cols-4" aria-label="Main">
-        {links.map((l) => (
+      <nav className="mobile-tabbar lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-rule bg-floor grid grid-cols-4" aria-label="Main">
+        {links.filter((l) => !l.soon).map((l) => (
           <Link
             key={l.label}
             href={l.href}
@@ -257,7 +271,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
 
       {/* Recalibration & Apology Notice modal for affected citizens */}
       <DepositAdjustmentModal
-        isOpen={Boolean(user && user.termsAccepted !== false && !user.adjustmentNoticeSeen && RECALIBRATED_CITIZENS[user.id])}
+        isOpen={Boolean(user && user.termsAccepted !== false && !user.adjustmentNoticeSeen && user.adjustment)}
         user={user}
       />
     </>

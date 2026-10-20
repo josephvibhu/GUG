@@ -2,69 +2,46 @@
 
 import { use, useEffect, useState, Suspense } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import CompanyLedger from "@/components/CompanyLedger";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+
+interface LedgerHeader {
+  company: { name: string; logoUrl: string; creatorId: string };
+  user: { id: string; isAdmin?: boolean } | null;
+}
 
 function CompanyLedgerContent({ params }: { params: Promise<{ ticker: string }> }) {
   const { ticker } = use(params);
-  const cleanTicker = ticker.toUpperCase();
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [company, setCompany] = useState<any>(null);
+  const t = ticker.toUpperCase();
+  const [data, setData] = useState<LedgerHeader | null>(null);
 
   useEffect(() => {
-    fetch("/api/auth")
+    fetch(`/api/market/${t}`, { cache: "no-store" })
       .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.user) {
-          setCurrentUser(data.user);
-        }
-      })
+      .then((json) => json.success && setData({ company: json.company, user: json.user }))
       .catch(() => {});
+  }, [t]);
 
-    fetch(`/api/market/${cleanTicker}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.company) {
-          setCompany(data.company);
-        }
-      })
-      .catch(() => {});
-  }, [cleanTicker]);
-
-  const isFounderOrAdmin =
-    !!currentUser &&
-    (!!currentUser.isAdmin || (company && currentUser.id === company.creatorId));
+  const isFounderOrAdmin = !!data?.user && (!!data.user.isAdmin || data.user.id === data.company.creatorId);
 
   return (
-    <main className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule pb-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/trade/${cleanTicker}`}
-            className="h-8 px-2.5 rounded-[4px] border border-rule hover:border-zinc-500 text-[12px] text-paper flex items-center gap-1.5 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-ash" />
-            Back to ${cleanTicker} Market
-          </Link>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">{company?.logoUrl || "🏛️"}</span>
-            <h1 className="condensed text-[24px] font-extrabold text-zinc-50 tracking-tight leading-none">
-              ${cleanTicker} Enterprise Ledger
-            </h1>
-          </div>
+    <main className="w-full max-w-[900px] mx-auto px-4 sm:px-6 py-6 flex flex-col gap-4">
+      <Link href={`/trade/${t}`} className="self-start text-[13px] text-ash hover:text-paper flex items-center gap-1">
+        <ArrowLeft className="h-3.5 w-3.5" />
+        {t} terminal
+      </Link>
+      <header className="flex items-center gap-3">
+        <span className="h-10 w-10 shrink-0 rounded-[4px] bg-pane border border-rule flex items-center justify-center text-xl" aria-hidden>
+          {data?.company.logoUrl || ""}
+        </span>
+        <div className="min-w-0">
+          <h1 className="condensed text-[26px] font-extrabold text-zinc-50 tracking-tight leading-none">{t} ledger</h1>
+          <p className="text-[13px] text-ash truncate mt-1">{data?.company.name || " "}</p>
         </div>
-
-        <Link
-          href={`/trade/${cleanTicker}`}
-          className="text-[12px] text-ash hover:text-paper flex items-center gap-1"
-        >
-          Open Trading Terminal <ExternalLink className="w-3 h-3" />
-        </Link>
-      </div>
-
-      <div className="bg-pane/30 border border-rule rounded-[6px]">
-        <CompanyLedger ticker={cleanTicker} isFounderOrAdmin={isFounderOrAdmin} />
+      </header>
+      <div className="border border-rule rounded-[4px]">
+        <CompanyLedger ticker={t} isFounderOrAdmin={isFounderOrAdmin} />
       </div>
     </main>
   );
@@ -74,7 +51,7 @@ export default function CompanyLedgerPage(props: { params: Promise<{ ticker: str
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <Suspense fallback={<main className="flex-1 w-full max-w-[1200px] mx-auto p-6 text-ash text-sm">Loading ledger…</main>}>
+      <Suspense fallback={<main className="flex-1" />}>
         <CompanyLedgerContent params={props.params} />
       </Suspense>
     </div>

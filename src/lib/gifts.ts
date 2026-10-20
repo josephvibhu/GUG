@@ -19,15 +19,23 @@ export async function createStockGift(
     return { success: false, message: "Gift quantity must be at least 1 share." };
   }
 
+  const userRes = await db.execute({ sql: "SELECT is_frozen FROM users WHERE id = ?", args: [userId] });
+  if (userRes.rows.length === 0 || Number(userRes.rows[0].is_frozen || 0) === 1) {
+    return { success: false, message: "Your account is frozen. Contact the operator." };
+  }
+
   // Fetch company details
   const compRes = await db.execute({
-    sql: "SELECT id, ticker, name FROM companies WHERE id = ?",
+    sql: "SELECT id, ticker, name, status FROM companies WHERE id = ?",
     args: [companyId],
   });
   if (compRes.rows.length === 0) {
     return { success: false, message: "Company not found." };
   }
   const company = compRes.rows[0];
+  if (String(company.status || "ACTIVE") !== "ACTIVE") {
+    return { success: false, message: "Shares of a halted company can't be gifted." };
+  }
   const ticker = String(company.ticker);
   const companyName = String(company.name);
 
@@ -60,7 +68,8 @@ export async function createStockGift(
   }
 
   // Generate unique clean coupon code: GUG-TICKER-XXXXXX
-  const randSuffix = crypto.randomBytes(3).toString("hex").toUpperCase();
+  // 48 random bits: codes can't be guessed by trying them
+  const randSuffix = crypto.randomBytes(6).toString("hex").toUpperCase();
   const code = `GUG-${ticker}-${randSuffix}`;
   const giftId = `gift_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
@@ -105,26 +114,23 @@ export async function redeemStockGift(
     return { success: false, message: "Please enter a valid gift coupon code." };
   }
 
+  const userRes = await db.execute({ sql: "SELECT is_frozen FROM users WHERE id = ?", args: [userId] });
+  if (userRes.rows.length === 0 || Number(userRes.rows[0].is_frozen || 0) === 1) {
+    return { success: false, message: "Your account is frozen. Contact the operator." };
+  }
+
   const giftRes = await db.execute({
     sql: "SELECT * FROM stock_gifts WHERE UPPER(code) = ?",
     args: [cleanCode],
   });
 
-  if (giftRes.rows.length === 0) {
-    return { success: false, message: "Gift coupon not found. Please double-check the code." };
+  // One answer for unknown and used codes, so the reply doesn't confirm which codes exist
+  const invalid = { success: false, message: "That code isn't valid or has already been used." };
+  if (giftRes.rows.length === 0 || giftRes.rows[0].status !== "ACTIVE") {
+    return invalid;
   }
 
   const g = giftRes.rows[0];
-  if (g.status === "REDEEMED") {
-    return { success: false, message: `This gift voucher was already claimed by ${g.recipient_name || "another citizen"}.` };
-  }
-  if (g.status === "CANCELLED") {
-    return { success: false, message: "This gift voucher was cancelled by the sender." };
-  }
-  if (g.status !== "ACTIVE") {
-    return { success: false, message: "This gift voucher is no longer active." };
-  }
-
   const giftId = String(g.id);
   const companyId = String(g.company_id);
   const ticker = String(g.ticker);
@@ -132,20 +138,23 @@ export async function redeemStockGift(
   const now = new Date().toISOString();
   const portId = `port_${userId}_${ticker}`;
 
+  // Claim the voucher before moving any shares: only one redeem or cancel can win it
+  const claim = await db.execute({
+    sql: `UPDATE stock_gifts 
+          SET status = 'REDEEMED', recipient_id = ?, recipient_name = ?, redeemed_at = ? 
+          WHERE id = ? AND status = 'ACTIVE'`,
+    args: [userId, userName, now, giftId],
+  });
+  if (claim.rowsAffected === 0) {
+    return invalid;
+  }
+
   // Credit shares into recipient's portfolio
   await db.execute({
     sql: `INSERT INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
           VALUES (?, ?, ?, ?, 0, 0.0)
           ON CONFLICT(user_id, company_id) DO UPDATE SET shares = shares + excluded.shares`,
     args: [portId, userId, companyId, shares],
-  });
-
-  // Mark gift voucher as REDEEMED
-  await db.execute({
-    sql: `UPDATE stock_gifts 
-          SET status = 'REDEEMED', recipient_id = ?, recipient_name = ?, redeemed_at = ? 
-          WHERE id = ? AND status = 'ACTIVE'`,
-    args: [userId, userName, now, giftId],
   });
 
   scheduleBlobPersist();
@@ -196,16 +205,21 @@ export async function cancelStockGift(
   const companyId = String(g.company_id);
   const shares = Number(g.shares);
 
+  // Mark the voucher cancelled first, and only if it is still unclaimed, so the shares come back once
+  const claim = await db.execute({
+    sql: "UPDATE stock_gifts SET status = 'CANCELLED' WHERE id = ? AND sender_id = ? AND status = 'ACTIVE'",
+    args: [giftId, userId],
+  });
+  if (claim.rowsAffected === 0) {
+    return { success: false, message: "This voucher was already claimed or cancelled." };
+  }
+
   // Return shares back to sender's portfolio
   await db.execute({
-    sql: "UPDATE portfolios SET shares = shares + ? WHERE user_id = ? AND company_id = ?",
-    args: [shares, userId, companyId],
-  });
-
-  // Mark voucher as CANCELLED
-  await db.execute({
-    sql: "UPDATE stock_gifts SET status = 'CANCELLED' WHERE id = ?",
-    args: [giftId],
+    sql: `INSERT INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
+          VALUES (?, ?, ?, ?, 0, 0.0)
+          ON CONFLICT(user_id, company_id) DO UPDATE SET shares = shares + excluded.shares`,
+    args: [`port_${userId}_${g.ticker}`, userId, companyId, shares],
   });
 
   scheduleBlobPersist();

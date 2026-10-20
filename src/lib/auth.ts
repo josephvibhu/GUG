@@ -2,6 +2,7 @@ import { getDb, initDb, syncDbFromBlob, persistDbToBlob } from "./db";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import crypto from "crypto";
+import { RECALIBRATED_CITIZENS, type RecalibratedInfo } from "./depositAdjustments";
 
 export interface UserSession {
   id: string;
@@ -15,6 +16,8 @@ export interface UserSession {
   isFrozen: boolean;
   termsAccepted: boolean;
   adjustmentNoticeSeen?: boolean;
+  // This player's deposit re-credit, sent only to them and only until they dismiss the notice
+  adjustment?: RecalibratedInfo;
 }
 
 export const COOKIE_NAME = "parlamentum_session_id";
@@ -95,6 +98,7 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     isFrozen: Number(u.is_frozen || 0) === 1,
     termsAccepted: Boolean(u.terms_accepted_at),
     adjustmentNoticeSeen: Boolean(u.deposit_adjustment_notice_seen_at),
+    adjustment: u.deposit_adjustment_notice_seen_at ? undefined : RECALIBRATED_CITIZENS[String(u.id)],
   };
 }
 
@@ -162,6 +166,7 @@ export async function registerUser(
     cookieStore.set(COOKIE_NAME, await signSession(id), {
       path: "/",
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 30, // 30 days
     });
@@ -222,6 +227,7 @@ export async function loginUser(
     cookieStore.set(COOKIE_NAME, await signSession(String(u.id)), {
       path: "/",
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 30,
     });
@@ -241,6 +247,7 @@ export async function loginUser(
       isFrozen: Number(u.is_frozen || 0) === 1,
       termsAccepted: Boolean(u.terms_accepted_at),
       adjustmentNoticeSeen: Boolean(u.deposit_adjustment_notice_seen_at),
+    adjustment: u.deposit_adjustment_notice_seen_at ? undefined : RECALIBRATED_CITIZENS[String(u.id)],
     },
   };
 }

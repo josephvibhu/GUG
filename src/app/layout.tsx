@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Archivo } from "next/font/google";
 import "./globals.css";
 import Footer from "@/components/Footer";
@@ -13,6 +13,12 @@ const archivo = Archivo({
 export const metadata: Metadata = {
   title: "Grow Ur Gold",
   description: "The player-run stock exchange of Parlamentum. Trade company shares for in-game gold, list your company, collect Friday dividends.",
+};
+
+// viewport-fit=cover lets the phone tab bar sit above the iPhone home indicator (see globals.css)
+export const viewport: Viewport = {
+  themeColor: "#131722",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

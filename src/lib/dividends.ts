@@ -421,7 +421,8 @@ export async function executeDividendPayout(reportId: string): Promise<{
   const founderId = String(company.creator_id);
   const totalDue = Math.round(holdersRes.rows.reduce((sum, row) => sum + Math.round(Number(row.shares) * dividendPerShare * 100) / 100, 0) * 100) / 100;
 
-  const treasuryBalance = Number(company.treasury_balance || 0);
+  // A treasury below zero (from older data) pays nothing; it never makes the founder cover the gap
+  const treasuryBalance = Math.max(0, Number(company.treasury_balance || 0));
   const founderRes = await db.execute({ sql: "SELECT cash_balance FROM users WHERE id = ?", args: [founderId] });
   const founderCash = founderRes.rows.length > 0 ? Number(founderRes.rows[0].cash_balance) : 0;
   const totalAvailable = Math.round((treasuryBalance + founderCash) * 100) / 100;
@@ -449,10 +450,18 @@ export async function executeDividendPayout(reportId: string): Promise<{
   const fromFounder = Math.round((totalDue - fromTreasury) * 100) / 100;
 
   if (fromTreasury > 0) {
-    await db.execute({
-      sql: "UPDATE companies SET treasury_balance = treasury_balance - ? WHERE id = ?",
-      args: [fromTreasury, companyId],
+    // Take the treasury's part only if it is still there: another payout may have spent it meanwhile
+    const treasuryDebit = await db.execute({
+      sql: "UPDATE companies SET treasury_balance = ROUND(treasury_balance - ?, 2) WHERE id = ? AND treasury_balance >= ?",
+      args: [fromTreasury, companyId, fromTreasury],
     });
+    if (treasuryDebit.rowsAffected === 0) {
+      await db.execute({
+        sql: "UPDATE earnings_reports SET status = 'SCHEDULED', distributed_at = NULL WHERE id = ?",
+        args: [reportId],
+      });
+      return { success: false, message: "The treasury changed while this dividend was being paid. Try again.", totalPaid: 0, shareholdersPaid: 0 };
+    }
   }
   if (fromFounder > 0) {
     const debit = await db.execute({
@@ -475,22 +484,25 @@ export async function executeDividendPayout(reportId: string): Promise<{
     }
   }
 
-  // Record corporate dividend expense in company_ledger
+  // Record the treasury's part of the dividend in company_ledger (the rest came from the founder's purse)
   try {
-    const ledgerId = `cld_${crypto.randomUUID()}`;
-    await db.execute({
-      sql: `INSERT INTO company_ledger (id, company_id, user_id, entry_type, category, amount, description, entry_date, created_at)
-            VALUES (?, ?, ?, 'EXPENSE', 'DIVIDEND_DISTRIBUTION', ?, ?, ?, ?)`,
-      args: [
-        ledgerId,
-        companyId,
-        founderId,
-        totalDue,
-        `Dividend Distribution (${report.period_title || 'Dividend Payout'})`,
-        now.slice(0, 10),
-        now,
-      ],
-    });
+    if (fromTreasury > 0) {
+      const ledgerId = `cld_${crypto.randomUUID()}`;
+      await db.execute({
+        sql: `INSERT INTO company_ledger (id, company_id, user_id, entry_type, category, amount, description, entry_date, created_at)
+              VALUES (?, ?, ?, 'EXPENSE', 'DIVIDEND_DISTRIBUTION', ?, ?, ?, ?)`,
+        args: [
+          ledgerId,
+          companyId,
+          founderId,
+          fromTreasury,
+          `Dividend: ${report.period_title || "payout"} (${totalDue.toLocaleString()} gold in total` +
+            (fromFounder > 0 ? `, ${fromFounder.toLocaleString()} from the founder's purse)` : ")"),
+          now.slice(0, 10),
+          now,
+        ],
+      });
+    }
   } catch (e) {
     console.warn("Error logging company_ledger dividend distribution:", e);
   }

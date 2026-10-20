@@ -332,6 +332,11 @@ export async function initDb(): Promise<void> {
     await db.execute(`ALTER TABLE companies ADD COLUMN total_profit_deposited REAL NOT NULL DEFAULT 0.0;`);
   } catch {}
 
+  // Founder's Discord contact for the operator, editable after listing (not shown publicly)
+  try {
+    await db.execute(`ALTER TABLE companies ADD COLUMN discord_handle TEXT;`);
+  } catch {}
+
   // Migrations for enhanced IPO applications
   try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN discord_id TEXT;`); } catch {}
   try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN business_type TEXT DEFAULT 'FACTORY';`); } catch {}
@@ -342,6 +347,7 @@ export async function initDb(): Promise<void> {
   try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN press_viewers TEXT;`); } catch {}
   try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN press_frequency TEXT;`); } catch {}
   try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN special_notes TEXT;`); } catch {}
+
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS earnings_reports (
@@ -595,6 +601,24 @@ export async function initDb(): Promise<void> {
     INSERT OR IGNORE INTO users (id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, avatar, is_admin, created_at)
     VALUES ('usr_treasury', 'ExchangeTreasury', 'none', 'Exchange Treasury', 'ExchangeTreasury', 0.0, 0.0, '🏛️', 1, '2026-01-01T00:00:00Z');
   `);
+
+  // Listing approval used to drop the application's weekly revenue and Discord handle. Copy them onto
+  // companies listed before the fix, once, so a founder who later edits them isn't overwritten.
+  const backfilled = await db.execute("SELECT value FROM settings WHERE key = 'migr_company_profile_backfill'");
+  if (backfilled.rows.length === 0) {
+    await db.execute(`
+      UPDATE companies SET
+        weekly_revenue = CASE WHEN COALESCE(weekly_revenue, 0) > 0 THEN weekly_revenue ELSE COALESCE((
+          SELECT a.weekly_revenue FROM ipo_applications a
+          WHERE UPPER(a.ticker) = UPPER(companies.ticker) AND a.user_id = companies.creator_id AND a.status = 'APPROVED'
+          ORDER BY a.created_at DESC LIMIT 1), 0) END,
+        discord_handle = COALESCE(discord_handle, (
+          SELECT a.discord_id FROM ipo_applications a
+          WHERE UPPER(a.ticker) = UPPER(companies.ticker) AND a.user_id = companies.creator_id AND a.status = 'APPROVED'
+          ORDER BY a.created_at DESC LIMIT 1))
+    `);
+    await db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('migr_company_profile_backfill', 'done')");
+  }
 
   isInitialized = true;
 }

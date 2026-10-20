@@ -57,27 +57,13 @@ export async function seedMarketData(force = false) {
     });
   }
 
-  // Set default house_name setting to JosephArora and disable auto-approve for security
+  // Defaults only: the operator's own choices in the settings survive a cold start
   await db.execute(`
-    INSERT OR REPLACE INTO settings (key, value) VALUES ('house_name', 'JosephArora');
+    INSERT OR IGNORE INTO settings (key, value) VALUES ('house_name', 'JosephArora');
   `);
   await db.execute(`
-    INSERT OR REPLACE INTO settings (key, value) VALUES ('auto_approve_deposits', 'false');
+    INSERT OR IGNORE INTO settings (key, value) VALUES ('auto_approve_deposits', 'false');
   `);
-
-  // Remove legacy/imperial iron companies and previous seeds
-  const legacyComps = await db.execute("SELECT id FROM companies WHERE UPPER(ticker) IN ('IRON', 'GRAIN')");
-  for (const row of legacyComps.rows) {
-    const cId = String(row.id);
-    await db.execute({ sql: "DELETE FROM orders WHERE company_id = ?", args: [cId] });
-    await db.execute({ sql: "DELETE FROM candles WHERE company_id = ?", args: [cId] });
-    await db.execute({ sql: "DELETE FROM announcements WHERE company_id = ?", args: [cId] });
-    await db.execute({ sql: "DELETE FROM portfolios WHERE company_id = ?", args: [cId] });
-    await db.execute({ sql: "DELETE FROM trades WHERE company_id = ?", args: [cId] });
-    await db.execute({ sql: "DELETE FROM buybacks WHERE company_id = ?", args: [cId] });
-    await db.execute({ sql: "DELETE FROM companies WHERE id = ?", args: [cId] });
-  }
-  await db.execute("DELETE FROM ipo_applications WHERE UPPER(ticker) IN ('IRON', 'GRAIN')");
 
   // Ensure Grow UR Gold (GUG) is chartered as the flagship sovereign marketplace company
   // Specs: Grow UR Gold - GUG, The Official Marketplace of the Singaporean Stock Exchange

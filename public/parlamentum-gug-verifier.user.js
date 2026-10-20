@@ -37,10 +37,16 @@
         if (val && val.trim()) return val.trim();
       }
     } catch {}
+    // Older versions also kept the key in parlamentum.org's localStorage, where any script on the page can read
+    // it: move it into the userscript's own storage and delete the copy
     try {
       if (typeof localStorage !== "undefined") {
-        const val = localStorage.getItem("gug_api_key") || "";
-        if (val && val.trim()) return val.trim();
+        const val = (localStorage.getItem("gug_api_key") || "").trim();
+        localStorage.removeItem("gug_api_key");
+        if (val && typeof GM_setValue !== "undefined") {
+          GM_setValue("gug_api_key", val);
+          return val;
+        }
       }
     } catch {}
     return "";
@@ -51,11 +57,6 @@
     try {
       if (typeof GM_setValue !== "undefined") {
         GM_setValue("gug_api_key", trimmed);
-      }
-    } catch {}
-    try {
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem("gug_api_key", trimmed);
       }
     } catch {}
     return trimmed;

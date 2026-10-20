@@ -102,7 +102,8 @@ export default function WalletModal({
   const depositGrossTotal = depositIronUnits * ironPrice;
 
   // Withdrawal Calculations (Tax Negation Formula: Gross = Net / (1 - TaxRate))
-  const tDecimal = Math.max(0, Math.min(50, selectedTaxRate)) / 100;
+  // The exchange pays at most its own rate (the server caps it there too)
+  const tDecimal = Math.max(0, Math.min(taxRate, selectedTaxRate)) / 100;
   const withdrawGross = tDecimal < 1 ? Math.round((numWithdraw / (1 - tDecimal)) * 100) / 100 : numWithdraw;
   const withdrawTaxNegated = Math.round((withdrawGross - numWithdraw) * 100) / 100;
   const withdrawIronUnits = numWithdraw >= 100 ? 100 : Math.max(10, Math.ceil(numWithdraw / ironPrice));
@@ -196,54 +197,49 @@ export default function WalletModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-200 font-sans">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl relative max-h-[92vh] flex flex-col overflow-hidden text-xs">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center sm:p-4 z-50">
+      <div role="dialog" aria-modal="true" className="bg-pane border border-rule rounded-t-[6px] sm:rounded-[6px] w-full sm:max-w-lg p-4 sm:p-5 shadow-[0_12px_40px_rgba(0,0,0,0.5)] relative max-h-[92vh] flex flex-col overflow-hidden text-[13px]">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
+          className="absolute right-4 top-4 text-ash hover:text-zinc-50 p-1 rounded-[4px] hover:bg-zinc-800 transition cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header & Balance */}
-        <div className="pb-4 border-b border-zinc-800">
-          <div className="flex items-center gap-2 text-amber-400 font-semibold mb-1">
+        <div className="pb-4 border-b border-rule">
+          <div className="flex items-center gap-2 text-bullion font-semibold mb-1">
             <Coins className="w-5 h-5" />
-            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+            <h2 className="text-base sm:text-lg font-bold text-zinc-50 tracking-tight">
               Parlamentum Gold Purse
             </h2>
           </div>
           <div className="flex items-baseline justify-between">
-            <p className="text-[11px] text-zinc-400">
-              Transfer funds via <strong className="text-zinc-200">Raw Iron ({ironPrice}g each)</strong> with automatic tax negation.
+            <p className="text-[12px] text-ash">
+              Transfer funds via <strong className="text-paper">Raw Iron ({ironPrice}g each)</strong> with automatic tax negation.
             </p>
             <div className="text-right">
-              <span className="text-[10px] text-zinc-400 uppercase font-sans">Purse Balance</span>
-              <div className="font-mono text-base font-bold text-emerald-400">
+              <span className="text-[12px] text-ash font-sans">Purse Balance</span>
+              <div className="tabular text-base font-bold text-bullion">
                 {balance.toLocaleString()} gold
               </div>
             </div>
           </div>
         </div>
 
-        {/* Notice Banner */}
-        <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2 mt-3 flex items-center gap-2 text-[11px] text-amber-200/90 shrink-0">
-          <span className="font-semibold text-amber-300">⚖️ Notice:</span> Played with Parlamentum gold only. No real money goes in or comes out. Not run by the Parlamentum team.
-        </div>
-
         {/* Navigation Tabs */}
-        <div className="grid grid-cols-3 gap-1.5 p-1 bg-zinc-950 rounded-xl border border-zinc-800 my-3 shrink-0">
+        <div className="grid grid-cols-3 gap-1.5 p-1 bg-floor rounded-[4px] border border-rule my-3 shrink-0">
           <button
             type="button"
             onClick={() => {
               setTab("deposit");
               setFeedback(null);
             }}
-            className={`py-2 text-center font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`py-2 text-center font-bold rounded-[4px] transition cursor-pointer flex items-center justify-center gap-1.5 ${
               tab === "deposit"
-                ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-rule text-zinc-50"
+                : "text-ash hover:text-paper"
             }`}
           >
             <ArrowDownLeft className="w-3.5 h-3.5" />
@@ -256,10 +252,10 @@ export default function WalletModal({
               setTab("withdraw");
               setFeedback(null);
             }}
-            className={`py-2 text-center font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`py-2 text-center font-bold rounded-[4px] transition cursor-pointer flex items-center justify-center gap-1.5 ${
               tab === "withdraw"
-                ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-rule text-zinc-50"
+                : "text-ash hover:text-paper"
             }`}
           >
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -272,10 +268,10 @@ export default function WalletModal({
               setTab("history");
               setFeedback(null);
             }}
-            className={`py-2 text-center font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`py-2 text-center font-bold rounded-[4px] transition cursor-pointer flex items-center justify-center gap-1.5 ${
               tab === "history"
-                ? "bg-zinc-800 text-white"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-zinc-800 text-zinc-50"
+                : "text-ash hover:text-paper"
             }`}
           >
             <History className="w-3.5 h-3.5" />
@@ -286,18 +282,18 @@ export default function WalletModal({
         {/* Feedback Alert */}
         {feedback && (
           <div
-            className={`p-3 rounded-xl mb-3 flex items-start gap-2 border leading-relaxed shrink-0 ${
+            className={`p-3 rounded-[4px] mb-3 flex items-start gap-2 border leading-relaxed shrink-0 ${
               feedback.type === "success"
-                ? "bg-emerald-950/60 border-emerald-600/40 text-emerald-300"
-                : "bg-rose-950/60 border-rose-600/40 text-rose-300"
+                ? "bg-floor border-rule text-paper"
+                : "bg-floor border-rule text-bear"
             }`}
           >
             {feedback.type === "success" ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-4 h-4 text-bullion shrink-0 mt-0.5" />
             ) : (
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 text-bear shrink-0 mt-0.5" />
             )}
-            <div className="text-[11px]">{feedback.message}</div>
+            <div className="text-[12px]">{feedback.message}</div>
           </div>
         )}
 
@@ -311,16 +307,16 @@ export default function WalletModal({
                 <button
                   type="button"
                   onClick={() => setDepositMethod("MARKET_IRON")}
-                  className={`flex-1 p-2 rounded-lg border text-left transition cursor-pointer ${
+                  className={`flex-1 p-2 rounded-[4px] border text-left transition cursor-pointer ${
                     depositMethod === "MARKET_IRON"
-                      ? "bg-zinc-800 border-amber-500/40 text-white"
-                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                      ? "bg-zinc-800 border-rule text-zinc-50"
+                      : "bg-floor border-rule text-ash hover:text-paper"
                   }`}
                 >
-                  <div className="font-semibold flex items-center gap-1.5 text-xs text-amber-300">
+                  <div className="font-semibold flex items-center gap-1.5 text-[13px] text-paper">
                     <Store className="w-3.5 h-3.5" /> Market (Raw Iron @ {ironPrice}g)
                   </div>
-                  <div className="text-[10px] text-zinc-400 mt-0.5">
+                  <div className="text-[12px] text-ash mt-0.5">
                     Buy Raw Iron listed by {houseOperator}
                   </div>
                 </button>
@@ -328,66 +324,66 @@ export default function WalletModal({
                 <button
                   type="button"
                   onClick={() => setDepositMethod("CONTRACT")}
-                  className={`flex-1 p-2 rounded-lg border text-left transition cursor-pointer ${
+                  className={`flex-1 p-2 rounded-[4px] border text-left transition cursor-pointer ${
                     depositMethod === "CONTRACT"
-                      ? "bg-zinc-800 border-amber-500/40 text-white"
-                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                      ? "bg-zinc-800 border-rule text-zinc-50"
+                      : "bg-floor border-rule text-ash hover:text-paper"
                   }`}
                 >
-                  <div className="font-semibold flex items-center gap-1.5 text-xs text-amber-300">
+                  <div className="font-semibold flex items-center gap-1.5 text-[13px] text-paper">
                     <FileText className="w-3.5 h-3.5" /> In-Game Contract
                   </div>
-                  <div className="text-[10px] text-zinc-400 mt-0.5">
+                  <div className="text-[12px] text-ash mt-0.5">
                     Send direct courier contract
                   </div>
                 </button>
               </div>
 
               {/* Exact Recipe Box */}
-              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3.5 text-[11px] leading-relaxed">
-                <div className="font-bold text-white text-xs mb-2 flex items-center gap-1.5">
-                  <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+              <div className="bg-floor border border-rule rounded-[4px] p-3.5 text-[12px] leading-relaxed">
+                <div className="font-bold text-zinc-50 text-[13px] mb-2 flex items-center gap-1.5">
+                  <HelpCircle className="w-3.5 h-3.5 text-bullion" />
                   Deposit Instructions:
                 </div>
 
                 {depositMethod === "MARKET_IRON" ? (
-                  <div className="space-y-1.5 text-zinc-300">
+                  <div className="space-y-1.5 text-paper">
                     <div>1. In <strong>Parlamentum</strong>, open the commodity market.</div>
                     <div>
-                      2. Buy <strong className="text-amber-400">{depositIronUnits} Raw Iron</strong> listed by{" "}
-                      <span className="font-mono font-bold text-emerald-400">
+                      2. Buy <strong className="text-bullion">{depositIronUnits} Raw Iron</strong> listed by{" "}
+                      <span className="tabular font-bold text-bullion">
                         {houseOperator}
                       </span>.
                     </div>
-                    <div className="flex items-center gap-2 pt-1 font-mono text-[11px] text-zinc-200">
-                      <span>Rate: <strong className="text-amber-400">{ironPrice} gold</strong> per Raw Iron</span>
+                    <div className="flex items-center gap-2 pt-1 tabular text-[12px] text-paper">
+                      <span>Rate: <strong className="text-bullion">{ironPrice} gold</strong> per Raw Iron</span>
                       <span>·</span>
-                      <span>Total Gold: <strong className="text-emerald-400">{depositGrossTotal.toLocaleString()} gold</strong></span>
+                      <span>Total Gold: <strong className="text-bullion">{depositGrossTotal.toLocaleString()} gold</strong></span>
                     </div>
-                    <div className="text-zinc-400 text-[10px] pt-1">
-                      Purchase using citizen <span className="font-mono text-zinc-300">{parlamentumName || "your account"}</span>. 
+                    <div className="text-ash text-[12px] pt-1">
+                      Purchase using citizen <span className="tabular text-paper">{parlamentumName || "your account"}</span>. 
                       Click below after purchase to immediately credit your purse.
                     </div>
-                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 text-[10px] text-amber-300/90 mt-2 flex items-start gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="bg-floor border border-rule rounded-[4px] p-2 text-[12px] text-paper/90 mt-2 flex items-start gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-bullion shrink-0 mt-0.5" />
                       <span>
                         <strong>Parlamentum In-Game Tax Notice:</strong> Parlamentum automatically levies a 5% market sales tax on all in-game market trades. Purse credits reflect 100% of the net gold received by the House.
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-1.5 text-zinc-300 font-mono text-[11px]">
-                    <div>To: <strong className="text-amber-400">{houseOperator}</strong></div>
-                    <div>You give: <strong className="text-white">{depositGrossTotal.toLocaleString()} gold + 1 courier ticket</strong></div>
-                    <div>You get: <strong className="text-white">1 Raw Iron</strong></div>
-                    <div>Note: <strong className="text-zinc-400">Exchange deposit for {parlamentumName || "Citizen"}</strong></div>
+                  <div className="space-y-1.5 text-paper tabular text-[12px]">
+                    <div>To: <strong className="text-bullion">{houseOperator}</strong></div>
+                    <div>You give: <strong className="text-zinc-50">{depositGrossTotal.toLocaleString()} gold + 1 courier ticket</strong></div>
+                    <div>You get: <strong className="text-zinc-50">1 Raw Iron</strong></div>
+                    <div>Note: <strong className="text-ash">Exchange deposit for {parlamentumName || "Citizen"}</strong></div>
                   </div>
                 )}
               </div>
 
               {/* Character Name & Amount Inputs */}
               <div>
-                <label className="text-zinc-300 font-semibold block mb-1">
+                <label className="text-paper font-semibold block mb-1">
                   Your In-Game Character Name
                 </label>
                 <input
@@ -395,14 +391,14 @@ export default function WalletModal({
                   value={parlamentumName}
                   onChange={(e) => setParlamentumName(e.target.value)}
                   placeholder="Exact Parlamentum citizen name"
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 text-zinc-50 tabular focus:outline-none focus:border-zinc-500"
                 />
               </div>
 
               <div>
-                <div className="flex justify-between text-zinc-300 font-semibold mb-1">
+                <div className="flex justify-between text-paper font-semibold mb-1">
                   <span>Target Gold Amount (at {ironPrice}g / Raw Iron)</span>
-                  <span className="font-mono text-amber-400 font-bold">
+                  <span className="tabular text-bullion font-bold">
                     = {depositIronUnits} Raw Iron units
                   </span>
                 </div>
@@ -412,7 +408,7 @@ export default function WalletModal({
                   step={ironPrice}
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 font-mono text-emerald-400 font-bold text-sm focus:outline-none focus:border-amber-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 tabular text-bullion font-bold text-sm focus:outline-none focus:border-zinc-500"
                 />
                 <div className="flex gap-1.5 mt-2">
                   {[
@@ -428,7 +424,7 @@ export default function WalletModal({
                       type="button"
                       title={preset.label}
                       onClick={() => setDepositAmount(preset.val.toString())}
-                      className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono py-1 rounded text-[10px] cursor-pointer"
+                      className="flex-1 bg-floor hover:bg-rule text-paper tabular py-1 rounded text-[12px] cursor-pointer"
                     >
                       +{preset.val >= 1000 ? `${preset.val / 1000}k` : preset.val}
                     </button>
@@ -440,7 +436,7 @@ export default function WalletModal({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs tracking-wide transition shadow-lg shadow-emerald-500/20 cursor-pointer"
+                className="w-full py-2.5 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor font-bold text-[13px] transition cursor-pointer"
               >
                 {loading ? "Confirming with House..." : `I Bought ${depositIronUnits} Raw Iron (${depositGrossTotal.toLocaleString()} Gold) · Credit Purse`}
               </button>
@@ -450,79 +446,79 @@ export default function WalletModal({
           {/* TAB 2: TAKE GOLD OUT (WITHDRAW WITH TAX NEGATION) */}
           {tab === "withdraw" && (
             <form onSubmit={handleWithdrawSubmit} className="flex flex-col gap-4">
-              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3.5 text-[11px] leading-relaxed">
-                <div className="font-bold text-white text-xs mb-2 flex items-center justify-between">
+              <div className="bg-floor border border-rule rounded-[4px] p-3.5 text-[12px] leading-relaxed">
+                <div className="font-bold text-zinc-50 text-[13px] mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Store className="w-3.5 h-3.5 text-amber-400" />
+                    <Store className="w-3.5 h-3.5 text-bullion" />
                     How to Receive Your In-Game Gold:
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-[4px] bg-floor border border-rule text-bullion text-[12px] tabular flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3" /> Tax Negated ({selectedTaxRate}%)
                   </span>
                 </div>
-                <p className="text-zinc-300 mb-2">
-                  List <strong className="text-amber-400">{withdrawIronUnits} Raw Iron</strong> on the Parlamentum market. 
+                <p className="text-paper mb-2">
+                  List <strong className="text-bullion">{withdrawIronUnits} Raw Iron</strong> on the Parlamentum market. 
                   The House Operator ({houseOperator}) buys your listing, transferring the gold to your character.
                 </p>
 
                 {/* Tax Negation Math Breakdown */}
-                <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800 space-y-1.5 font-mono text-[11px]">
-                  <div className="flex justify-between text-zinc-300">
+                <div className="p-3 bg-pane rounded-[4px] border border-rule space-y-1.5 tabular text-[12px]">
+                  <div className="flex justify-between text-paper">
                     <span>You receive (Net target):</span>
-                    <strong className="text-emerald-400">{numWithdraw.toLocaleString()} gold</strong>
+                    <strong className="text-bullion">{numWithdraw.toLocaleString()} gold</strong>
                   </div>
-                  <div className="flex justify-between text-zinc-400 text-[10px]">
+                  <div className="flex justify-between text-ash text-[12px]">
                     <span className="flex items-center gap-1">
                       <Percent className="w-3 h-3" /> Parlamentum Market Tax ({selectedTaxRate}%):
                     </span>
-                    <span className="text-rose-400">-{withdrawTaxNegated.toFixed(2)} gold</span>
+                    <span className="text-bear">-{withdrawTaxNegated.toFixed(2)} gold</span>
                   </div>
-                  <div className="flex justify-between text-amber-300 pt-1 border-t border-zinc-800 font-semibold">
+                  <div className="flex justify-between text-paper pt-1 border-t border-rule font-semibold">
                     <span>House Listing Total (Gross):</span>
                     <span>{withdrawGross.toFixed(2)} gold</span>
                   </div>
-                  <div className="pt-2 text-[10px] text-zinc-400 leading-normal border-t border-zinc-800/80 font-sans">
-                    ✨ <strong className="text-zinc-200">Tax Absorption:</strong> The House pays the extra{" "}
-                    <strong className="text-emerald-400">{withdrawTaxNegated.toFixed(2)} gold</strong> for you so that after the game taxes the sale, you keep exactly <strong className="text-white">{numWithdraw.toLocaleString()} gold</strong> in your pocket!
+                  <div className="pt-2 text-[12px] text-ash leading-normal border-t border-rule font-sans">
+                    ✨ <strong className="text-paper">Tax Absorption:</strong> The House pays the extra{" "}
+                    <strong className="text-bullion">{withdrawTaxNegated.toFixed(2)} gold</strong> for you so that after the game taxes the sale, you keep exactly <strong className="text-zinc-50">{numWithdraw.toLocaleString()} gold</strong> in your pocket!
                   </div>
-                  <div className="p-2 bg-black/40 rounded border border-zinc-800/60 text-amber-300 font-mono text-[11px] mt-2">
+                  <div className="p-2 bg-floor rounded border border-rule text-paper tabular text-[12px] mt-2">
                     Listing Recipe: {withdrawIronUnits} Raw Iron @ {withdrawUnitPrice.toFixed(2)} gold each.
                   </div>
                 </div>
               </div>
 
               {balance < 20 && (
-                <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="p-3 rounded-[4px] bg-floor border border-rule text-paper text-[13px] flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-bullion shrink-0 mt-0.5" />
                   <div>
                     <div className="font-bold">Minimum 20 Gold Required to Cash Out</div>
-                    <div className="text-[11px] text-zinc-300 mt-0.5">
-                      Your purse holds <strong className="text-white font-mono">{balance.toLocaleString()} gold</strong>. An account needs at least 20 gold to withdraw to Parlamentum.
+                    <div className="text-[12px] text-paper mt-0.5">
+                      Your purse holds <strong className="text-zinc-50 tabular">{balance.toLocaleString()} gold</strong>. An account needs at least 20 gold to withdraw to Parlamentum.
                     </div>
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="text-zinc-300 font-semibold block mb-1">
+                <label className="text-paper font-semibold block mb-1">
                   Recipient Character in Parlamentum
                 </label>
                 <input
                   type="text"
                   value={parlamentumName}
                   onChange={(e) => setParlamentumName(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 text-zinc-50 tabular focus:outline-none focus:border-zinc-500"
                 />
               </div>
 
               {/* Regional Market Tax Rate Selector */}
-              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3">
+              <div className="bg-floor border border-rule rounded-[4px] p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-zinc-300 font-semibold text-xs flex items-center gap-1.5">
-                    <Percent className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-paper font-semibold text-[13px] flex items-center gap-1.5">
+                    <Percent className="w-3.5 h-3.5 text-bullion" />
                     Regional Market Tax Rate
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-mono">
+                  <span className="px-2 py-0.5 rounded bg-floor border border-rule text-paper text-[12px] tabular">
                     {selectedTaxRate}% applied
                   </span>
                 </div>
@@ -532,42 +528,42 @@ export default function WalletModal({
                     { label: "5% (Std)", rate: 5 },
                     { label: "8%", rate: 8 },
                     { label: "10% (Def)", rate: 10 },
-                  ].map((preset) => (
+                  ].filter((preset) => preset.rate <= taxRate).map((preset) => (
                     <button
                       key={preset.rate}
                       type="button"
                       onClick={() => setSelectedTaxRate(preset.rate)}
-                      className={`py-1 px-1 rounded text-[10px] font-mono transition border cursor-pointer ${
+                      className={`py-1 px-1 rounded text-[12px] tabular transition border cursor-pointer ${
                         selectedTaxRate === preset.rate
-                          ? "bg-amber-500 text-black font-bold border-amber-400 shadow-sm shadow-amber-500/20"
-                          : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                          ? "bg-rule text-zinc-50 font-semibold border-zinc-500"
+                          : "bg-pane border-rule text-ash hover:text-paper"
                       }`}
                     >
                       {preset.label}
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-1 border-t border-zinc-800/80">
-                  <span>Custom Region Tax Rate:</span>
+                <div className="flex items-center justify-between text-[12px] text-ash pt-1 border-t border-rule">
+                  <span>Your country&apos;s export tax (up to {taxRate}%)</span>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="number"
                       min="0"
-                      max="50"
+                      max={taxRate}
                       step="0.5"
                       value={selectedTaxRate}
-                      onChange={(e) => setSelectedTaxRate(Math.max(0, Math.min(50, parseFloat(e.target.value) || 0)))}
-                      className="w-16 bg-zinc-900 border border-zinc-700 rounded px-2 py-0.5 text-xs text-amber-300 font-mono text-center focus:outline-none focus:border-amber-400"
+                      onChange={(e) => setSelectedTaxRate(Math.max(0, Math.min(taxRate, parseFloat(e.target.value) || 0)))}
+                      className="w-16 bg-pane border border-rule rounded px-2 py-0.5 text-[13px] text-paper tabular text-center focus:outline-none focus:border-zinc-500"
                     />
-                    <span className="text-zinc-500 font-mono">%</span>
+                    <span className="text-ash tabular">%</span>
                   </div>
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between text-zinc-300 font-semibold mb-1">
+                <div className="flex justify-between text-paper font-semibold mb-1">
                   <span>Target Net Gold To Receive</span>
-                  <span className="font-mono text-zinc-400 text-[11px]">
+                  <span className="tabular text-ash text-[12px]">
                     Purse: {balance.toLocaleString()} gold
                   </span>
                 </div>
@@ -579,7 +575,7 @@ export default function WalletModal({
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   placeholder="Min 20 gold"
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 font-mono text-amber-400 font-bold text-sm focus:outline-none focus:border-amber-400"
+                  className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 tabular text-bullion font-bold text-sm focus:outline-none focus:border-zinc-500"
                 />
 
                 {/* Percentage Suboptions with calculated gold amounts */}
@@ -597,19 +593,19 @@ export default function WalletModal({
                             setWithdrawAmount(Math.max(20, calcAmount).toString());
                           }
                         }}
-                        className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono py-1.5 px-1 rounded text-center transition cursor-pointer border border-zinc-700/60 hover:border-zinc-500"
+                        className="bg-floor hover:bg-rule text-paper tabular py-1.5 px-1 rounded text-center transition cursor-pointer border border-rule hover:border-zinc-500"
                       >
-                        <div className="text-[11px] font-bold text-amber-300">{pct === 100 ? "Max" : `${pct}%`}</div>
-                        <div className="text-[9px] text-zinc-400 truncate">{calcAmount}g</div>
+                        <div className="text-[12px] font-bold text-paper">{pct === 100 ? "Max" : `${pct}%`}</div>
+                        <div className="text-[9px] text-ash truncate">{calcAmount}g</div>
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-zinc-400 mt-2">
-                  <span>ℹ️ Minimum cash out is <strong className="text-zinc-200">20 gold</strong>.</span>
+                <div className="flex items-center justify-between text-[12px] text-ash mt-2">
+                  <span>ℹ️ Minimum cash out is <strong className="text-paper">20 gold</strong>.</span>
                   {numWithdraw > 0 && numWithdraw < 20 && (
-                    <span className="text-rose-400 font-semibold">Needs at least 20 gold to withdraw</span>
+                    <span className="text-bear font-semibold">Needs at least 20 gold to withdraw</span>
                   )}
                 </div>
               </div>
@@ -617,10 +613,10 @@ export default function WalletModal({
               <button
                 type="submit"
                 disabled={loading || balance < 20 || numWithdraw < 20 || numWithdraw > balance}
-                className={`w-full py-2.5 rounded-xl font-bold text-xs tracking-wide transition shadow-lg cursor-pointer ${
+                className={`w-full py-2.5 rounded-[4px] font-bold text-[13px] transition shadow-lg cursor-pointer ${
                   balance < 20 || numWithdraw < 20 || numWithdraw > balance
-                    ? "bg-zinc-800 text-zinc-500 border border-zinc-700/60 cursor-not-allowed shadow-none"
-                    : "bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/20"
+                    ? "bg-zinc-800 text-ash border border-rule cursor-not-allowed shadow-none"
+                    : "bg-bullion hover:bg-amber-300 text-floor"
                 }`}
               >
                 {loading
@@ -640,7 +636,7 @@ export default function WalletModal({
           {tab === "history" && (
             <div className="flex flex-col gap-2">
               {ledger.length === 0 ? (
-                <div className="py-12 text-center text-zinc-400">
+                <div className="py-12 text-center text-ash">
                   No deposits or withdrawals in your ledger yet.
                 </div>
               ) : (
@@ -650,12 +646,12 @@ export default function WalletModal({
                     return (
                       <div
                         key={tx.id}
-                        className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 flex items-start justify-between gap-3 text-[11px]"
+                        className="p-3 bg-floor rounded-[4px] border border-rule flex items-start justify-between gap-3 text-[12px]"
                       >
                         <div className="flex items-start gap-2.5">
                           <div
-                            className={`p-1.5 rounded-lg mt-0.5 ${
-                              isDeposit ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
+                            className={`p-1.5 rounded-[4px] mt-0.5 ${
+                              isDeposit ? "bg-floor text-bullion" : "bg-floor text-bullion"
                             }`}
                           >
                             {isDeposit ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
@@ -665,15 +661,15 @@ export default function WalletModal({
                               const isAdjustment = tx.recipeNote?.toLowerCase().includes("recalibration") || tx.recipeNote?.toLowerCase().includes("adjustment");
                               return (
                                 <>
-                                  <div className="font-bold text-white flex items-center gap-2">
+                                  <div className="font-bold text-zinc-50 flex items-center gap-2">
                                     <span>{isDeposit ? "Gold Deposit" : "Gold Withdrawal"}</span>
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                                    <span className={`text-[12px] px-1.5 py-0.5 rounded tabular ${
                                       isAdjustment
-                                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                                        : "bg-zinc-800 text-zinc-300"
+                                        ? "bg-floor text-paper border border-rule"
+                                        : "bg-zinc-800 text-paper"
                                     }`}>
                                       {isAdjustment
-                                        ? "⚖️ Net Tax Recalibration"
+                                        ? "Re-credited after tax"
                                         : tx.method === "CONTRACT"
                                         ? "Contract"
                                         : tx.method === "MANUAL_LOAD" || tx.method === "ADMIN_CREDIT"
@@ -682,32 +678,32 @@ export default function WalletModal({
                                     </span>
                                   </div>
                                   {isAdjustment ? (
-                                    <div className="mt-1.5 p-2 rounded-lg bg-emerald-950/40 border border-emerald-700/50 text-[10px] text-emerald-200/90 leading-relaxed font-mono">
+                                    <div className="mt-1.5 p-2 rounded-[4px] bg-floor border border-rule text-[12px] text-paper leading-relaxed tabular">
                                       {tx.recipeNote}
                                     </div>
                                   ) : (
-                                    <div className="text-zinc-400 text-[10px] mt-0.5">
+                                    <div className="text-ash text-[12px] mt-0.5">
                                       {tx.recipeNote}
                                     </div>
                                   )}
                                 </>
                               );
                             })()}
-                            <div className="text-[10px] text-zinc-400 mt-1">
+                            <div className="text-[12px] text-ash mt-1">
                               {new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString()}
                             </div>
                           </div>
                         </div>
 
-                        <div className="text-right font-mono shrink-0">
+                        <div className="text-right tabular shrink-0">
                           <div
-                            className={`font-bold text-xs ${
-                              isDeposit ? "text-emerald-400" : "text-amber-400"
+                            className={`font-bold text-[13px] ${
+                              isDeposit ? "text-bullion" : "text-bullion"
                             }`}
                           >
                             {isDeposit ? "+" : "-"}{tx.amount.toLocaleString()} gold
                           </div>
-                          <span className={`text-[10px] ${tx.status === "COMPLETED" ? "text-emerald-400" : "text-amber-400"}`}>
+                          <span className={`text-[12px] ${tx.status === "COMPLETED" ? "text-bullion" : "text-bullion"}`}>
                             {tx.status}
                           </span>
                         </div>
@@ -720,10 +716,6 @@ export default function WalletModal({
           )}
         </div>
 
-        {/* Footer Disclaimer */}
-        <div className="pt-3 border-t border-zinc-800 text-[10px] text-zinc-400 text-center shrink-0">
-          Operated with Parlamentum in-game gold only via Raw Iron @ {ironPrice}g. No real currency is involved.
-        </div>
       </div>
     </div>
   );

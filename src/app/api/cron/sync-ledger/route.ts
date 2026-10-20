@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { triggerCloudLedgerSync } from "@/lib/cloudSync";
-import { getSetting } from "@/lib/wallet";
 import { getCurrentUser } from "@/lib/auth";
 
 export const maxDuration = 30; // 30s timeout on Vercel
@@ -15,46 +14,21 @@ export async function POST(request: Request) {
 
 async function handleSync(request: Request) {
   try {
-    const url = new URL(request.url);
-    const keyParam = url.searchParams.get("key") || url.searchParams.get("apiKey") || "";
+    // Vercel cron (and any outside scheduler) sends "Authorization: Bearer <CRON_SECRET>" when CRON_SECRET is set
+    // in the project's environment variables. The API key and query-string keys are not accepted here.
+    const cronSecret = process.env.CRON_SECRET || "";
     const authHeader = request.headers.get("authorization") || "";
-    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-    const isVercelCron = request.headers.get("x-vercel-cron") === "1";
-
-    const [configuredApiKey, cronSecret] = await Promise.all([
-      getSetting("api_key", ""),
-      getSetting("cron_secret", process.env.CRON_SECRET || ""),
-    ]);
-
-    let isAuthorized = isVercelCron;
-
-    if (!isAuthorized && keyParam && (keyParam === configuredApiKey || (cronSecret && keyParam === cronSecret))) {
-      isAuthorized = true;
-    }
-
-    if (!isAuthorized && bearerToken && (bearerToken === configuredApiKey || (cronSecret && bearerToken === cronSecret))) {
-      isAuthorized = true;
-    }
+    let isAuthorized = cronSecret.length >= 16 && authHeader === `Bearer ${cronSecret}`;
 
     if (!isAuthorized) {
-      // Check if logged in as admin
       const user = await getCurrentUser();
-      if (user && user.isAdmin) {
-        isAuthorized = true;
-      }
+      isAuthorized = !!user?.isAdmin;
     }
 
     if (!isAuthorized) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized. Provide a valid ?key=<apiKey> parameter or log in as exchange operator.",
-        },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
     }
 
-    // Trigger cloud synchronization
     const result = await triggerCloudLedgerSync();
 
     return NextResponse.json({
@@ -62,14 +36,11 @@ async function handleSync(request: Request) {
       timestamp: new Date().toISOString(),
       message: result.message,
       fillsFound: result.fillsFound,
-      newCredits: result.newCredits,
+      credited: result.newCredits.length,
       expired: result.expired,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("GET/POST /api/cron/sync-ledger error:", error);
-    return NextResponse.json(
-      { success: false, message: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: "Sync failed. See the server log." }, { status: 500 });
   }
 }

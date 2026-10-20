@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Coins, AlertTriangle, CheckCircle2, ArrowRight, Loader2, Sparkles, Scale } from "lucide-react";
 import { refreshMarketFeed, type FeedUser } from "@/hooks/useMarketFeed";
 import { useRouter } from "next/navigation";
 
@@ -15,63 +14,6 @@ export interface RecalibratedInfo {
   adjustmentCredit: number;
 }
 
-export const RECALIBRATED_CITIZENS: Record<string, RecalibratedInfo> = {
-  "usr_c50f29a5": {
-    inGameName: "Spinning_Hexagon",
-    units: 100,
-    grossPaid: 550.00,
-    taxDeducted: 27.50,
-    netReceived: 522.50,
-    initialCredited: 500.00,
-    adjustmentCredit: 22.50,
-  },
-  "usr_8e9f8fdf": {
-    inGameName: "Avemon",
-    units: 50,
-    grossPaid: 275.00,
-    taxDeducted: 13.75,
-    netReceived: 261.25,
-    initialCredited: 250.00,
-    adjustmentCredit: 11.25,
-  },
-  "usr_ed4c52bb": {
-    inGameName: "Bug",
-    units: 30,
-    grossPaid: 165.00,
-    taxDeducted: 8.25,
-    netReceived: 156.75,
-    initialCredited: 150.00,
-    adjustmentCredit: 6.75,
-  },
-  "usr_b41a9a95": {
-    inGameName: "LilyXRose",
-    units: 8,
-    grossPaid: 44.00,
-    taxDeducted: 2.20,
-    netReceived: 41.80,
-    initialCredited: 35.00,
-    adjustmentCredit: 6.80,
-  },
-  "usr_467a4aa3": {
-    inGameName: "Bishop_Richiee",
-    units: 10,
-    grossPaid: 55.00,
-    taxDeducted: 2.75,
-    netReceived: 52.25,
-    initialCredited: 50.00,
-    adjustmentCredit: 2.25,
-  },
-  "usr_1ce6c427": {
-    inGameName: "Sus_Destro",
-    units: 2,
-    grossPaid: 11.00,
-    taxDeducted: 0.55,
-    netReceived: 10.45,
-    initialCredited: 10.00,
-    adjustmentCredit: 0.45,
-  },
-};
-
 interface DepositAdjustmentModalProps {
   isOpen: boolean;
   user: FeedUser | null;
@@ -84,7 +26,7 @@ export default function DepositAdjustmentModal({ isOpen, user }: DepositAdjustme
 
   if (!isOpen || !user) return null;
 
-  const info = RECALIBRATED_CITIZENS[user.id];
+  const info = user.adjustment;
   if (!info) return null;
 
   const handleDismiss = async () => {
@@ -110,117 +52,27 @@ export default function DepositAdjustmentModal({ isOpen, user }: DepositAdjustme
     }
   };
 
+  const row = "flex justify-between gap-3";
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 font-sans animate-in fade-in duration-200">
-      <div className="bg-zinc-900 border border-zinc-700/80 rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl flex flex-col gap-4 text-left text-xs max-h-[92vh] overflow-y-auto">
-        {/* Header Icon & Title */}
-        <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 mt-0.5">
-            <Coins className="w-5 h-5 text-amber-400" />
-          </div>
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 mb-1">
-              <Sparkles className="w-3 h-3" /> Purse Credited Successfully
-            </div>
-            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-              Deposit Adjustment & Apology
-            </h2>
-            <p className="text-[12px] text-zinc-400">
-              Parlamentum Raw Iron pricing & 5% in-game tax recalibration
-            </p>
-          </div>
-        </div>
-
-        {/* Apology & Context Box */}
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5 text-amber-300 font-semibold text-[11px] uppercase tracking-wide">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            Sincere Apology from the Exchange House
-          </div>
-          <p className="text-zinc-300 leading-relaxed text-[11px]">
-            We apologize for the pricing discrepancy on recent in-game Raw Iron deposits. The listings in Parlamentum were offered at <strong>5.50 gold each</strong> (instead of 5.00 gold). When purchasing on the Parlamentum market, the game engine automatically levies a <strong>5% market sales tax</strong> (-0.275 gold/unit).
-          </p>
-        </div>
-
-        {/* What Changed & What Was Done */}
-        <div className="bg-zinc-950/80 border border-zinc-800 rounded-xl p-3.5 flex flex-col gap-2">
-          <div className="text-white font-bold text-[12px] flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            What Was Rectified: Net Gold Credited
-          </div>
-          <p className="text-zinc-400 text-[11px] leading-relaxed">
-            Your purse was initially credited based on the old 5.00 gold baseline. The Exchange Operator has now retroactively recalculated your purchase to <strong>100% of the Net Gold Received by the House (5.225 gold per unit)</strong>, crediting the full difference directly into your balance!
-          </p>
-        </div>
-
-        {/* Personalized Ledger Breakdown */}
-        <div className="bg-zinc-950 rounded-xl border border-zinc-800/90 p-3.5 flex flex-col gap-2 font-mono text-[11px]">
-          <div className="text-zinc-400 font-sans font-bold text-[11px] uppercase tracking-wider text-zinc-300 border-b border-zinc-800 pb-1.5 flex justify-between">
-            <span>Your Recalibration Breakdown</span>
-            <span className="text-amber-400 font-mono">{info.inGameName}</span>
-          </div>
-
-          <div className="flex justify-between py-0.5 text-zinc-400">
-            <span>Raw Iron Purchased:</span>
-            <span className="text-white font-bold">{info.units} units</span>
-          </div>
-
-          <div className="flex justify-between py-0.5 text-zinc-400">
-            <span>Gold Spent In-Game (@ 5.50g):</span>
-            <span className="text-white">{info.grossPaid.toFixed(2)} gold</span>
-          </div>
-
-          <div className="flex justify-between py-0.5 text-rose-400/90">
-            <span>Parlamentum In-Game 5% Tax:</span>
-            <span>-{info.taxDeducted.toFixed(2)} gold</span>
-          </div>
-
-          <div className="flex justify-between py-0.5 text-zinc-300 border-t border-zinc-800/80 pt-1">
-            <span>Net Gold Received by House (@ 5.225g):</span>
-            <span className="font-bold text-amber-300">{info.netReceived.toFixed(2)} gold</span>
-          </div>
-
-          <div className="flex justify-between py-0.5 text-zinc-500">
-            <span>Initially Credited on GUG:</span>
-            <span>{info.initialCredited.toFixed(2)} gold</span>
-          </div>
-
-          <div className="flex justify-between py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-2 mt-1 text-emerald-300 font-bold">
-            <span className="flex items-center gap-1 font-sans">
-              <Sparkles className="w-3.5 h-3.5" /> Extra Added to Your Purse:
-            </span>
-            <span className="text-sm">+{info.adjustmentCredit.toFixed(2)} gold</span>
-          </div>
-        </div>
-
-        {error && (
-          <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2 text-[11px]">
-            {error}
-          </div>
-        )}
-
-        {/* Action Button */}
-        <div className="flex flex-col gap-2 pt-1">
-          <button
-            onClick={handleDismiss}
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-bold text-xs tracking-wide transition shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Updating Purse...
-              </>
-            ) : (
-              <>
-                <span>I Understand & Acknowledge Adjustment</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
-          <p className="text-[10px] text-zinc-500 text-center">
-            You can also view this entry anytime in your Wallet Ledger under &apos;Deposit Recalibration&apos;.
-          </p>
-        </div>
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center sm:p-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="adj-title" className="w-full sm:max-w-md bg-pane border border-rule rounded-t-[6px] sm:rounded-[6px] shadow-[0_12px_40px_rgba(0,0,0,0.5)] p-5 flex flex-col gap-4 text-[13px]">
+        <h2 id="adj-title" className="text-[17px] font-semibold text-zinc-50">Your deposit was re-credited</h2>
+        <p className="text-paper leading-relaxed">
+          The House&apos;s Raw Iron sold for 5.50 gold, not 5.00, and the game took 5% tax, so the House received 5.225 gold a unit. Your purse was first
+          credited at 5.00; it now holds everything the House received. Sorry for the mix-up.
+        </p>
+        <dl className="flex flex-col gap-1.5 border-y border-rule py-3 tabular">
+          <div className={row}><dt className="text-ash">Raw Iron bought ({info.inGameName})</dt><dd className="text-paper">{info.units} units</dd></div>
+          <div className={row}><dt className="text-ash">You paid in game</dt><dd className="text-paper">{info.grossPaid.toFixed(2)}</dd></div>
+          <div className={row}><dt className="text-ash">Game tax</dt><dd className="text-paper">−{info.taxDeducted.toFixed(2)}</dd></div>
+          <div className={row}><dt className="text-ash">The House received</dt><dd className="text-paper">{info.netReceived.toFixed(2)}</dd></div>
+          <div className={row}><dt className="text-ash">First credited</dt><dd className="text-paper">{info.initialCredited.toFixed(2)}</dd></div>
+          <div className={row}><dt className="text-zinc-50 font-semibold">Added to your purse</dt><dd className="text-bullion font-semibold">+{info.adjustmentCredit.toFixed(2)} gold</dd></div>
+        </dl>
+        {error && <p role="alert" className="text-bear">{error}</p>}
+        <button type="button" onClick={handleDismiss} disabled={loading} className="h-10 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor font-semibold disabled:opacity-50">
+          {loading ? "Saving…" : "Got it"}
+        </button>
       </div>
     </div>
   );
