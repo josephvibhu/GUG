@@ -17,6 +17,8 @@ export interface CompanyLedgerSummary {
   netProfit: number;
   profitMargin: number;
   entriesCount: number;
+  // Company treasury balance (gold the company holds on the exchange)
+  treasuryBalance?: number;
 }
 
 export const INCOME_CATEGORIES = [
@@ -37,3 +39,12 @@ export const EXPENSE_CATEGORIES = [
   { value: "DIVIDEND_PAYOUT", label: "💰 Dividend Allocations Paid to Shareholders" },
   { value: "OTHER_EXPENSE", label: "💸 Other Operational Expenses" },
 ];
+
+// Entries the exchange writes when treasury gold moves; shown as treasury movements, not P&L
+export const TREASURY_LABELS: Record<string, string> = {
+  IPO_PROCEEDS: "IPO share sale",
+  FOUNDER_DEPOSIT: "From founder's purse",
+  FOUNDER_WITHDRAWAL: "To founder's purse",
+  DIVIDEND_DISTRIBUTION: "Dividend paid",
+};
+export const TREASURY_CATEGORIES = Object.keys(TREASURY_LABELS);

@@ -475,22 +475,25 @@ export async function executeDividendPayout(reportId: string): Promise<{
     }
   }
 
-  // Record corporate dividend expense in company_ledger
+  // Record the treasury's part of the dividend in company_ledger (the rest came from the founder's purse)
   try {
-    const ledgerId = `cld_${crypto.randomUUID()}`;
-    await db.execute({
-      sql: `INSERT INTO company_ledger (id, company_id, user_id, entry_type, category, amount, description, entry_date, created_at)
-            VALUES (?, ?, ?, 'EXPENSE', 'DIVIDEND_DISTRIBUTION', ?, ?, ?, ?)`,
-      args: [
-        ledgerId,
-        companyId,
-        founderId,
-        totalDue,
-        `Dividend Distribution (${report.period_title || 'Dividend Payout'})`,
-        now.slice(0, 10),
-        now,
-      ],
-    });
+    if (fromTreasury > 0) {
+      const ledgerId = `cld_${crypto.randomUUID()}`;
+      await db.execute({
+        sql: `INSERT INTO company_ledger (id, company_id, user_id, entry_type, category, amount, description, entry_date, created_at)
+              VALUES (?, ?, ?, 'EXPENSE', 'DIVIDEND_DISTRIBUTION', ?, ?, ?, ?)`,
+        args: [
+          ledgerId,
+          companyId,
+          founderId,
+          fromTreasury,
+          `Dividend: ${report.period_title || "payout"} (${totalDue.toLocaleString()} gold in total` +
+            (fromFounder > 0 ? `, ${fromFounder.toLocaleString()} from the founder's purse)` : ")"),
+          now.slice(0, 10),
+          now,
+        ],
+      });
+    }
   } catch (e) {
     console.warn("Error logging company_ledger dividend distribution:", e);
   }

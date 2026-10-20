@@ -8,6 +8,7 @@ export {
   type CompanyLedgerSummary,
 } from "./ledgerCategories";
 import type { CompanyLedgerEntry, CompanyLedgerSummary } from "./ledgerCategories";
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, TREASURY_CATEGORIES } from "./ledgerCategories";
 
 export async function getCompanyLedger(
   companyIdOrTicker: string
@@ -23,7 +24,7 @@ export async function getCompanyLedger(
 
   // Find company by ID or Ticker
   const compRes = await db.execute({
-    sql: "SELECT id, ticker, name, logo_url, creator_id, description FROM companies WHERE id = ? OR UPPER(ticker) = UPPER(?) LIMIT 1",
+    sql: "SELECT id, ticker, name, logo_url, creator_id, description, treasury_balance FROM companies WHERE id = ? OR UPPER(ticker) = UPPER(?) LIMIT 1",
     args: [companyIdOrTicker, companyIdOrTicker],
   });
 
@@ -62,7 +63,10 @@ export async function getCompanyLedger(
     const amount = Number(r.amount);
     const entryType = r.entry_type as "INCOME" | "EXPENSE";
 
-    if (entryType === "INCOME") {
+    // Treasury movements (IPO money, founder transfers, dividends) aren't revenue or costs: keep them out of the P&L
+    if (TREASURY_CATEGORIES.includes(String(r.category))) {
+      // counted in the treasury, not the P&L
+    } else if (entryType === "INCOME") {
       totalIncome += amount;
     } else {
       totalExpense += amount;
@@ -95,6 +99,7 @@ export async function getCompanyLedger(
       netProfit,
       profitMargin,
       entriesCount: entries.length,
+      treasuryBalance: Math.round(Number(rawComp.treasury_balance || 0) * 100) / 100,
     },
   };
 }
@@ -139,9 +144,15 @@ export async function addCompanyLedgerEntry(
     return { success: false, message: "Please provide a clear description of this financial transaction." };
   }
 
+  // Founders book their own revenue and costs; treasury movements are written only by the exchange
+  const allowed = params.entryType === "INCOME" ? INCOME_CATEGORIES : params.entryType === "EXPENSE" ? EXPENSE_CATEGORIES : [];
+  if (!allowed.some((c) => c.value === params.category)) {
+    return { success: false, message: "Pick a category from the list." };
+  }
+
   const entryId = `cld_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
-  const entryDate = params.entryDate ? params.entryDate.trim() : now.slice(0, 10);
+  const entryDate = /^\d{4}-\d{2}-\d{2}$/.test(String(params.entryDate || "").trim()) ? String(params.entryDate).trim() : now.slice(0, 10);
 
   await db.execute({
     sql: `INSERT INTO company_ledger (id, company_id, user_id, entry_type, category, amount, description, entry_date, created_at)
@@ -201,6 +212,10 @@ export async function deleteCompanyLedgerEntry(
 
   if (!isCreator && !isAuthor && !isAdmin) {
     return { success: false, message: "You are not authorized to delete this ledger entry." };
+  }
+  // Treasury movements are the public record of where the company's gold went
+  if (TREASURY_CATEGORIES.includes(String(entry.category)) && !isAdmin) {
+    return { success: false, message: "Treasury records can't be deleted." };
   }
 
   await db.execute({

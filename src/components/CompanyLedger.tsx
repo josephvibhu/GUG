@@ -16,7 +16,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { fmtGold } from "@/lib/format";
-import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, CompanyLedgerEntry, CompanyLedgerSummary } from "@/lib/ledgerCategories";
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, TREASURY_LABELS, CompanyLedgerEntry, CompanyLedgerSummary } from "@/lib/ledgerCategories";
 
 interface Props {
   ticker: string;
@@ -161,7 +161,7 @@ export default function CompanyLedger({ ticker, isFounderOrAdmin }: Props) {
 **Recent Transactions:**
 ${recentLines || "• No transactions recorded yet."}
 
-🔗 *Track real-time company finances at:* https://gug.vercel.app/trade/${ticker}`;
+🔗 *Track real-time company finances at:* ${window.location.origin}/trade/${ticker}`;
 
     navigator.clipboard.writeText(text);
     setCopiedDiscord(true);
@@ -185,6 +185,7 @@ ${recentLines || "• No transactions recorded yet."}
   const categoryOptions = entryType === "INCOME" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
   const getCategoryLabel = (type: "INCOME" | "EXPENSE", val: string) => {
+    if (TREASURY_LABELS[val]) return TREASURY_LABELS[val];
     const list = type === "INCOME" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
     return list.find((c) => c.value === val)?.label || val;
   };
@@ -209,6 +210,17 @@ ${recentLines || "• No transactions recorded yet."}
 
   return (
     <div className="flex flex-col gap-5 p-4 sm:p-5">
+      {/* Company treasury: gold the company itself holds on the exchange */}
+      <div className="px-3.5 py-3 rounded-[4px] border border-rule flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <span className="text-[12px] text-ash">Company treasury</span>
+        <span className="text-[17px] font-bold text-bullion">
+          {fmtGold(summary?.treasuryBalance || 0)} <span className="text-[11px] font-normal text-ash">gold</span>
+        </span>
+        <span className="basis-full text-[11px] text-ash">
+          IPO share sales, founder transfers and dividends move it. They show below as treasury entries and don&apos;t count as revenue or costs.
+        </span>
+      </div>
+
       {/* Financial Health Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3.5 rounded-[4px] bg-pane border border-rule flex flex-col">
@@ -225,7 +237,7 @@ ${recentLines || "• No transactions recorded yet."}
             <TrendingDown className="w-3.5 h-3.5 text-bear" /> Total Expenses
           </span>
           <span className="text-[17px] font-bold text-bear mt-1">
-            -{fmtGold(summary?.totalExpense || 0)} <span className="text-[11px] font-normal text-ash">gold</span>
+            {(summary?.totalExpense || 0) > 0 ? "−" : ""}{fmtGold(summary?.totalExpense || 0)} <span className="text-[11px] font-normal text-ash">gold</span>
           </span>
         </div>
 
@@ -514,18 +526,21 @@ ${recentLines || "• No transactions recorded yet."}
             <tbody>
               {filteredEntries.map((entry) => {
                 const isIncome = entry.entryType === "INCOME";
+                const isTreasury = !!TREASURY_LABELS[entry.category];
                 return (
                   <tr key={entry.id} className="border-b border-rule last:border-0 hover:bg-pane/50 transition-colors">
                     <td className="py-2.5 pl-4 pr-2 text-ash whitespace-nowrap">{entry.entryDate}</td>
                     <td className="py-2.5 px-2">
                       <span
                         className={`inline-block px-1.5 py-0.5 rounded-[3px] text-[10px] font-semibold border ${
-                          isIncome
+                          isTreasury
+                            ? "bg-bullion/10 border-bullion/30 text-bullion"
+                            : isIncome
                             ? "bg-bull/10 border-bull/30 text-bull"
                             : "bg-bear/10 border-bear/30 text-bear"
                         }`}
                       >
-                        {isIncome ? "+ INCOME" : "− EXPENSE"}
+                        {isTreasury ? (isIncome ? "+ TREASURY" : "− TREASURY") : isIncome ? "+ INCOME" : "− EXPENSE"}
                       </span>
                     </td>
                     <td className="py-2.5 px-2 text-paper whitespace-nowrap">
@@ -542,6 +557,7 @@ ${recentLines || "• No transactions recorded yet."}
                     </td>
                     {isFounderOrAdmin && (
                       <td className="py-2.5 pl-2 pr-4 text-right">
+                        {!isTreasury && (
                         <button
                           type="button"
                           onClick={() => handleDeleteEntry(entry.id)}
@@ -550,6 +566,7 @@ ${recentLines || "• No transactions recorded yet."}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
+                        )}
                       </td>
                     )}
                   </tr>
