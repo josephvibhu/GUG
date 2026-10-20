@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import WatcherPanel from "@/components/WatcherPanel";
 import Navbar from "@/components/Navbar";
 import { usePoll } from "@/hooks/usePoll";
 import Link from "next/link";
@@ -167,6 +168,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  // A one-time password reset code, shown once to the operator to send privately
+  const [resetCode, setResetCode] = useState<{ username: string; code: string; expiresAt: string } | null>(null);
+  const [resetCopied, setResetCopied] = useState(false);
 
   const fetchAdminData = async () => {
     try {
@@ -216,6 +220,27 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
       setIsAdmin(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetCode = async (userId: string, username: string) => {
+    if (!confirm(`Make a one-time password reset code for ${username}? Any older code for them stops working.`)) return;
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create_reset_code", userId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResetCopied(false);
+        setResetCode({ username: data.username, code: data.code, expiresAt: data.expiresAt });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        setFeedback({ type: "error", message: data.message });
+      }
+    } catch (e: any) {
+      setFeedback({ type: "error", message: e.message });
     }
   };
 
@@ -817,6 +842,42 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           >
             {feedback.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
             <span>{feedback.message}</span>
+          </div>
+        )}
+
+        {resetCode && (
+          <div role="status" className="p-4 rounded-[6px] border border-bullion/60 bg-floor flex flex-col gap-2 text-[13px]">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-paper">
+                Reset code for <strong className="text-zinc-50">{resetCode.username}</strong>, valid until{" "}
+                {resetCode.expiresAt.slice(0, 16).replace("T", " ")} UTC
+              </span>
+              <button type="button" onClick={() => setResetCode(null)} className="text-[12px] text-ash hover:text-paper">
+                Hide
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="condensed tabular text-[26px] font-bold text-zinc-50 tracking-wide select-all">{resetCode.code}</span>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(resetCode.code);
+                    setResetCopied(true);
+                  } catch {
+                    setResetCopied(false);
+                  }
+                }}
+                className="h-8 px-3 rounded-[4px] border border-rule hover:border-zinc-500 text-[12px] text-paper"
+              >
+                {resetCopied ? "Copied" : "Copy code"}
+              </button>
+            </div>
+            <p className="text-[12px] text-ash leading-relaxed">
+              Send it to {resetCode.username} privately (Discord DM or an in-game message), never in a public channel. They open the login
+              page, choose &quot;Change your password&quot;, then &quot;I have a reset code&quot;, and pick their own password. It works once, and this
+              is the only time it is shown.
+            </p>
           </div>
         )}
 
@@ -2103,6 +2164,9 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           </div>
         </div>
 
+        {/* Watcher: automatic Raw Iron deposits from the game's own trade ledger */}
+        <WatcherPanel />
+
         {/* Section 3.4: 100% Cloud Auto-Sync (Zero Desktop / No Browser Required) */}
         <div className="bg-pane border border-rule rounded-[6px] p-5 flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rule pb-3">
@@ -3119,6 +3183,14 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                   title="Load Funds into Purse"
                                 >
                                   Load
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleResetCode(c.id, c.username)}
+                                  className="px-2 py-1 rounded bg-pane hover:bg-rule text-paper border border-rule text-[10px] transition cursor-pointer"
+                                  title="Make a one-time password reset code"
+                                >
+                                  Reset code
                                 </button>
                                 {Number(c.is_frozen || 0) === 1 ? (
                                   <button

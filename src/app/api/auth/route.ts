@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, loginUser, registerUser, acceptTerms, dismissAdjustmentNotice } from "@/lib/auth";
+import { getCurrentUser, loginUser, registerUser, acceptTerms, dismissAdjustmentNotice, changePassword, resetPasswordWithCode } from "@/lib/auth";
 import { seedMarketData } from "@/lib/seed";
 
 
@@ -13,6 +13,11 @@ export async function GET() {
   }
 }
 
+// The caller's address as Vercel reports it, for the wrong-password limit
+function clientIp(request: Request): string {
+  return (request.headers.get("x-forwarded-for") || "").split(",")[0].trim() || request.headers.get("x-real-ip") || "unknown";
+}
+
 export async function POST(request: Request) {
   try {
     await seedMarketData();
@@ -21,7 +26,7 @@ export async function POST(request: Request) {
 
     if (action === "login") {
       const { username, password } = body;
-      const res = await loginUser(username, password);
+      const res = await loginUser(username, password, clientIp(request));
       return NextResponse.json(res);
     }
 
@@ -29,6 +34,18 @@ export async function POST(request: Request) {
       const { username, password, adminCode, acceptedTerms } = body;
       const res = await registerUser(username, password, adminCode, acceptedTerms);
       return NextResponse.json(res);
+    }
+
+    if (action === "change_password") {
+      const { username, currentPassword, newPassword } = body;
+      const res = await changePassword(String(username || ""), String(currentPassword || ""), String(newPassword || ""), clientIp(request));
+      return NextResponse.json(res, { status: res.success ? 200 : 400 });
+    }
+
+    if (action === "reset_password") {
+      const { username, code, newPassword } = body;
+      const res = await resetPasswordWithCode(String(username || ""), String(code || ""), String(newPassword || ""), clientIp(request));
+      return NextResponse.json(res, { status: res.success ? 200 : 400 });
     }
 
     if (action === "accept_terms") {

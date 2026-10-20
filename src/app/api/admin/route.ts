@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, initDb, LEAKED_API_KEY } from "@/lib/db";
+import { watcherOn } from "@/lib/watcher";
 import { getCurrentUser } from "@/lib/auth";
 import { 
   getSetting, 
@@ -300,6 +301,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: "Invalid API Key." }, { status: 401, headers: corsHeaders });
       }
 
+      if (await watcherOn()) {
+        return NextResponse.json({ success: true, matched: false, message: "The watcher credits deposits from the game's ledger; this sale was not credited again." }, { headers: corsHeaders });
+      }
+
       const db = getDb();
       const units = Number(ironUnits) || (goldAmount ? Math.ceil(Number(goldAmount) / 5) : 0);
       const gold = Number(goldAmount) || (units * 5);
@@ -411,6 +416,22 @@ export async function POST(request: Request) {
 
     if (action === "approve") {
       const { txId } = body;
+      // While the watcher credits deposits, a purchase it already paid isn't paid again by hand
+      if (await watcherOn()) {
+        const db = getDb();
+        const tx = await db.execute({ sql: "SELECT user_id, type, iron_units, created_at FROM wallet_transactions WHERE id = ? AND status = 'PENDING'", args: [txId] });
+        if (tx.rows.length && tx.rows[0].type === "DEPOSIT") {
+          const t = tx.rows[0];
+          const paid = await db.execute({
+            sql: `SELECT id FROM wallet_transactions WHERE user_id = ? AND type = 'DEPOSIT' AND status = 'CREDITED' AND game_sale IS NOT NULL
+                  AND iron_units = ? AND id != ? AND created_at >= ? LIMIT 1`,
+            args: [t.user_id, t.iron_units, txId, new Date(Date.parse(String(t.created_at)) - 2 * 86_400_000).toISOString()],
+          });
+          if (paid.rows.length) {
+            return NextResponse.json({ success: false, message: "The watcher already credited a matching Raw Iron purchase for this player. Reject this announcement, unless they bought twice: then the watcher pays the second one when it sees it." }, { status: 409 });
+          }
+        }
+      }
       const res = await approveDeposit(txId);
       const { scheduleBlobPersist } = await import("@/lib/db");
       scheduleBlobPersist();
@@ -424,6 +445,12 @@ export async function POST(request: Request) {
       const { scheduleBlobPersist } = await import("@/lib/db");
       scheduleBlobPersist();
       return NextResponse.json(res);
+    }
+
+    if (action === "create_reset_code") {
+      const { createResetCode } = await import("@/lib/auth");
+      const res = await createResetCode(String(body.userId || ""), user.id);
+      return NextResponse.json(res, { status: res.success ? 200 : 400 });
     }
 
     if (action === "manual_credit") {

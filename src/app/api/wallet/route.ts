@@ -138,9 +138,11 @@ export async function POST(request: Request) {
         });
       }).catch(() => {});
 
-      // Trigger immediate cloud ledger sync in background
-      import("@/lib/cloudSync").then(({ triggerCloudLedgerSync }) => {
-        triggerCloudLedgerSync().catch(() => {});
+      // Look for the purchase right away: the watcher when it's on, otherwise the older cookie sync
+      import("@/lib/watcher").then(async ({ watcherOn, maybeWatch }) => {
+        if (await watcherOn()) return maybeWatch();
+        const { triggerCloudLedgerSync } = await import("@/lib/cloudSync");
+        await triggerCloudLedgerSync();
       }).catch(() => {});
 
       const updatedUser = await db.execute({

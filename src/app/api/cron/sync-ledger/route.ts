@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { triggerCloudLedgerSync } from "@/lib/cloudSync";
+import { watcherOn, watch, watchView } from "@/lib/watcher";
 import { getCurrentUser } from "@/lib/auth";
 
 export const maxDuration = 30; // 30s timeout on Vercel
@@ -27,6 +28,13 @@ async function handleSync(request: Request) {
 
     if (!isAuthorized) {
       return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+    }
+
+    // With the watcher on, the daily cron is its fallback look (the game shows only the last 200 trades)
+    if (await watcherOn()) {
+      await watch(true);
+      const view = await watchView();
+      return NextResponse.json({ success: !view.error, timestamp: new Date().toISOString(), message: view.error || "Watcher looked at the game." });
     }
 
     const result = await triggerCloudLedgerSync();

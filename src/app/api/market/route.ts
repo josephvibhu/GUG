@@ -1,12 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getAllCompanies, getSparklines } from "@/lib/market";
 import { seedMarketData } from "@/lib/seed";
 import { getCurrentUser } from "@/lib/auth";
 import { getMarketSchedule } from "@/lib/marketHours";
+import { maybeWatch } from "@/lib/watcher";
 
 export async function GET() {
   try {
     await seedMarketData();
+    // Page loads are when the watcher looks at the game for new Raw Iron deposits (at most once a minute)
+    after(() => maybeWatch());
     const [companies, user, marketSchedule, sparklines] = await Promise.all([
       getAllCompanies(),
       getCurrentUser(),
