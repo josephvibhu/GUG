@@ -181,8 +181,10 @@ export async function POST(request: Request) {
         }, { status: 400 });
       }
 
-      const reqTaxRate = body.taxRate !== undefined && !isNaN(Number(body.taxRate))
-        ? Math.max(0, Math.min(50, Number(body.taxRate)))
+      // The player may pick a lower regional rate, never one above the operator's: the rate sets how much the
+      // House pays for the listing, so an inflated rate would pay out more gold than the purse gave up
+      const reqTaxRate = body.taxRate !== undefined && Number.isFinite(Number(body.taxRate))
+        ? Math.max(0, Math.min(taxRate, Number(body.taxRate)))
         : taxRate;
 
       const withdrawCalc = calculateWithdrawalRecipe(numAmount, reqTaxRate);
