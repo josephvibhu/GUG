@@ -41,6 +41,7 @@ export async function GET() {
       parlamentumName: String(r.parlamentum_name),
       status: String(r.status),
       recipeNote: String(r.recipe_note || ""),
+      taxRate: Number(r.tax_rate ?? taxRate),
       createdAt: String(r.created_at),
     }));
 
@@ -108,13 +109,17 @@ export async function POST(request: Request) {
         ? `In-game contract to ${houseName} giving ${actualGold} gold + 1 courier ticket for 1 Raw Iron.`
         : `Bought ${ironUnits} Raw Iron listed by ${houseName} at 5 gold each (${actualGold} gold total).`;
 
+      const reqTaxRate = body.taxRate !== undefined && !isNaN(Number(body.taxRate))
+        ? Math.max(0, Math.min(50, Number(body.taxRate)))
+        : taxRate;
+
       // All deposits are strictly PENDING until operator confirms receipt in Parlamentum
       const status = "PENDING";
 
       await db.execute({
-        sql: `INSERT INTO wallet_transactions (id, user_id, type, method, amount, iron_units, parlamentum_name, status, recipe_note, created_at)
-              VALUES (?, ?, 'DEPOSIT', ?, ?, ?, ?, ?, ?, ?)`,
-        args: [txId, user.id, method || "MARKET_IRON", actualGold, ironUnits, targetName, status, recipe, now],
+        sql: `INSERT INTO wallet_transactions (id, user_id, type, method, amount, iron_units, parlamentum_name, status, recipe_note, tax_rate, created_at)
+              VALUES (?, ?, 'DEPOSIT', ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [txId, user.id, method || "MARKET_IRON", actualGold, ironUnits, targetName, status, recipe, reqTaxRate, now],
       });
 
       // Update player's character name if not set
@@ -176,7 +181,11 @@ export async function POST(request: Request) {
         }, { status: 400 });
       }
 
-      const withdrawCalc = calculateWithdrawalRecipe(numAmount, taxRate);
+      const reqTaxRate = body.taxRate !== undefined && !isNaN(Number(body.taxRate))
+        ? Math.max(0, Math.min(50, Number(body.taxRate)))
+        : taxRate;
+
+      const withdrawCalc = calculateWithdrawalRecipe(numAmount, reqTaxRate);
       const ironUnits = withdrawCalc.ironUnits;
       const grossListing = withdrawCalc.grossTotal;
       const unitPrice = withdrawCalc.unitPrice;
@@ -194,12 +203,12 @@ export async function POST(request: Request) {
         }, { status: 400 });
       }
 
-      const recipe = `List ${ironUnits} Raw Iron on Parlamentum market at ${unitPrice.toFixed(2)} gold each (Total: ${grossListing.toFixed(2)} gold). ${houseName} pays the ${taxAbsorbed.toFixed(2)} gold game tax so you get exactly ${numAmount.toLocaleString()} gold net.`;
+      const recipe = `List ${ironUnits} Raw Iron on Parlamentum market at ${unitPrice.toFixed(2)} gold each (Total: ${grossListing.toFixed(2)} gold). ${houseName} pays the ${taxAbsorbed.toFixed(2)} gold game tax (${reqTaxRate}% regional rate) so you get exactly ${numAmount.toLocaleString()} gold net.`;
 
       await db.execute({
-        sql: `INSERT INTO wallet_transactions (id, user_id, type, method, amount, iron_units, parlamentum_name, status, recipe_note, created_at)
-              VALUES (?, ?, 'WITHDRAWAL', 'MARKET_IRON', ?, ?, ?, 'PENDING', ?, ?)`,
-        args: [txId, user.id, numAmount, ironUnits, targetName, recipe, now],
+        sql: `INSERT INTO wallet_transactions (id, user_id, type, method, amount, iron_units, parlamentum_name, status, recipe_note, tax_rate, created_at)
+              VALUES (?, ?, 'WITHDRAWAL', 'MARKET_IRON', ?, ?, ?, 'PENDING', ?, ?, ?)`,
+        args: [txId, user.id, numAmount, ironUnits, targetName, recipe, reqTaxRate, now],
       });
 
       const updatedUser = await db.execute({

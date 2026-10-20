@@ -51,6 +51,7 @@ export default function WalletModal({
   const [houseOperator, setHouseOperator] = useState<string>("JosephArora");
   const [ironPrice, setIronPrice] = useState<number>(5);
   const [taxRate, setTaxRate] = useState<number>(10);
+  const [selectedTaxRate, setSelectedTaxRate] = useState<number>(10);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -67,6 +68,7 @@ export default function WalletModal({
         setHouseOperator(data.houseOperator || "JosephArora");
         setIronPrice(data.ironPrice || 5);
         setTaxRate(data.taxRate || 10);
+        setSelectedTaxRate((prev) => prev !== 10 ? prev : (data.taxRate || 10));
         setLedger(data.ledger || []);
 
         // Percentage-based autofill for withdrawal
@@ -100,7 +102,7 @@ export default function WalletModal({
   const depositGrossTotal = depositIronUnits * ironPrice;
 
   // Withdrawal Calculations (Tax Negation Formula: Gross = Net / (1 - TaxRate))
-  const tDecimal = Math.max(0, Math.min(50, taxRate)) / 100;
+  const tDecimal = Math.max(0, Math.min(50, selectedTaxRate)) / 100;
   const withdrawGross = tDecimal < 1 ? Math.round((numWithdraw / (1 - tDecimal)) * 100) / 100 : numWithdraw;
   const withdrawTaxNegated = Math.round((withdrawGross - numWithdraw) * 100) / 100;
   const withdrawIronUnits = numWithdraw >= 100 ? 100 : Math.max(10, Math.ceil(numWithdraw / ironPrice));
@@ -172,6 +174,7 @@ export default function WalletModal({
           amount: numWithdraw,
           method: "MARKET_IRON",
           parlamentumName: parlamentumName.trim(),
+          taxRate: selectedTaxRate,
         }),
       });
 
@@ -453,7 +456,7 @@ export default function WalletModal({
                     How to Receive Your In-Game Gold:
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3" /> Tax Negated ({taxRate}%)
+                    <ShieldCheck className="w-3 h-3" /> Tax Negated ({selectedTaxRate}%)
                   </span>
                 </div>
                 <p className="text-zinc-300 mb-2">
@@ -469,7 +472,7 @@ export default function WalletModal({
                   </div>
                   <div className="flex justify-between text-zinc-400 text-[10px]">
                     <span className="flex items-center gap-1">
-                      <Percent className="w-3 h-3" /> Parlamentum Market Tax ({taxRate}%):
+                      <Percent className="w-3 h-3" /> Parlamentum Market Tax ({selectedTaxRate}%):
                     </span>
                     <span className="text-rose-400">-{withdrawTaxNegated.toFixed(2)} gold</span>
                   </div>
@@ -509,6 +512,55 @@ export default function WalletModal({
                   onChange={(e) => setParlamentumName(e.target.value)}
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-400"
                 />
+              </div>
+
+              {/* Regional Market Tax Rate Selector */}
+              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-zinc-300 font-semibold text-xs flex items-center gap-1.5">
+                    <Percent className="w-3.5 h-3.5 text-amber-400" />
+                    Regional Market Tax Rate
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-mono">
+                    {selectedTaxRate}% applied
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 mb-2">
+                  {[
+                    { label: "3% (Kriti)", rate: 3 },
+                    { label: "5% (Std)", rate: 5 },
+                    { label: "8%", rate: 8 },
+                    { label: "10% (Def)", rate: 10 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.rate}
+                      type="button"
+                      onClick={() => setSelectedTaxRate(preset.rate)}
+                      className={`py-1 px-1 rounded text-[10px] font-mono transition border cursor-pointer ${
+                        selectedTaxRate === preset.rate
+                          ? "bg-amber-500 text-black font-bold border-amber-400 shadow-sm shadow-amber-500/20"
+                          : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-1 border-t border-zinc-800/80">
+                  <span>Custom Region Tax Rate:</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      step="0.5"
+                      value={selectedTaxRate}
+                      onChange={(e) => setSelectedTaxRate(Math.max(0, Math.min(50, parseFloat(e.target.value) || 0)))}
+                      className="w-16 bg-zinc-900 border border-zinc-700 rounded px-2 py-0.5 text-xs text-amber-300 font-mono text-center focus:outline-none focus:border-amber-400"
+                    />
+                    <span className="text-zinc-500 font-mono">%</span>
+                  </div>
+                </div>
               </div>
 
               <div>

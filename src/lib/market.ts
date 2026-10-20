@@ -24,6 +24,9 @@ export interface Company {
   buybackGoldSpent: number;
   totalDividendsPaid?: number;
   weeklyRevenue?: number;
+  treasuryBalance?: number;
+  totalProfitDeposited?: number;
+  ipoFeeCollected?: number;
   createdAt: string;
 }
 
@@ -169,6 +172,9 @@ export async function getAllCompanies(): Promise<Company[]> {
     buybackGoldSpent: Number(row.buyback_gold_spent || 0),
     totalDividendsPaid: Number(row.total_dividends_paid || 0),
     weeklyRevenue: Number(row.weekly_revenue || 0),
+    treasuryBalance: Number(row.treasury_balance || 0),
+    totalProfitDeposited: Number(row.total_profit_deposited || 0),
+    ipoFeeCollected: Number(row.ipo_fee_collected || 0),
     createdAt: String(row.created_at),
   }, dayStats[String(row.id)]));
 }
@@ -212,6 +218,9 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
     buybackGoldSpent: Number(row.buyback_gold_spent || 0),
     totalDividendsPaid: Number(row.total_dividends_paid || 0),
     weeklyRevenue: Number(row.weekly_revenue || 0),
+    treasuryBalance: Number(row.treasury_balance || 0),
+    totalProfitDeposited: Number(row.total_profit_deposited || 0),
+    ipoFeeCollected: Number(row.ipo_fee_collected || 0),
     createdAt: String(row.created_at),
   }, dayStats[String(row.id)]);
 }

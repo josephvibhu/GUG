@@ -125,6 +125,10 @@ export async function GET() {
       const tradingValue = port.tradingValue;
       const founderValue = port.founderValue;
       const totalNetWorth = cash + lockedCash + portfolioValue;
+      const founderCompanies = companies.filter((comp) => String(comp.creatorId) === uId);
+      const corporateTreasuryBalance = founderCompanies.reduce((acc, comp) => acc + (comp.treasuryBalance || 0), 0);
+      const totalProfitDeposited = founderCompanies.reduce((acc, comp) => acc + (comp.totalProfitDeposited || 0), 0);
+
       return {
         ...c,
         cash_balance: cash,
@@ -133,6 +137,15 @@ export async function GET() {
         trading_value: tradingValue,
         founder_value: founderValue,
         total_net_worth: totalNetWorth,
+        corporate_treasury_balance: corporateTreasuryBalance,
+        total_profit_deposited: totalProfitDeposited,
+        founder_companies: founderCompanies.map((fc) => ({
+          id: fc.id,
+          ticker: fc.ticker,
+          name: fc.name,
+          treasuryBalance: fc.treasuryBalance || 0,
+          totalProfitDeposited: fc.totalProfitDeposited || 0,
+        })),
         holdings: port.holdings,
       };
     });
@@ -734,6 +747,19 @@ export async function POST(request: Request) {
       const { processScheduledDividends } = await import("@/lib/dividends");
       const res = await processScheduledDividends();
       return NextResponse.json({ success: true, message: `Processed ${res.executedCount} scheduled Friday dividend distributions.`, ...res });
+    }
+
+    if (action === "deposit_company_profit") {
+      const { companyId, amount, notes, source } = body;
+      const { depositCompanyProfit } = await import("@/lib/dividends");
+      const res = await depositCompanyProfit({
+        companyId,
+        amount: Number(amount),
+        reporterId: user.id,
+        notes,
+        source: source === "DIRECT" ? "MANUAL_DIRECT" : "WALLET",
+      });
+      return NextResponse.json(res, { status: res.success ? 200 : 400 });
     }
 
     return NextResponse.json({ success: false, message: "Invalid action" }, { status: 400 });

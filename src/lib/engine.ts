@@ -294,10 +294,37 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
         args: [matchQty, matchQty, ask.user_id, actualCompanyId],
       });
       if (netSellerProceeds > 0) {
-        await db.execute({
-          sql: `UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?`,
-          args: [netSellerProceeds, ask.user_id],
-        });
+        if (isIpoOrder) {
+          // Company Corporate Treasury receives primary float proceeds (retained capital)
+          await db.execute({
+            sql: `UPDATE companies SET treasury_balance = treasury_balance + ? WHERE id = ?`,
+            args: [netSellerProceeds, actualCompanyId],
+          });
+          try {
+            const ledgerId = `cld_${crypto.randomUUID()}`;
+            await db.execute({
+              sql: `INSERT INTO company_ledger (id, company_id, user_id, entry_type, category, amount, description, entry_date, created_at)
+                    VALUES (?, ?, ?, 'INCOME', 'IPO_PROCEEDS', ?, ?, ?, ?)`,
+              args: [
+                ledgerId,
+                actualCompanyId,
+                ask.user_id,
+                netSellerProceeds,
+                `IPO Primary Float Sale (${matchQty} shares @ ${execPrice.toFixed(2)}g)`,
+                now.slice(0, 10),
+                now,
+              ],
+            });
+          } catch (e) {
+            console.warn("Error logging company_ledger IPO proceeds:", e);
+          }
+        } else {
+          // Secondary market trade proceeds flow to seller's personal wallet
+          await db.execute({
+            sql: `UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?`,
+            args: [netSellerProceeds, ask.user_id],
+          });
+        }
       }
 
       // Credit fee to Treasury (Brokerage Fee + IPO Underwriting Fee)

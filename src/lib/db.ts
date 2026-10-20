@@ -223,6 +223,7 @@ export async function initDb(): Promise<void> {
       parlamentum_name TEXT NOT NULL,
       status TEXT NOT NULL CHECK(status IN ('PENDING', 'CREDITED', 'COMPLETED', 'REJECTED')),
       recipe_note TEXT,
+      tax_rate REAL DEFAULT 10.0,
       created_at TEXT NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
@@ -253,6 +254,10 @@ export async function initDb(): Promise<void> {
 
   try {
     await db.execute(`ALTER TABLE wallet_transactions ADD COLUMN iron_units INTEGER NOT NULL DEFAULT 0;`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE wallet_transactions ADD COLUMN tax_rate REAL DEFAULT 10.0;`);
   } catch {}
 
   try {
@@ -317,6 +322,14 @@ export async function initDb(): Promise<void> {
 
   try {
     await db.execute(`ALTER TABLE companies ADD COLUMN ipo_fee_collected REAL NOT NULL DEFAULT 0.0;`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE companies ADD COLUMN treasury_balance REAL NOT NULL DEFAULT 0.0;`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE companies ADD COLUMN total_profit_deposited REAL NOT NULL DEFAULT 0.0;`);
   } catch {}
 
   // Migrations for enhanced IPO applications

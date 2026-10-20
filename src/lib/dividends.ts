@@ -256,6 +256,112 @@ export async function reportEarningsAndDividend(params: {
 }
 
 /**
+ * Deposit operating profit / retained earnings directly into a company's corporate treasury
+ */
+export async function depositCompanyProfit(params: {
+  companyId: string;
+  amount: number;
+  reporterId: string;
+  notes?: string;
+  source?: "WALLET" | "MANUAL_DIRECT";
+}): Promise<{ success: boolean; message: string; newTreasuryBalance?: number }> {
+  await initDb();
+  const db = getDb();
+
+  const amount = Math.round(Number(params.amount) * 100) / 100;
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { success: false, message: "Deposit amount must be a positive gold amount." };
+  }
+
+  const compRes = await db.execute({
+    sql: "SELECT * FROM companies WHERE id = ?",
+    args: [params.companyId],
+  });
+  if (compRes.rows.length === 0) {
+    return { success: false, message: "Company not found." };
+  }
+  const company = compRes.rows[0];
+
+  const userRes = await db.execute({
+    sql: "SELECT * FROM users WHERE id = ?",
+    args: [params.reporterId],
+  });
+  if (userRes.rows.length === 0) {
+    return { success: false, message: "Reporter not found." };
+  }
+  const user = userRes.rows[0];
+  const isCreator = String(company.creator_id) === String(user.id);
+  const isAdmin = Number(user.is_admin) === 1;
+
+  if (!isCreator && !isAdmin) {
+    return { success: false, message: "Only the enterprise founder or High Registrar operator can deposit corporate profits." };
+  }
+
+  const source = params.source || "WALLET";
+  if (source === "WALLET") {
+    const userCash = Number(user.cash_balance);
+    if (userCash < amount) {
+      return {
+        success: false,
+        message: `Insufficient personal balance (${userCash.toLocaleString()} gold available, needed ${amount.toLocaleString()} gold).`,
+      };
+    }
+
+    const debit = await db.execute({
+      sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ? AND cash_balance >= ?",
+      args: [amount, user.id, amount],
+    });
+    if (debit.rowsAffected === 0) {
+      return { success: false, message: "Failed to deduct funds from personal wallet." };
+    }
+  }
+
+  // Credit company treasury and track lifetime profits deposited
+  await db.execute({
+    sql: `UPDATE companies 
+          SET treasury_balance = treasury_balance + ?, 
+              total_profit_deposited = total_profit_deposited + ? 
+          WHERE id = ?`,
+    args: [amount, amount, params.companyId],
+  });
+
+  const now = new Date().toISOString();
+  // Record in company_ledger
+  try {
+    const ledgerId = `cld_${crypto.randomUUID()}`;
+    await db.execute({
+      sql: `INSERT INTO company_ledger (id, company_id, user_id, entry_type, category, amount, description, entry_date, created_at)
+            VALUES (?, ?, ?, 'INCOME', 'OPERATING_PROFIT', ?, ?, ?, ?)`,
+      args: [
+        ledgerId,
+        params.companyId,
+        user.id,
+        amount,
+        params.notes || `Corporate Operating Profit Deposit (${source === "WALLET" ? "Personal Wallet" : "Direct Injection"})`,
+        now.slice(0, 10),
+        now,
+      ],
+    });
+  } catch (e) {
+    console.warn("Error logging company_ledger operating profit:", e);
+  }
+
+  scheduleBlobPersist();
+
+  const updatedComp = await db.execute({
+    sql: "SELECT treasury_balance FROM companies WHERE id = ?",
+    args: [params.companyId],
+  });
+  const newBalance = Number(updatedComp.rows[0]?.treasury_balance || 0);
+
+  return {
+    success: true,
+    message: `Successfully credited ${amount.toLocaleString()} gold of operating profit to $${company.ticker} Corporate Treasury. New Treasury Balance: ${newBalance.toLocaleString()} gold.`,
+    newTreasuryBalance: newBalance,
+  };
+}
+
+/**
  * Execute dividend payout to all shareholders holding shares in the company
  */
 export async function executeDividendPayout(reportId: string): Promise<{
@@ -311,15 +417,19 @@ export async function executeDividendPayout(reportId: string): Promise<{
   let shareholdersPaid = 0;
   const now = new Date().toISOString();
 
-  // The dividend is paid out of the founder's purse; it used to be credited to holders from nowhere
+  // The dividend is paid out of the company corporate treasury, with founder purse as fallback
   const founderId = String(company.creator_id);
   const totalDue = Math.round(holdersRes.rows.reduce((sum, row) => sum + Math.round(Number(row.shares) * dividendPerShare * 100) / 100, 0) * 100) / 100;
+
+  const treasuryBalance = Number(company.treasury_balance || 0);
   const founderRes = await db.execute({ sql: "SELECT cash_balance FROM users WHERE id = ?", args: [founderId] });
   const founderCash = founderRes.rows.length > 0 ? Number(founderRes.rows[0].cash_balance) : 0;
-  if (founderCash < totalDue) {
+  const totalAvailable = Math.round((treasuryBalance + founderCash) * 100) / 100;
+
+  if (totalAvailable < totalDue) {
     return {
       success: false,
-      message: `The founder's purse holds ${founderCash.toLocaleString()} gold but this dividend needs ${totalDue.toLocaleString()} gold.`,
+      message: `The corporate treasury holds ${treasuryBalance.toLocaleString()} gold (plus ${founderCash.toLocaleString()} in founder purse) but this dividend requires ${totalDue.toLocaleString()} gold.`,
       totalPaid: 0,
       shareholdersPaid: 0,
     };
@@ -334,16 +444,55 @@ export async function executeDividendPayout(reportId: string): Promise<{
     return { success: false, message: "Dividends for this period have already been distributed.", totalPaid: 0, shareholdersPaid: 0 };
   }
 
-  const debit = await db.execute({
-    sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ? AND cash_balance >= ?",
-    args: [totalDue, founderId, totalDue],
-  });
-  if (debit.rowsAffected === 0) {
+  // Deduct from corporate treasury first, remainder from founder purse if needed
+  const fromTreasury = Math.min(treasuryBalance, totalDue);
+  const fromFounder = Math.round((totalDue - fromTreasury) * 100) / 100;
+
+  if (fromTreasury > 0) {
     await db.execute({
-      sql: "UPDATE earnings_reports SET status = 'SCHEDULED', distributed_at = NULL WHERE id = ?",
-      args: [reportId],
+      sql: "UPDATE companies SET treasury_balance = treasury_balance - ? WHERE id = ?",
+      args: [fromTreasury, companyId],
     });
-    return { success: false, message: `The founder's purse no longer covers this dividend (${totalDue.toLocaleString()} gold).`, totalPaid: 0, shareholdersPaid: 0 };
+  }
+  if (fromFounder > 0) {
+    const debit = await db.execute({
+      sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ? AND cash_balance >= ?",
+      args: [fromFounder, founderId, fromFounder],
+    });
+    if (debit.rowsAffected === 0) {
+      // Revert claim and treasury deduction
+      if (fromTreasury > 0) {
+        await db.execute({
+          sql: "UPDATE companies SET treasury_balance = treasury_balance + ? WHERE id = ?",
+          args: [fromTreasury, companyId],
+        });
+      }
+      await db.execute({
+        sql: "UPDATE earnings_reports SET status = 'SCHEDULED', distributed_at = NULL WHERE id = ?",
+        args: [reportId],
+      });
+      return { success: false, message: `The founder's purse no longer covers the remaining dividend balance (${fromFounder.toLocaleString()} gold).`, totalPaid: 0, shareholdersPaid: 0 };
+    }
+  }
+
+  // Record corporate dividend expense in company_ledger
+  try {
+    const ledgerId = `cld_${crypto.randomUUID()}`;
+    await db.execute({
+      sql: `INSERT INTO company_ledger (id, company_id, user_id, entry_type, category, amount, description, entry_date, created_at)
+            VALUES (?, ?, ?, 'EXPENSE', 'DIVIDEND_DISTRIBUTION', ?, ?, ?, ?)`,
+      args: [
+        ledgerId,
+        companyId,
+        founderId,
+        totalDue,
+        `Dividend Distribution (${report.period_title || 'Dividend Payout'})`,
+        now.slice(0, 10),
+        now,
+      ],
+    });
+  } catch (e) {
+    console.warn("Error logging company_ledger dividend distribution:", e);
   }
 
   for (const row of holdersRes.rows) {

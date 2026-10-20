@@ -61,6 +61,9 @@ interface Citizen {
   trading_value?: number;
   founder_value?: number;
   total_net_worth?: number;
+  corporate_treasury_balance?: number;
+  total_profit_deposited?: number;
+  founder_companies?: Array<{ id: string; ticker: string; name: string; treasuryBalance: number; totalProfitDeposited?: number }>;
   holdings?: CitizenHolding[];
   is_admin: number;
   is_frozen?: number;
@@ -77,6 +80,7 @@ interface PendingDeposit {
   parlamentum_name: string;
   method: string;
   recipe_note: string;
+  tax_rate?: number;
   created_at: string;
 }
 
@@ -138,6 +142,13 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   const [divImmediate, setDivImmediate] = useState<boolean>(false);
   const [divSubmitting, setDivSubmitting] = useState<boolean>(false);
   const [processScheduledLoading, setProcessScheduledLoading] = useState<boolean>(false);
+
+  // Corporate Profit & Retained Earnings Deposit
+  const [depositProfitComp, setDepositProfitComp] = useState<any | null>(null);
+  const [depositProfitAmount, setDepositProfitAmount] = useState<string>("");
+  const [depositProfitNotes, setDepositProfitNotes] = useState<string>("");
+  const [depositProfitSource, setDepositProfitSource] = useState<"DIRECT" | "WALLET">("DIRECT");
+  const [submittingProfit, setSubmittingProfit] = useState<boolean>(false);
 
   // Citizen Wealth Inspector
   const [citizenSearch, setCitizenSearch] = useState<string>("");
@@ -329,6 +340,44 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
       setFeedback({ type: "error", message: err.message || "Network error" });
     } finally {
       setProcessScheduledLoading(false);
+    }
+  };
+
+  const handleDepositProfitSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!depositProfitComp) return;
+    const amount = parseFloat(depositProfitAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid positive gold amount.");
+      return;
+    }
+    setSubmittingProfit(true);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "deposit_company_profit",
+          companyId: depositProfitComp.id,
+          amount,
+          notes: depositProfitNotes || `Audited operating profit credited to $${depositProfitComp.ticker} corporate treasury`,
+          source: depositProfitSource,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+        setDepositProfitComp(null);
+        setDepositProfitAmount("");
+        setDepositProfitNotes("");
+        fetchAdminData();
+      } else {
+        alert(data.message || "Failed to deposit corporate profit.");
+      }
+    } catch (err: any) {
+      alert(err.message || "Network error");
+    } finally {
+      setSubmittingProfit(false);
     }
   };
 
@@ -1243,9 +1292,16 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                       <div>
                         <div className="font-bold text-white flex items-center gap-2">
                           {isWithdrawal ? (
-                            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold">
-                              🔻 WITHDRAWAL PAYOUT
-                            </span>
+                            <>
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold">
+                                🔻 WITHDRAWAL PAYOUT
+                              </span>
+                              {tx.tax_rate !== undefined && (
+                                <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono text-[10px] font-bold">
+                                  🏛️ {tx.tax_rate}% Regional Tax
+                                </span>
+                              )}
+                            </>
                           ) : (
                             <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold">
                               🟢 DEPOSIT
@@ -1841,7 +1897,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
             <div>
               <label className="font-semibold text-zinc-300 block mb-1">
-                Parlamentum Game Market Tax (%)
+                Default Regional Market Tax (%)
               </label>
               <div className="relative">
                 <input
@@ -1856,7 +1912,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 <Percent className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3" />
               </div>
               <span className="text-[10px] text-zinc-400 mt-1 block">
-                Tax negated on withdrawals so players receive their exact net gold! Supports decimals down to 0.01%.
+                Fallback tax negated on withdrawals. Citizens can select their specific regional tax rate (e.g. 3% in Kriti).
               </span>
             </div>
 
@@ -2265,6 +2321,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     <th className="py-3 px-4">Company</th>
                     <th className="py-3 px-4">Founder</th>
                     <th className="py-3 px-4 text-right">Last Price</th>
+                    <th className="py-3 px-4 text-right">Corporate Treasury</th>
                     <th className="py-3 px-4 text-right">Shares Bought Back</th>
                     <th className="py-3 px-4 text-center">Status</th>
                     <th className="py-3 px-4 text-right">Operator Actions</th>
@@ -2297,6 +2354,14 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                       <td className="py-3 px-4 text-right font-bold text-white">
                         {cmp.currentPrice.toFixed(2)}g
                       </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="font-bold text-amber-300 font-mono">
+                          {(cmp.treasuryBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
+                        </div>
+                        <div className="text-[10px] text-zinc-400 font-mono">
+                          +{(cmp.totalProfitDeposited || 0).toFixed(2)}g profit
+                        </div>
+                      </td>
                       <td className="py-3 px-4 text-right text-emerald-400">
                         {cmp.sharesBoughtBack ? `${cmp.sharesBoughtBack.toLocaleString()} shares` : "0"}
                       </td>
@@ -2317,6 +2382,18 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5 font-sans">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDepositProfitComp(cmp);
+                              setDepositProfitAmount("");
+                              setDepositProfitNotes("");
+                            }}
+                            className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-[10px] font-semibold transition cursor-pointer"
+                            title="Deposit operating profits into corporate treasury"
+                          >
+                            💰 Deposit Profit
+                          </button>
                           {cmp.status === "HALTED" ? (
                             <button
                               onClick={() => handleSetCompanyStatus(cmp.id, "ACTIVE")}
@@ -2834,6 +2911,18 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                               <div className="font-mono font-black text-emerald-400 text-sm">
                                 {purseCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}g
                               </div>
+                              <div className="text-[10px] text-zinc-500 font-sans">
+                                Personal Purse
+                              </div>
+                              {c.founder_companies && c.founder_companies.length > 0 && (
+                                <div className="mt-1 pt-1 border-t border-zinc-800/60 space-y-0.5">
+                                  {c.founder_companies.map((fc: any) => (
+                                    <div key={fc.id} className="text-[10px] font-mono text-amber-300 font-bold">
+                                      🏢 ${fc.ticker}: {Number(fc.treasuryBalance || 0).toFixed(2)}g
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -2841,7 +2930,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                                   setAdjustBalanceValue(String(purseCash));
                                   setAdjustReason(`Operator purse adjustment for @${c.username}`);
                                 }}
-                                className="text-[10px] font-sans text-amber-400/80 hover:text-amber-300 underline cursor-pointer mt-0.5"
+                                className="text-[10px] font-sans text-amber-400/80 hover:text-amber-300 underline cursor-pointer mt-1 block ml-auto"
                                 title="Adjust this citizen's purse balance"
                               >
                                 Adjust Purse
@@ -3071,6 +3160,136 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
                   >
                     {adjustLoading ? "Saving Balance..." : "Save Purse Balance"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Deposit Corporate Operating Profit */}
+        {depositProfitComp && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+              <button
+                type="button"
+                onClick={() => setDepositProfitComp(null)}
+                className="absolute right-4 top-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-xl">
+                  🏛️
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">
+                    Deposit Corporate Profit
+                  </h3>
+                  <p className="text-zinc-400 text-xs font-mono">
+                    ${depositProfitComp.ticker} · {depositProfitComp.name}
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleDepositProfitSubmit} className="space-y-4 text-xs font-sans">
+                <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between font-mono">
+                  <span className="text-zinc-400">Current Corporate Treasury:</span>
+                  <span className="text-amber-400 font-bold text-sm">
+                    {Number(depositProfitComp.treasuryBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gold
+                  </span>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">
+                    Operating Profit Amount (Gold)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    required
+                    placeholder="e.g. 500"
+                    value={depositProfitAmount}
+                    onChange={(e) => setDepositProfitAmount(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono text-base font-bold focus:outline-none focus:border-amber-400"
+                  />
+
+                  {/* Quick Preset Buttons */}
+                  <div className="grid grid-cols-4 gap-1.5 mt-2">
+                    {[100, 250, 500, 1000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setDepositProfitAmount(amt.toString())}
+                        className="py-1 text-[10px] font-mono bg-zinc-800 hover:bg-zinc-700 rounded text-amber-300 transition cursor-pointer"
+                      >
+                        +{amt}g
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">
+                    Funding Source
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDepositProfitSource("DIRECT")}
+                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                        depositProfitSource === "DIRECT"
+                          ? "bg-amber-500/15 border-amber-500 text-white font-bold"
+                          : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      <div className="text-[11px] font-semibold text-amber-300">Direct In-Game / Gross</div>
+                      <div className="text-[10px] text-zinc-400 mt-0.5">Does not debit personal purse</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDepositProfitSource("WALLET")}
+                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                        depositProfitSource === "WALLET"
+                          ? "bg-emerald-500/15 border-emerald-500 text-white font-bold"
+                          : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      <div className="text-[11px] font-semibold text-emerald-300">From Personal Wallet</div>
+                      <div className="text-[10px] text-zinc-400 mt-0.5">Deducts from user gold</div>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">
+                    Description / Accounting Note
+                  </label>
+                  <input
+                    type="text"
+                    value={depositProfitNotes}
+                    onChange={(e) => setDepositProfitNotes(e.target.value)}
+                    placeholder="e.g. Weekly net factory profits & in-game sales"
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-sans text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDepositProfitComp(null)}
+                    className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingProfit}
+                    className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition shadow-lg shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+                  >
+                    {submittingProfit ? "Crediting Treasury..." : "💰 Credit Corporate Treasury"}
                   </button>
                 </div>
               </form>
