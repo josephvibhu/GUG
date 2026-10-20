@@ -117,9 +117,12 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
         tradesExecuted: [],
       };
     }
-    const lowestAsk = Number(bestAskRes.rows[0].price);
-    effectiveMarketBuyPrice = price > 0 ? Math.max(price, lowestAsk) : lowestAsk;
+    effectiveMarketBuyPrice = Number(bestAskRes.rows[0].price);
   }
+  // Market buys take asks up to 5% above the best ask. The cap is rounded down and used for the escrow,
+  // the matching and the refund alike, so a fill can never cost more than was escrowed for it.
+  const marketBuyCap = Math.floor((Math.round(effectiveMarketBuyPrice * 100) * 105) / 100 + 1e-9) / 100;
+  let marketSellFloor = 0;
 
   if (type === "SELL" && orderType === "MARKET") {
     const bestBidRes = await db.execute({
@@ -136,12 +139,14 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
         tradesExecuted: [],
       };
     }
+    // Market sells take bids down to 5% below the best bid, so a stray low bid can't absorb the rest
+    marketSellFloor = Math.ceil((Math.round(Number(bestBidRes.rows[0].price) * 100) * 95) / 100 - 1e-9) / 100;
   }
 
   if (type === "BUY") {
     const requiredCash = orderType === "LIMIT"
       ? Math.round(price * quantity * 100) / 100
-      : Math.round(effectiveMarketBuyPrice * quantity * 1.05 * 100) / 100; // 5% slippage buffer for market
+      : Math.round(marketBuyCap * quantity * 100) / 100;
     const availableCash = Number(user.cash_balance);
 
     if (availableCash < requiredCash) {
@@ -222,7 +227,9 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
     // MARKET buys only escrowed current price + 5%, so they can't take asks above that band
     // (the buyer would be charged the escrow while the seller is paid the full ask).
     const matchQuery = "SELECT * FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND price <= ? AND user_id != ? ORDER BY price ASC, created_at ASC";
-    const priceCap = orderType === "LIMIT" ? price : Math.round(effectiveMarketBuyPrice * 1.05 * 100) / 100;
+    const priceCap = orderType === "LIMIT" ? price : marketBuyCap;
+    // Market buys: what is still escrowed for this order, so the last refund is exact
+    let marketEscrowLeft = Math.round(marketBuyCap * quantity * 100) / 100;
 
     const matchArgs = [actualCompanyId, priceCap, userId];
     const opposingOrders = await db.execute({ sql: matchQuery, args: matchArgs });
@@ -260,25 +267,30 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
       const isIpoOrder = String(ask.id).startsWith("ord_ipo_");
       let ipoFeeDeducted = 0;
 
-      if (isIpoOrder) {
+      if (isIpoOrder && sellerProceeds > 0) {
         try {
-          const compRow = await db.execute({
-            sql: "SELECT ipo_fee_collected FROM companies WHERE id = ? LIMIT 1",
-            args: [actualCompanyId],
-          });
-          const collected = compRow.rows.length > 0 ? Number(compRow.rows[0].ipo_fee_collected || 0) : 0;
           const listingSetting = await db.execute({
             sql: "SELECT value FROM settings WHERE key = 'ipo_listing_fee' LIMIT 1",
           });
           const targetListingFee = listingSetting.rows.length > 0 ? Number(listingSetting.rows[0].value) : 200;
-          const remainingListingFee = Math.max(0, Math.round((targetListingFee - collected) * 100) / 100);
-
-          if (remainingListingFee > 0 && sellerProceeds > 0) {
-            ipoFeeDeducted = Math.min(sellerProceeds, remainingListingFee);
-            await db.execute({
-              sql: "UPDATE companies SET ipo_fee_collected = ipo_fee_collected + ? WHERE id = ?",
-              args: [ipoFeeDeducted, actualCompanyId],
+          // Compare-and-swap on the collected total, so two fills at once can't both take the full remaining fee
+          for (let attempt = 0; attempt < 5; attempt++) {
+            const compRow = await db.execute({
+              sql: "SELECT ipo_fee_collected FROM companies WHERE id = ? LIMIT 1",
+              args: [actualCompanyId],
             });
+            const collected = compRow.rows.length > 0 ? Number(compRow.rows[0].ipo_fee_collected || 0) : 0;
+            const remainingListingFee = Math.max(0, Math.round((targetListingFee - collected) * 100) / 100);
+            const take = Math.min(sellerProceeds, remainingListingFee);
+            if (take <= 0) break;
+            const swap = await db.execute({
+              sql: "UPDATE companies SET ipo_fee_collected = ipo_fee_collected + ? WHERE id = ? AND ipo_fee_collected = ?",
+              args: [take, actualCompanyId, collected],
+            });
+            if (swap.rowsAffected > 0) {
+              ipoFeeDeducted = take;
+              break;
+            }
           }
         } catch (e) {
           console.warn("Error calculating IPO fee deduction in engine:", e);
@@ -337,7 +349,10 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
       }
 
       // Update Buyer: deduct locked cash and add shares to buyer portfolio
-      const lockedCashDeduct = orderType === "LIMIT" ? Math.round(matchQty * price * 100) / 100 : Math.round(matchQty * effectiveMarketBuyPrice * 1.05 * 100) / 100;
+      const lockedCashDeduct = orderType === "LIMIT"
+        ? Math.round(matchQty * price * 100) / 100
+        : Math.min(marketEscrowLeft, Math.round(matchQty * marketBuyCap * 100) / 100);
+      if (orderType !== "LIMIT") marketEscrowLeft = Math.round((marketEscrowLeft - lockedCashDeduct) * 100) / 100;
       const cashDifference = lockedCashDeduct - matchCost; // Refund difference if filled below limit price!
 
       await db.execute({
@@ -373,8 +388,8 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
           args: [newOrderId, userId, actualCompanyId, price, quantity, remainingQuantity, filledQuantity > 0 ? "PARTIAL" : "OPEN", now],
         });
       } else {
-        // Market order: unlock remaining unspent locked cash
-        const unspentCash = Math.round(remainingQuantity * effectiveMarketBuyPrice * 1.05 * 100) / 100;
+        // Market order: unlock what is still escrowed
+        const unspentCash = marketEscrowLeft;
         await db.execute({
           sql: "UPDATE users SET locked_cash = locked_cash - ?, cash_balance = cash_balance + ? WHERE id = ?",
           args: [unspentCash, unspentCash, userId],
@@ -384,11 +399,8 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   } else {
     // SELL
     // Fetch Bids (BUY orders) with price >= order.price (or any if MARKET), ordered by price DESC, created_at ASC
-    const matchQuery = orderType === "LIMIT"
-      ? "SELECT * FROM orders WHERE company_id = ? AND type = 'BUY' AND status IN ('OPEN', 'PARTIAL') AND price >= ? AND user_id != ? ORDER BY price DESC, created_at ASC"
-      : "SELECT * FROM orders WHERE company_id = ? AND type = 'BUY' AND status IN ('OPEN', 'PARTIAL') AND user_id != ? ORDER BY price DESC, created_at ASC";
-
-    const matchArgs = orderType === "LIMIT" ? [actualCompanyId, price, userId] : [actualCompanyId, userId];
+    const matchQuery = "SELECT * FROM orders WHERE company_id = ? AND type = 'BUY' AND status IN ('OPEN', 'PARTIAL') AND price >= ? AND user_id != ? ORDER BY price DESC, created_at ASC";
+    const matchArgs = [actualCompanyId, orderType === "LIMIT" ? price : marketSellFloor, userId];
     const opposingOrders = await db.execute({ sql: matchQuery, args: matchArgs });
 
     for (const bid of opposingOrders.rows) {
@@ -487,7 +499,7 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
     message: filledQuantity === quantity
       ? `Order fully executed (${filledQuantity} shares @ avg Ᵽ${avgFillPrice})`
       : orderType === "MARKET"
-      ? `Market order filled ${filledQuantity}/${quantity} shares${filledQuantity > 0 ? ` @ avg Ᵽ${avgFillPrice}` : ""}; no more matching orders${type === "BUY" ? " within 5% of the last price" : ""}, the rest was cancelled.`
+      ? `Market order filled ${filledQuantity}/${quantity} shares${filledQuantity > 0 ? ` @ avg Ᵽ${avgFillPrice}` : ""}; no more matching orders within 5% of the best ${type === "BUY" ? "ask" : "bid"}, the rest was cancelled.`
       : filledQuantity > 0
       ? `Order partially filled (${filledQuantity}/${quantity} shares @ avg Ᵽ${avgFillPrice}, remaining open)`
       : `Limit order placed successfully on the order book.`,
@@ -513,6 +525,10 @@ export async function cancelOrder(userId: string, orderId: string): Promise<{ su
   }
 
   const order = orderRes.rows[0];
+  // Cancelling the IPO sale and relisting the shares would skip the company treasury and the listing fee
+  if (String(order.id).startsWith("ord_ipo_")) {
+    return { success: false, message: "The IPO share sale can't be cancelled. Ask the operator if it needs to change." };
+  }
   const remainingQty = Number(order.remaining_quantity);
   const orderPrice = Number(order.price);
 
@@ -542,33 +558,18 @@ export async function cancelOrder(userId: string, orderId: string): Promise<{ su
   return { success: true, message: "Order cancelled and escrow returned to your balance." };
 }
 
-// Helper: update or insert portfolio holdings
+// Helper: add shares to a holding (one statement, so parallel fills for a new holder can't collide)
 async function addSharesToPortfolio(db: any, userId: string, companyId: string, addedShares: number, buyPrice: number) {
-  const existing = await db.execute({
-    sql: "SELECT * FROM portfolios WHERE user_id = ? AND company_id = ?",
-    args: [userId, companyId],
+  await db.execute({
+    sql: `INSERT INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
+          VALUES (?, ?, ?, ?, 0, ?)
+          ON CONFLICT(user_id, company_id) DO UPDATE SET
+            avg_buy_price = CASE WHEN portfolios.shares + excluded.shares > 0
+              THEN ROUND((portfolios.shares * portfolios.avg_buy_price + excluded.shares * excluded.avg_buy_price) / (portfolios.shares + excluded.shares), 2)
+              ELSE excluded.avg_buy_price END,
+            shares = portfolios.shares + excluded.shares`,
+    args: [`port_${crypto.randomUUID()}`, userId, companyId, addedShares, buyPrice],
   });
-
-  if (existing.rows.length === 0) {
-    const portId = `port_${crypto.randomUUID()}`;
-    await db.execute({
-      sql: `INSERT INTO portfolios (id, user_id, company_id, shares, locked_shares, avg_buy_price)
-            VALUES (?, ?, ?, ?, 0, ?)`,
-      args: [portId, userId, companyId, addedShares, buyPrice],
-    });
-  } else {
-    const currentShares = Number(existing.rows[0].shares);
-    const currentAvg = Number(existing.rows[0].avg_buy_price);
-    const newTotalShares = currentShares + addedShares;
-    const newAvg = newTotalShares > 0 
-      ? Math.round((((currentShares * currentAvg) + (addedShares * buyPrice)) / newTotalShares) * 100) / 100
-      : buyPrice;
-
-    await db.execute({
-      sql: "UPDATE portfolios SET shares = shares + ?, avg_buy_price = ? WHERE user_id = ? AND company_id = ?",
-      args: [addedShares, newAvg, userId, companyId],
-    });
-  }
 }
 
 // Helper: update company price, 24h stats, and candlestick
