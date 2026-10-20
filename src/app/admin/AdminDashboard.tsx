@@ -1179,7 +1179,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 <Coins className="w-4 h-4 text-emerald-400" />
                 Load Citizen Purse from Game Sale
               </h2>
-              <span className="text-[10px] text-zinc-400 font-mono">1 Raw Iron = 5g</span>
+              <span className="text-[10px] text-zinc-400 font-mono">1 Raw Iron = 10g</span>
             </div>
 
             <p className="text-[11px] text-zinc-400 leading-relaxed">
@@ -1205,13 +1205,13 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 <div className="flex justify-between text-[11px] font-semibold text-zinc-300 mb-1">
                   <span>Gold Amount to Credit</span>
                   <span className="font-mono text-zinc-400">
-                    = {Math.ceil(parseFloat(creditAmount || "0") / 5)} Raw Iron
+                    = {Math.ceil(parseFloat(creditAmount || "0") / 10)} Raw Iron
                   </span>
                 </div>
                 <input
                   type="number"
-                  min="5"
-                  step="5"
+                  min="10"
+                  step="10"
                   value={creditAmount}
                   onChange={(e) => setCreditAmount(e.target.value)}
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono text-emerald-400 font-bold focus:outline-none focus:border-amber-400"
@@ -1220,10 +1220,10 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 {/* Quick Raw Iron units presets */}
                 <div className="grid grid-cols-4 gap-1.5 mt-2">
                   {[
-                    { iron: 20, gold: 100 },
-                    { iron: 100, gold: 500 },
-                    { iron: 200, gold: 1000 },
-                    { iron: 500, gold: 2500 },
+                    { iron: 10, gold: 100 },
+                    { iron: 50, gold: 500 },
+                    { iron: 100, gold: 1000 },
+                    { iron: 250, gold: 2500 },
                   ].map((preset) => (
                     <button
                       key={preset.iron}

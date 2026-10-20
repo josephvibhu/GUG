@@ -49,7 +49,7 @@ export default function WalletModal({
   const [depositAmount, setDepositAmount] = useState<string>("500");
   const [withdrawAmount, setWithdrawAmount] = useState<string>("");
   const [houseOperator, setHouseOperator] = useState<string>("JosephArora");
-  const [ironPrice, setIronPrice] = useState<number>(5);
+  const [ironPrice, setIronPrice] = useState<number>(10);
   const [taxRate, setTaxRate] = useState<number>(10);
   const [selectedTaxRate, setSelectedTaxRate] = useState<number>(10);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
@@ -66,7 +66,7 @@ export default function WalletModal({
         setBalance(bal);
         setParlamentumName(data.parlamentumName || "");
         setHouseOperator(data.houseOperator || "JosephArora");
-        setIronPrice(data.ironPrice || 5);
+        setIronPrice(data.ironPrice || 10);
         setTaxRate(data.taxRate || 10);
         setSelectedTaxRate((prev) => prev !== 10 ? prev : (data.taxRate || 10));
         setLedger(data.ledger || []);
@@ -97,7 +97,7 @@ export default function WalletModal({
   const numDeposit = parseInt(depositAmount, 10) || 0;
   const numWithdraw = parseInt(withdrawAmount, 10) || 0;
 
-  // Deposit Calculations (Raw Iron at 5g each)
+  // Deposit Calculations (Raw Iron at 10g each)
   const depositIronUnits = Math.max(1, Math.ceil(numDeposit / ironPrice));
   const depositGrossTotal = depositIronUnits * ironPrice;
 
@@ -112,7 +112,7 @@ export default function WalletModal({
     e.preventDefault();
     setFeedback(null);
 
-    if (numDeposit < 5) {
+    if (numDeposit < ironPrice) {
       setFeedback({ type: "error", message: `Minimum deposit is ${ironPrice} gold (1 Raw Iron).` });
       return;
     }
@@ -318,7 +318,7 @@ export default function WalletModal({
                   }`}
                 >
                   <div className="font-semibold flex items-center gap-1.5 text-xs text-amber-300">
-                    <Store className="w-3.5 h-3.5" /> Market (Raw Iron @ 5g)
+                    <Store className="w-3.5 h-3.5" /> Market (Raw Iron @ {ironPrice}g)
                   </div>
                   <div className="text-[10px] text-zinc-400 mt-0.5">
                     Buy Raw Iron listed by {houseOperator}
@@ -416,16 +416,17 @@ export default function WalletModal({
                 />
                 <div className="flex gap-1.5 mt-2">
                   {[
-                    { label: "10 Iron (50g)", val: 50 },
-                    { label: "50 Iron (250g)", val: 250 },
-                    { label: "100 Iron (500g)", val: 500 },
-                    { label: "200 Iron (1k)", val: 1000 },
-                    { label: "500 Iron (2.5k)", val: 2500 },
-                    { label: "1k Iron (5k)", val: 5000 },
+                    { label: "10 Iron (100g)", val: 100 },
+                    { label: "25 Iron (250g)", val: 250 },
+                    { label: "50 Iron (500g)", val: 500 },
+                    { label: "100 Iron (1k)", val: 1000 },
+                    { label: "250 Iron (2.5k)", val: 2500 },
+                    { label: "500 Iron (5k)", val: 5000 },
                   ].map((preset) => (
                     <button
                       key={preset.val}
                       type="button"
+                      title={preset.label}
                       onClick={() => setDepositAmount(preset.val.toString())}
                       className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono py-1 rounded text-[10px] cursor-pointer"
                     >
@@ -677,7 +678,7 @@ export default function WalletModal({
                                         ? "Contract"
                                         : tx.method === "MANUAL_LOAD" || tx.method === "ADMIN_CREDIT"
                                         ? "Operator Load"
-                                        : "Raw Iron (5g)"}
+                                        : `Raw Iron (${ironPrice}g)`}
                                     </span>
                                   </div>
                                   {isAdjustment ? (
@@ -721,7 +722,7 @@ export default function WalletModal({
 
         {/* Footer Disclaimer */}
         <div className="pt-3 border-t border-zinc-800 text-[10px] text-zinc-400 text-center shrink-0">
-          Operated with Parlamentum in-game gold only via Raw Iron @ 5g. No real currency is involved.
+          Operated with Parlamentum in-game gold only via Raw Iron @ {ironPrice}g. No real currency is involved.
         </div>
       </div>
     </div>

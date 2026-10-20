@@ -1,7 +1,7 @@
 import { getDb, initDb, scheduleBlobPersist } from "./db";
 import crypto from "crypto";
 
-export const IRON_UNIT_PRICE = 5; // 5 gold per Raw Iron
+export const IRON_UNIT_PRICE = 10; // 10 gold per Raw Iron
 
 export interface RecipeResult {
   goldAmount: number;
@@ -34,7 +34,7 @@ export async function setSetting(key: string, value: string): Promise<void> {
   });
 }
 
-// Deposit calculation: Buy Raw Iron at 5g each
+// Deposit calculation: Buy Raw Iron at 10g each
 export function calculateDepositRecipe(goldAmount: number, taxRate = 0): RecipeResult {
   const units = Math.max(1, Math.ceil(goldAmount / IRON_UNIT_PRICE));
   const total = units * IRON_UNIT_PRICE;
@@ -47,7 +47,7 @@ export function calculateDepositRecipe(goldAmount: number, taxRate = 0): RecipeR
     taxAmount: 0,
     netPayout: total,
     taxRatePercent: taxRate,
-    instructions: `Buy ${units} Raw Iron listed by JosephArora at 5 gold each (Total: ${total} gold).`,
+    instructions: `Buy ${units} Raw Iron listed by JosephArora at ${IRON_UNIT_PRICE} gold each (Total: ${total} gold).`,
   };
 }
 
@@ -59,7 +59,7 @@ export function calculateWithdrawalRecipe(goldAmount: number, taxRate = 10): Rec
   const gross = t < 1 ? Math.round((goldAmount / (1 - t)) * 100) / 100 : goldAmount;
   const taxNegated = Math.round((gross - goldAmount) * 100) / 100;
   
-  // Proportional 1 Raw Iron per ~5 gold (minimum 1 unit)
+  // Proportional 1 Raw Iron per ~10 gold (minimum 1 unit)
   const ironUnits = Math.max(1, Math.ceil(goldAmount / IRON_UNIT_PRICE));
   const unitPrice = Math.round((gross / ironUnits) * 100) / 100;
 

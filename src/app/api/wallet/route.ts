@@ -83,8 +83,8 @@ export async function POST(request: Request) {
     const numAmount = Math.floor(Number(amount));
     const targetName = (parlamentumName || user.parlamentumName || user.username).trim();
 
-    if (!Number.isFinite(numAmount) || numAmount < 5) {
-      return NextResponse.json({ success: false, message: "Minimum transaction is 5 gold." }, { status: 400 });
+    if (!Number.isFinite(numAmount) || numAmount < IRON_UNIT_PRICE) {
+      return NextResponse.json({ success: false, message: `Minimum transaction is ${IRON_UNIT_PRICE} gold.` }, { status: 400 });
     }
 
     const [taxRateStr, houseName, autoApproveStr] = await Promise.all([
@@ -100,14 +100,14 @@ export async function POST(request: Request) {
     const txId = `tx_${crypto.randomUUID().slice(0, 8)}`;
 
     if (action === "deposit") {
-      // 1. DEPOSIT (Buy Raw Iron at 5 gold each)
+      // 1. DEPOSIT (Buy Raw Iron at 10 gold each)
       const depositCalc = calculateDepositRecipe(numAmount, taxRate);
       const ironUnits = depositCalc.ironUnits;
       const actualGold = depositCalc.grossTotal;
 
       const recipe = method === "CONTRACT"
         ? `In-game contract to ${houseName} giving ${actualGold} gold + 1 courier ticket for 1 Raw Iron.`
-        : `Bought ${ironUnits} Raw Iron listed by ${houseName} at 5 gold each (${actualGold} gold total).`;
+        : `Bought ${ironUnits} Raw Iron listed by ${houseName} at ${IRON_UNIT_PRICE} gold each (${actualGold} gold total).`;
 
       const reqTaxRate = body.taxRate !== undefined && !isNaN(Number(body.taxRate))
         ? Math.max(0, Math.min(50, Number(body.taxRate)))
