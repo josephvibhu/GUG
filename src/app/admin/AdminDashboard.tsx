@@ -101,6 +101,16 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   const [discordAlertsEnabled, setDiscordAlertsEnabled] = useState<boolean>(true);
   const [discordTesting, setDiscordTesting] = useState<boolean>(false);
 
+  // Cloud Auto-Sync Engine (Parlamentum Ledger)
+  const [parlamentumCookie, setParlamentumCookie] = useState<string>("");
+  const [hasParlamentumCookie, setHasParlamentumCookie] = useState<boolean>(false);
+  const [lastCloudSyncAt, setLastCloudSyncAt] = useState<string | null>(null);
+  const [lastCloudSyncStatus, setLastCloudSyncStatus] = useState<string>("IDLE");
+  const [lastCloudSyncMessage, setLastCloudSyncMessage] = useState<string>("");
+  const [lastCloudSyncFills, setLastCloudSyncFills] = useState<number>(0);
+  const [cloudSyncing, setCloudSyncing] = useState<boolean>(false);
+  const [showCookieInput, setShowCookieInput] = useState<boolean>(false);
+
   // Market Trading Hours (UTC)
   const [openTime, setOpenTime] = useState<string>("15:30");
   const [closeTime, setCloseTime] = useState<string>("16:30");
@@ -175,6 +185,11 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           if (data.settings.discordWebhookUrl !== undefined) setDiscordWebhookUrl(data.settings.discordWebhookUrl);
           if (data.settings.discordWhaleThreshold !== undefined) setDiscordWhaleThreshold(data.settings.discordWhaleThreshold);
           if (data.settings.discordAlertsEnabled !== undefined) setDiscordAlertsEnabled(data.settings.discordAlertsEnabled);
+          if (data.settings.hasParlamentumCookie !== undefined) setHasParlamentumCookie(data.settings.hasParlamentumCookie);
+          if (data.settings.lastCloudSyncAt !== undefined) setLastCloudSyncAt(data.settings.lastCloudSyncAt);
+          if (data.settings.lastCloudSyncStatus !== undefined) setLastCloudSyncStatus(data.settings.lastCloudSyncStatus);
+          if (data.settings.lastCloudSyncMessage !== undefined) setLastCloudSyncMessage(data.settings.lastCloudSyncMessage);
+          if (data.settings.lastCloudSyncFills !== undefined) setLastCloudSyncFills(data.settings.lastCloudSyncFills);
         }
         if (data.marketSchedule) {
           setMarketSchedule(data.marketSchedule);
@@ -496,6 +511,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           discordWebhookUrl,
           discordWhaleThreshold: Number(discordWhaleThreshold),
           discordAlertsEnabled,
+          parlamentumCookie: parlamentumCookie.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -506,6 +522,35 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
       }
     } catch (e: any) {
       setFeedback({ type: "error", message: e.message });
+    }
+  };
+
+  const handleTriggerCloudSync = async () => {
+    setCloudSyncing(true);
+    setFeedback(null);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "trigger_cloud_sync" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: data.message });
+        setLastCloudSyncStatus("SUCCESS");
+        setLastCloudSyncMessage(data.message);
+        setLastCloudSyncAt(new Date().toISOString());
+        setLastCloudSyncFills(data.fillsFound || 0);
+        fetchAdminData();
+      } else {
+        setFeedback({ type: "error", message: data.message });
+        setLastCloudSyncStatus(data.expired ? "EXPIRED" : "ERROR");
+        setLastCloudSyncMessage(data.message);
+      }
+    } catch (e: any) {
+      setFeedback({ type: "error", message: e.message });
+    } finally {
+      setCloudSyncing(false);
     }
   };
 
@@ -1986,6 +2031,127 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             <div className="flex items-start gap-2">
               <span className="text-purple-400 font-bold">🚀</span>
               <span><strong>IPO Launches:</strong> Welcomes newly chartered companies and alerts traders to initial floats.</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3.4: 100% Cloud Auto-Sync (Zero Desktop / No Browser Required) */}
+        <div className="bg-gradient-to-r from-blue-950/40 via-zinc-900/60 to-zinc-900/60 border border-blue-500/30 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">☁️</span>
+                <h3 className="font-bold text-white text-base">
+                  Cloud Ledger Auto-Sync (100% Automated · Zero Desktop Required)
+                </h3>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                  lastCloudSyncStatus === "SUCCESS"
+                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                    : lastCloudSyncStatus === "EXPIRED"
+                    ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                    : hasParlamentumCookie
+                    ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                    : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                }`}>
+                  {lastCloudSyncStatus === "SUCCESS" ? "🟢 24/7 Cloud Active" : lastCloudSyncStatus === "EXPIRED" ? "🔴 Cookie Expired" : hasParlamentumCookie ? "🔵 Configured" : "🟡 Cookie Not Set"}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-1">
+                The exchange queries <span className="font-mono text-zinc-300">parlamentum.org/trade/ledger</span> directly in the cloud. Deposits are auto-credited instantly even if your browser is closed and your PC is powered off!
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleTriggerCloudSync}
+                disabled={cloudSyncing || !hasParlamentumCookie}
+                className="px-4 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 font-bold text-xs transition cursor-pointer flex items-center gap-2 disabled:opacity-50"
+              >
+                {cloudSyncing ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Syncing In Cloud...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Test & Sync Cloud Now</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Sync status alert */}
+          {lastCloudSyncAt && (
+            <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 ${
+              lastCloudSyncStatus === "SUCCESS" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" :
+              lastCloudSyncStatus === "EXPIRED" ? "bg-rose-500/10 border-rose-500/20 text-rose-300" :
+              "bg-zinc-900 border-zinc-800 text-zinc-300"
+            }`}>
+              <div className="flex items-center gap-2">
+                <span>{lastCloudSyncStatus === "SUCCESS" ? "✅" : lastCloudSyncStatus === "EXPIRED" ? "⚠️" : "ℹ️"}</span>
+                <span><strong>Status:</strong> {lastCloudSyncMessage || "Cloud synchronizer operational."}</span>
+              </div>
+              <span className="text-[11px] text-zinc-400 font-mono shrink-0">
+                Last checked: {new Date(lastCloudSyncAt).toLocaleTimeString()}
+              </span>
+            </div>
+          )}
+
+          {/* Cookie Input and Configuration */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 text-xs">
+            <div className="lg:col-span-8">
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-semibold text-zinc-300">
+                  Parlamentum Session Cookie (Required for Cloud Access)
+                </label>
+                {hasParlamentumCookie && (
+                  <span className="text-[11px] text-emerald-400 font-mono">
+                    ✓ Cookie currently saved in database
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type={showCookieInput ? "text" : "password"}
+                  placeholder={hasParlamentumCookie ? "Paste new cookie here to update..." : "Paste full Cookie header string from browser..."}
+                  value={parlamentumCookie}
+                  onChange={(e) => setParlamentumCookie(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-3 pr-20 py-2.5 font-mono text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-blue-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCookieInput(!showCookieInput)}
+                  className="absolute right-2 top-2 px-2 py-1 text-[10px] text-zinc-400 hover:text-white bg-zinc-800 rounded"
+                >
+                  {showCookieInput ? "Hide" : "Show"}
+                </button>
+              </div>
+              <span className="text-[10px] text-zinc-400 mt-1 block">
+                How to get in 10s: Open <span className="text-zinc-300">parlamentum.org</span> &rarr; Press <kbd className="px-1 bg-zinc-800 rounded">F12</kbd> &rarr; Network tab &rarr; Click any request &rarr; Copy <span className="font-mono text-zinc-300">Cookie</span> header &rarr; Paste here &rarr; Click &ldquo;Save Settings&rdquo; above!
+              </span>
+            </div>
+
+            <div className="lg:col-span-4 flex flex-col justify-between p-3 bg-zinc-950/60 rounded-xl border border-zinc-800">
+              <div>
+                <span className="font-bold text-zinc-200 block mb-1">⏰ 24/7 Cloud Cron Webhook</span>
+                <p className="text-[11px] text-zinc-400 leading-relaxed mb-2">
+                  Call this endpoint every 60s from free services like <a href="https://cron-job.org" target="_blank" rel="noreferrer" className="text-blue-400 underline">cron-job.org</a> or GitHub Actions:
+                </p>
+                <div className="bg-zinc-900 p-2 rounded border border-zinc-800 font-mono text-[10px] text-zinc-300 break-all select-all flex items-center justify-between gap-1">
+                  <span>https://growurgold.vercel.app/api/cron/sync-ledger?key={apiKey}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(`https://growurgold.vercel.app/api/cron/sync-ledger?key=${apiKey}`)}
+                className="mt-2 w-full py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center justify-center gap-1.5"
+              >
+                <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Copy Cron Webhook URL</span>
+              </button>
             </div>
           </div>
         </div>

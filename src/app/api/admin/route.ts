@@ -18,7 +18,22 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "Forbidden: Admin access required." }, { status: 403 });
     }
 
-    const [taxRate, houseName, apiKey, autoApprove, tradeFee, listingFee, discordWebhookUrl, discordWhaleThreshold, discordAlertsEnabled] = await Promise.all([
+    const [
+      taxRate,
+      houseName,
+      apiKey,
+      autoApprove,
+      tradeFee,
+      listingFee,
+      discordWebhookUrl,
+      discordWhaleThreshold,
+      discordAlertsEnabled,
+      parlamentumCookie,
+      lastCloudSyncAt,
+      lastCloudSyncStatus,
+      lastCloudSyncMessage,
+      lastCloudSyncFills,
+    ] = await Promise.all([
       getSetting("tax_rate", "10"),
       getSetting("house_name", "JosephArora"),
       getSetting("api_key", ""),
@@ -28,6 +43,11 @@ export async function GET() {
       getSetting("discord_webhook_url", ""),
       getSetting("discord_whale_threshold", "25"),
       getSetting("discord_alerts_enabled", "true"),
+      getSetting("parlamentum_cookie", ""),
+      getSetting("last_cloud_sync_at", ""),
+      getSetting("last_cloud_sync_status", "IDLE"),
+      getSetting("last_cloud_sync_message", ""),
+      getSetting("last_cloud_sync_fills", "0"),
     ]);
 
     const { getMarketSchedule } = await import("@/lib/marketHours");
@@ -198,6 +218,12 @@ export async function GET() {
         discordWebhookUrl: discordWebhookUrl || "",
         discordWhaleThreshold: Number(discordWhaleThreshold) || 25,
         discordAlertsEnabled: discordAlertsEnabled !== "false",
+        parlamentumCookie: parlamentumCookie ? (parlamentumCookie.slice(0, 15) + "..." + parlamentumCookie.slice(-10)) : "",
+        hasParlamentumCookie: Boolean(parlamentumCookie && parlamentumCookie.trim()),
+        lastCloudSyncAt: lastCloudSyncAt || null,
+        lastCloudSyncStatus: lastCloudSyncStatus || "IDLE",
+        lastCloudSyncMessage: lastCloudSyncMessage || "",
+        lastCloudSyncFills: Number(lastCloudSyncFills) || 0,
       },
       marketSchedule,
       pendingDeposits: pendingRes.rows,
@@ -541,7 +567,8 @@ export async function POST(request: Request) {
     }
 
     if (action === "update_settings") {
-      const { taxRate, houseName, autoApprove, apiKey, tradeFee, listingFee, discordWebhookUrl, discordWhaleThreshold, discordAlertsEnabled } = body;
+      const { taxRate, houseName, autoApprove, apiKey, tradeFee, listingFee, discordWebhookUrl, discordWhaleThreshold, discordAlertsEnabled, parlamentumCookie } = body;
+      if (parlamentumCookie !== undefined) await setSetting("parlamentum_cookie", String(parlamentumCookie).trim());
       if (taxRate !== undefined) await setSetting("tax_rate", String(taxRate));
       if (houseName !== undefined) await setSetting("house_name", String(houseName));
       if (autoApprove !== undefined) await setSetting("auto_approve_deposits", String(autoApprove));
@@ -556,6 +583,14 @@ export async function POST(request: Request) {
       scheduleBlobPersist();
 
       return NextResponse.json({ success: true, message: "Operator settings updated successfully!" });
+    }
+
+    if (action === "trigger_cloud_sync") {
+      const { triggerCloudLedgerSync } = await import("@/lib/cloudSync");
+      const res = await triggerCloudLedgerSync();
+      const { scheduleBlobPersist } = await import("@/lib/db");
+      scheduleBlobPersist();
+      return NextResponse.json(res);
     }
 
     if (action === "test_discord_webhook") {

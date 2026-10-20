@@ -133,6 +133,11 @@ export async function POST(request: Request) {
         });
       }).catch(() => {});
 
+      // Trigger immediate cloud ledger sync in background
+      import("@/lib/cloudSync").then(({ triggerCloudLedgerSync }) => {
+        triggerCloudLedgerSync().catch(() => {});
+      }).catch(() => {});
+
       const updatedUser = await db.execute({
         sql: "SELECT cash_balance FROM users WHERE id = ?",
         args: [user.id],
