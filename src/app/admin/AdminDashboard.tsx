@@ -12,10 +12,7 @@ import {
   XCircle, 
   UserCheck, 
   Settings, 
-  Copy, 
-  Check, 
   RefreshCw,
-  Terminal,
   ArrowRight,
   Percent,
   AlertCircle,
@@ -23,7 +20,6 @@ import {
   Timer,
   Building2,
   Zap,
-  ExternalLink,
   Award,
   Calendar,
   Flame,
@@ -95,8 +91,6 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   // Settings
   const [taxRate, setTaxRate] = useState<number>(10);
   const [houseName, setHouseName] = useState<string>("JosephArora");
-  const [autoApprove, setAutoApprove] = useState<boolean>(true);
-  const [apiKey, setApiKey] = useState<string>("");
   const [tradeFee, setTradeFee] = useState<number>(0.5);
   const [listingFee, setListingFee] = useState<number>(200);
 
@@ -106,15 +100,6 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   const [discordAlertsEnabled, setDiscordAlertsEnabled] = useState<boolean>(true);
   const [discordTesting, setDiscordTesting] = useState<boolean>(false);
 
-  // Cloud Auto-Sync Engine (Parlamentum Ledger)
-  const [parlamentumCookie, setParlamentumCookie] = useState<string>("");
-  const [hasParlamentumCookie, setHasParlamentumCookie] = useState<boolean>(false);
-  const [lastCloudSyncAt, setLastCloudSyncAt] = useState<string | null>(null);
-  const [lastCloudSyncStatus, setLastCloudSyncStatus] = useState<string>("IDLE");
-  const [lastCloudSyncMessage, setLastCloudSyncMessage] = useState<string>("");
-  const [lastCloudSyncFills, setLastCloudSyncFills] = useState<number>(0);
-  const [cloudSyncing, setCloudSyncing] = useState<boolean>(false);
-  const [showCookieInput, setShowCookieInput] = useState<boolean>(false);
 
   // Market Trading Hours (UTC)
   const [openTime, setOpenTime] = useState<string>("15:30");
@@ -159,14 +144,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   const [adjustReason, setAdjustReason] = useState<string>("Operator purse adjustment");
   const [adjustLoading, setAdjustLoading] = useState<boolean>(false);
 
-  // Parlamentum In-Game Trade Ledger Sync (/trade/ledger)
-  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
-  const [tradeInsights, setTradeInsights] = useState<any | null>(null);
-  const [ledgerCreditingId, setLedgerCreditingId] = useState<string | null>(null);
-  const [manualCreditUser, setManualCreditUser] = useState<{ [id: string]: string }>({});
   const [financialSummary, setFinancialSummary] = useState<any | null>(null);
-  
-  const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   // A one-time password reset code, shown once to the operator to send privately
   const [resetCode, setResetCode] = useState<{ username: string; code: string; expiresAt: string } | null>(null);
@@ -184,8 +162,6 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         setCompanies(data.companies || []);
         if (data.earningsReports) setEarningsReports(data.earningsReports);
         if (data.nextFriday) setNextFriday(data.nextFriday);
-        if (data.ledgerEntries) setLedgerEntries(data.ledgerEntries);
-        if (data.tradeInsights) setTradeInsights(data.tradeInsights);
         if (data.financialSummary) setFinancialSummary(data.financialSummary);
         if (data.companies && data.companies.length > 0 && !divCompanyId) {
           setDivCompanyId(data.companies[0].id);
@@ -193,18 +169,11 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         if (data.settings) {
           setTaxRate(data.settings.taxRate);
           setHouseName(data.settings.houseName);
-          setApiKey(data.settings.apiKey);
-          setAutoApprove(data.settings.autoApprove);
           if (data.settings.tradeFee !== undefined) setTradeFee(data.settings.tradeFee);
           if (data.settings.listingFee !== undefined) setListingFee(data.settings.listingFee);
           if (data.settings.discordWebhookUrl !== undefined) setDiscordWebhookUrl(data.settings.discordWebhookUrl);
           if (data.settings.discordWhaleThreshold !== undefined) setDiscordWhaleThreshold(data.settings.discordWhaleThreshold);
           if (data.settings.discordAlertsEnabled !== undefined) setDiscordAlertsEnabled(data.settings.discordAlertsEnabled);
-          if (data.settings.hasParlamentumCookie !== undefined) setHasParlamentumCookie(data.settings.hasParlamentumCookie);
-          if (data.settings.lastCloudSyncAt !== undefined) setLastCloudSyncAt(data.settings.lastCloudSyncAt);
-          if (data.settings.lastCloudSyncStatus !== undefined) setLastCloudSyncStatus(data.settings.lastCloudSyncStatus);
-          if (data.settings.lastCloudSyncMessage !== undefined) setLastCloudSyncMessage(data.settings.lastCloudSyncMessage);
-          if (data.settings.lastCloudSyncFills !== undefined) setLastCloudSyncFills(data.settings.lastCloudSyncFills);
         }
         if (data.marketSchedule) {
           setMarketSchedule(data.marketSchedule);
@@ -407,40 +376,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   };
 
 
-  const handleCreditLedgerEntry = async (entryId: string, defaultUsername: string) => {
-    let userToCredit = manualCreditUser[entryId] || defaultUsername;
-    if (!userToCredit) {
-      const promptName = prompt("Enter the citizen username to credit for this in-game fill:", defaultUsername || "");
-      if (!promptName) return;
-      userToCredit = promptName;
-      setManualCreditUser((prev) => ({ ...prev, [entryId]: promptName }));
-    }
-    setLedgerCreditingId(entryId);
-    try {
-      const res = await fetch("/api/admin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "credit_ledger_entry_manual",
-          entryId,
-          username: userToCredit,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFeedback({ type: "success", message: data.message });
-        fetchAdminData();
-      } else {
-        setFeedback({ type: "error", message: data.message || "Failed to credit citizen." });
-      }
-    } catch (e: any) {
-      setFeedback({ type: "error", message: e.message });
-    } finally {
-      setLedgerCreditingId(null);
-    }
-  };
-
-  // Every user, portfolio and ledger entry comes back on each load: every 15 s, paused in hidden tabs (was 6 s, always)
+  // Every user and portfolio comes back on each load: every 15 s, paused in hidden tabs (was 6 s, always)
   usePoll(async () => {
     await fetchAdminData();
   }, 15000);
@@ -578,14 +514,11 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           action: "update_settings",
           taxRate,
           houseName,
-          autoApprove,
-          apiKey,
           tradeFee: Number(tradeFee),
           listingFee: Number(listingFee),
           discordWebhookUrl,
           discordWhaleThreshold: Number(discordWhaleThreshold),
           discordAlertsEnabled,
-          parlamentumCookie: parlamentumCookie.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -596,47 +529,6 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
       }
     } catch (e: any) {
       setFeedback({ type: "error", message: e.message });
-    }
-  };
-
-  const handleTriggerCloudSync = async () => {
-    setCloudSyncing(true);
-    setFeedback(null);
-    try {
-      if (parlamentumCookie.trim()) {
-        await fetch("/api/admin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "update_settings",
-            parlamentumCookie: parlamentumCookie.trim(),
-          }),
-        });
-        setHasParlamentumCookie(true);
-      }
-
-      const res = await fetch("/api/admin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "trigger_cloud_sync" }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFeedback({ type: "success", message: data.message });
-        setLastCloudSyncStatus("SUCCESS");
-        setLastCloudSyncMessage(data.message);
-        setLastCloudSyncAt(new Date().toISOString());
-        setLastCloudSyncFills(data.fillsFound || 0);
-        fetchAdminData();
-      } else {
-        setFeedback({ type: "error", message: data.message });
-        setLastCloudSyncStatus(data.expired ? "EXPIRED" : "ERROR");
-        setLastCloudSyncMessage(data.message);
-      }
-    } catch (e: any) {
-      setFeedback({ type: "error", message: e.message });
-    } finally {
-      setCloudSyncing(false);
     }
   };
 
@@ -760,12 +652,6 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-floor text-white flex flex-col">
@@ -797,16 +683,6 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
       </div>
     );
   }
-
-  const curlExample = `curl -X POST http://localhost:3000/api/admin \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "action": "webhook_credit",
-    "apiKey": "${apiKey}",
-    "buyerName": "Trader_Vance",
-    "ironUnits": 100,
-    "goldAmount": 500
-  }'`;
 
   return (
     <div className="min-h-screen bg-floor text-zinc-100 flex flex-col font-sans">
@@ -1020,216 +896,8 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           </div>
         )}
 
-        {/* Section 0: Parlamentum In-Game Trade Ledger & Audit Feed (/trade/ledger) */}
-        <div className="bg-pane/60 border border-rule rounded-[6px] p-5 flex flex-col gap-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rule pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">📜</span>
-                <h2 className="font-bold text-white text-base">
-                  Parlamentum In-Game Trade Ledger Feed
-                </h2>
-                <span className="px-2 py-0.5 rounded text-[10px] tabular font-bold bg-floor text-paper border border-rule">
-                  LIVE SYNC ACTIVE
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-400 mt-1">
-                Mirrored real-time transactions from{" "}
-                <a
-                  href="https://parlamentum.org/trade/ledger"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-bullion hover:underline tabular inline-flex items-center gap-1"
-                >
-                  parlamentum.org/trade/ledger <ExternalLink className="w-3 h-3" />
-                </a>
-                . Citizen buyers in the <code className="text-zinc-300">WITH</code> column are automatically identified and credited!
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <a
-                href="/api/admin/userscript"
-                target="_blank"
-                className="px-3 py-1.5 rounded-[6px] bg-floor hover:bg-floor border border-rule text-paper font-bold text-xs transition flex items-center gap-1.5"
-                title="Install / Update Tampermonkey script v2.1"
-              >
-                <Zap className="w-3.5 h-3.5" />
-                Userscript v2.1
-              </a>
-              <a
-                href="https://parlamentum.org/trade/ledger"
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1.5 rounded-[6px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center gap-1.5"
-              >
-                Open Ledger <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
-          </div>
-
-          {/* High-level Insights from Image 1 */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tabular">
-            <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
-              <span className="text-[10px] uppercase font-sans text-zinc-400 block">Total Fills</span>
-              <span className="text-xl font-bold text-white">
-                {tradeInsights?.totalFills || ledgerEntries.length}
-              </span>
-              <span className="text-[10px] text-zinc-500 block font-sans">on both books</span>
-            </div>
-            <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
-              <span className="text-[10px] uppercase font-sans text-zinc-400 block">Bought</span>
-              <span className="text-xl font-bold text-paper">
-                {tradeInsights?.boughtFills || ledgerEntries.filter((e) => e.side === "BOUGHT").length}
-              </span>
-              <span className="text-[10px] text-zinc-500 block font-sans">fills executed</span>
-            </div>
-            <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
-              <span className="text-[10px] uppercase font-sans text-zinc-400 block">Sold</span>
-              <span className="text-xl font-bold text-paper">
-                {tradeInsights?.soldFills || ledgerEntries.filter((e) => e.side === "SOLD").length}
-              </span>
-              <span className="text-[10px] text-zinc-500 block font-sans">fills executed</span>
-            </div>
-            <div className="p-3 bg-floor/80 border border-rule rounded-[6px]">
-              <span className="text-[10px] uppercase font-sans text-zinc-400 block">Items Traded</span>
-              <span className="text-xl font-bold text-bullion">
-                {tradeInsights?.itemsCount || 11}
-              </span>
-              <span className="text-[10px] text-zinc-500 block font-sans">different goods</span>
-            </div>
-          </div>
-
-          {/* Item Breakdown Summary if available */}
-          {tradeInsights?.itemsBreakdown && tradeInsights.itemsBreakdown.length > 0 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-              {tradeInsights.itemsBreakdown.map((b: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="shrink-0 p-2.5 bg-floor/60 border border-rule rounded-[4px] flex items-center gap-2 tabular text-[11px]"
-                >
-                  <span className="font-sans font-bold text-zinc-200">{b.item}</span>
-                  <span className="text-zinc-500">·</span>
-                  <span className="text-zinc-400">{b.sold} sold</span>
-                  <span
-                    className={`font-bold ${
-                      b.net >= 0 ? "text-paper" : "text-bear"
-                    }`}
-                  >
-                    {b.net >= 0 ? "+" : ""}{b.net.toLocaleString()} {b.currency}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* In-Game Transaction Ledger Table matching Image 2 */}
-          <div className="overflow-x-auto border border-rule rounded-[6px] bg-floor/60 max-h-[380px] overflow-y-auto">
-            <table className="w-full text-left tabular text-xs">
-              <thead className="sticky top-0 bg-pane border-b border-rule text-[10px] uppercase tracking-wider text-zinc-400 font-sans">
-                <tr>
-                  <th className="py-2.5 px-3">Date</th>
-                  <th className="py-2.5 px-3">Side</th>
-                  <th className="py-2.5 px-3">Item</th>
-                  <th className="py-2.5 px-3 text-right">Qty</th>
-                  <th className="py-2.5 px-3 text-right">Price</th>
-                  <th className="py-2.5 px-3 text-right">Total</th>
-                  <th className="py-2.5 px-3 text-right">Tax</th>
-                  <th className="py-2.5 px-3">With Counterparty</th>
-                  <th className="py-2.5 px-3">Exchange Status</th>
-                  <th className="py-2.5 px-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/60 text-[11px]">
-                {ledgerEntries.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="py-8 text-center text-zinc-500 font-sans">
-                      No ledger transactions synced yet. Open Parlamentum in your browser with userscript v2.0 to auto-populate.
-                    </td>
-                  </tr>
-                ) : (
-                  ledgerEntries.map((row) => {
-                    const isSold = row.side === "SOLD";
-                    const isCredited = row.status === "AUTO_CREDITED" || row.status === "MATCHED_PENDING";
-                    const isRawIron = row.itemName.toLowerCase().includes("raw iron");
-                    return (
-                      <tr key={row.id} className="hover:bg-zinc-800/30 transition">
-                        <td className="py-2.5 px-3 text-zinc-400 whitespace-nowrap">
-                          {row.tradeDate}
-                        </td>
-                        <td className="py-2.5 px-3 font-bold whitespace-nowrap">
-                          {isSold ? (
-                            <span className="text-paper flex items-center gap-1 font-sans text-[10px]">
-                              ↗ SOLD
-                            </span>
-                          ) : (
-                            <span className="text-bullion flex items-center gap-1 font-sans text-[10px]">
-                              ↙ BOUGHT
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3 font-bold text-zinc-200 whitespace-nowrap">
-                          {row.itemName}
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-zinc-300">
-                          {row.quantity}
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-zinc-400">
-                          {row.priceStr || `${row.totalAmount / (row.quantity || 1)} ${row.currency}`}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-white">
-                          {row.totalAmount.toFixed(2)} {row.currency}
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-zinc-500">
-                          {row.taxAmount ? `${row.taxAmount.toFixed(2)} ${row.currency}` : "—"}
-                        </td>
-                        <td className="py-2.5 px-3 font-sans font-bold text-zinc-300 whitespace-nowrap">
-                          {row.withUser ? (
-                            <span className="text-paper">@{row.withUser}</span>
-                          ) : (
-                            <span className="text-zinc-600">—</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3 whitespace-nowrap">
-                          {isCredited ? (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-floor text-paper border border-rule font-sans">
-                              ✅ CREDITED
-                            </span>
-                          ) : row.status === "UNREGISTERED_CITIZEN" ? (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-floor text-paper border border-rule font-sans">
-                              ⚠️ UNREGISTERED
-                            </span>
-                          ) : isRawIron && isSold ? (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-floor text-paper border border-rule font-sans">
-                              RAW IRON SALE
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-zinc-500 font-sans">
-                              MARKET FILL
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                          {!isCredited && isSold && (
-                            <button
-                              type="button"
-                              onClick={() => handleCreditLedgerEntry(row.id, row.withUser || "")}
-                              disabled={ledgerCreditingId === row.id}
-                              className="px-2 py-0.5 rounded bg-bullion hover:bg-amber-300 text-floor text-[10px] font-sans font-bold transition cursor-pointer disabled:opacity-50"
-                              title="Credit gold to citizen purse"
-                            >
-                              {ledgerCreditingId === row.id ? "Crediting..." : "Credit Purse"}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {/* Deposits: the watcher credits Raw Iron purchases from the House's game ledger; below, by hand */}
+        <WatcherPanel />
 
         {/* Section 1: Live Pending Deposit Queue & Manual Credit Tool */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1335,9 +1003,6 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               <div className="py-12 text-center text-zinc-400 text-xs flex flex-col items-center gap-2">
                 <CheckCircle2 className="w-8 h-8 text-zinc-600" />
                 <span>All citizen deposits have been cleared and verified!</span>
-                <span className="text-[10px] text-zinc-400">
-                  {autoApprove ? "(Auto-approve is currently enabled)" : "(Awaiting player announcements)"}
-                </span>
               </div>
             ) : (
               <div className="space-y-2.5 overflow-y-auto max-h-[340px] pr-1 scrollbar-thin">
@@ -1425,35 +1090,6 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 })}
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Section 2: Automated Bot / Webhook Integration Guide */}
-        <div className="bg-pane/40 border border-rule rounded-[6px] p-5 flex flex-col gap-3">
-          <div className="flex items-center justify-between border-b border-rule pb-3">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-paper" />
-              Automated Game Sale Webhook (Zero Manual Work)
-            </h3>
-            <span className="text-[10px] bg-floor text-paper border border-rule px-2 py-0.5 rounded tabular">
-              REST Webhook
-            </span>
-          </div>
-
-          <p className="text-xs text-zinc-400 leading-relaxed">
-            If you run a bot, Discord logger, or script monitoring your in-game market sales in Parlamentum, 
-            you can automatically credit buyers by sending an HTTP POST request to this webhook:
-          </p>
-
-          <div className="relative bg-floor border border-rule rounded-[6px] p-3 tabular text-[11px] text-zinc-300 overflow-x-auto">
-            <button
-              onClick={() => copyToClipboard(curlExample)}
-              className="absolute right-3 top-3 px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[10px] flex items-center gap-1 cursor-pointer transition"
-            >
-              {copied ? <Check className="w-3 h-3 text-paper" /> : <Copy className="w-3 h-3" />}
-              {copied ? "Copied" : "Copy cURL"}
-            </button>
-            <pre className="pr-16">{curlExample}</pre>
           </div>
         </div>
 
@@ -1955,7 +1591,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
             <div>
               <label className="font-semibold text-zinc-300 block mb-1">
                 Default Regional Market Tax (%)
@@ -2034,22 +1670,6 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               </span>
             </div>
 
-            <div>
-              <label className="font-semibold text-zinc-300 block mb-1">
-                Deposit Mode
-              </label>
-              <select
-                value={autoApprove ? "true" : "false"}
-                onChange={(e) => setAutoApprove(e.target.value === "true")}
-                className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 text-xs text-white focus:outline-none focus:border-rule"
-              >
-                <option value="true">Instant (Auto-credit on announce)</option>
-                <option value="false">Manual Review (Approve in queue)</option>
-              </select>
-              <span className="text-[10px] text-zinc-400 mt-1 block">
-                Control instant vs review-based deposit recognition.
-              </span>
-            </div>
           </div>
         </form>
 
@@ -2160,198 +1780,6 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             <div className="flex items-start gap-2">
               <span className="text-paper font-bold">🚀</span>
               <span><strong>IPO Launches:</strong> Welcomes newly chartered companies and alerts traders to initial floats.</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Watcher: automatic Raw Iron deposits from the game's own trade ledger */}
-        <WatcherPanel />
-
-        {/* Section 3.4: 100% Cloud Auto-Sync (Zero Desktop / No Browser Required) */}
-        <div className="bg-pane border border-rule rounded-[6px] p-5 flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rule pb-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">☁️</span>
-                <h3 className="font-bold text-white text-base">
-                  Cloud Ledger Auto-Sync (100% Automated · Zero Desktop Required)
-                </h3>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                  lastCloudSyncStatus === "SUCCESS"
-                    ? "bg-floor text-paper border-rule"
-                    : lastCloudSyncStatus === "EXPIRED"
-                    ? "bg-floor text-bear border-rule"
-                    : hasParlamentumCookie
-                    ? "bg-floor text-paper border-rule"
-                    : "bg-floor text-bullion border-rule"
-                }`}>
-                  {lastCloudSyncStatus === "SUCCESS" ? "🟢 24/7 Cloud Active" : lastCloudSyncStatus === "EXPIRED" ? "🔴 Cookie Expired" : hasParlamentumCookie ? "🔵 Configured" : "🟡 Cookie Not Set"}
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 mt-1">
-                The exchange queries <span className="tabular text-zinc-300">parlamentum.org/trade/ledger</span> directly in the cloud. Deposits are auto-credited instantly even if your browser is closed and your PC is powered off!
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={handleTriggerCloudSync}
-                disabled={cloudSyncing || (!hasParlamentumCookie && !parlamentumCookie.trim())}
-                className="px-4 py-2 rounded-[6px] bg-floor hover:bg-floor border border-rule text-paper font-bold text-xs transition cursor-pointer flex items-center gap-2 disabled:opacity-50"
-              >
-                {cloudSyncing ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Syncing In Cloud...</span>
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-3.5 h-3.5 text-paper" />
-                    <span>Save & Sync Cloud Now</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Sync status alert */}
-          {lastCloudSyncAt && (
-            <div className={`p-3 rounded-[6px] border text-xs flex items-center justify-between gap-3 ${
-              lastCloudSyncStatus === "SUCCESS" ? "bg-floor border-rule text-paper" :
-              lastCloudSyncStatus === "EXPIRED" ? "bg-floor border-rule text-bear" :
-              "bg-pane border-rule text-zinc-300"
-            }`}>
-              <div className="flex items-center gap-2">
-                <span>{lastCloudSyncStatus === "SUCCESS" ? "✅" : lastCloudSyncStatus === "EXPIRED" ? "⚠️" : "ℹ️"}</span>
-                <span><strong>Status:</strong> {lastCloudSyncMessage || "Cloud synchronizer operational."}</span>
-              </div>
-              <span className="text-[11px] text-zinc-400 tabular shrink-0">
-                Last checked: {new Date(lastCloudSyncAt).toLocaleTimeString()}
-              </span>
-            </div>
-          )}
-
-          {/* Cookie Input and Configuration */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 text-xs">
-            <div className="lg:col-span-8">
-              <div className="flex items-center justify-between mb-1">
-                <label className="font-semibold text-zinc-300">
-                  Parlamentum Session Cookie (Required for Cloud Access)
-                </label>
-                {hasParlamentumCookie && (
-                  <span className="text-[11px] text-paper tabular">
-                    ✓ Cookie currently saved in database
-                  </span>
-                )}
-              </div>
-              <div className="relative">
-                <input
-                  type={showCookieInput ? "text" : "password"}
-                  placeholder={hasParlamentumCookie ? "Paste new cookie here to update..." : "Paste full Cookie header string from browser..."}
-                  value={parlamentumCookie}
-                  onChange={(e) => setParlamentumCookie(e.target.value)}
-                  className="w-full bg-floor border border-rule rounded-[4px] pl-3 pr-20 py-2.5 tabular text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-rule"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCookieInput(!showCookieInput)}
-                  className="absolute right-2 top-2 px-2 py-1 text-[10px] text-zinc-400 hover:text-white bg-zinc-800 rounded"
-                >
-                  {showCookieInput ? "Hide" : "Show"}
-                </button>
-              </div>
-              <span className="text-[10px] text-zinc-400 mt-1 block">
-                How to get in 10s: Open <span className="text-zinc-300">parlamentum.org</span> &rarr; Press <kbd className="px-1 bg-zinc-800 rounded">F12</kbd> &rarr; Network tab &rarr; Click any request &rarr; Copy <span className="tabular text-zinc-300">Cookie</span> header &rarr; Paste here &rarr; Click &ldquo;Save Settings&rdquo; above!
-              </span>
-            </div>
-
-            <div className="lg:col-span-4 flex flex-col justify-between p-3 bg-floor/60 rounded-[6px] border border-rule">
-              <div>
-                <span className="font-bold text-zinc-200 block mb-1">⏰ 24/7 Cloud Cron Webhook</span>
-                <p className="text-[11px] text-zinc-400 leading-relaxed mb-2">
-                  Set a <span className="tabular text-zinc-300">CRON_SECRET</span> (32+ random characters) in Vercel&apos;s environment variables. Vercel&apos;s daily cron sends it on its own. An outside scheduler such as <a href="https://cron-job.org" target="_blank" rel="noreferrer" className="text-paper underline">cron-job.org</a> must send the header <span className="tabular text-zinc-300">Authorization: Bearer &lt;CRON_SECRET&gt;</span> to this URL, at most once a minute. Never put the API key in a URL.
-                </p>
-                <div className="bg-pane p-2 rounded border border-rule tabular text-[10px] text-zinc-300 break-all select-all flex items-center justify-between gap-1">
-                  <span>https://growurgold.vercel.app/api/cron/sync-ledger</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(`https://growurgold.vercel.app/api/cron/sync-ledger`)}
-                className="mt-2 w-full py-1.5 rounded-[4px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center justify-center gap-1.5"
-              >
-                <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Copy Cron Webhook URL</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 3.5: In-Game Deposit Auto-Verifier (Method 2 Userscript) */}
-        <div className="bg-pane border border-rule rounded-[6px] p-5 flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rule pb-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-paper" />
-                <h3 className="font-bold text-white text-sm">
-                  In-Game Deposit Auto-Verifier (Method 2 Userscript)
-                </h3>
-                <span className="text-[10px] bg-floor text-paper border border-rule px-2 py-0.5 rounded tabular font-bold">
-                  ZERO RISK & MULTI-TAB SAFE
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
-                Automatically detects when someone buys your Raw Iron in Parlamentum and immediately approves their pending deposit in Grow UR Gold.
-              </p>
-            </div>
-
-            <a
-              href="/api/admin/userscript"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[6px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs transition shrink-0"
-            >
-              <span>Install Userscript v2.1</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="p-3 bg-floor/60 rounded-[6px] border border-rule">
-              <span className="font-bold text-zinc-200 block mb-1">🛡️ Multi-Account Isolation</span>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
-                If you keep multiple accounts open in different tabs, the script checks the active player card and only activates on <span className="tabular text-paper font-bold">JosephArora</span>. Tabs for other characters (e.g. CardinalSanjay) remain completely dormant.
-              </p>
-            </div>
-
-            <div className="p-3 bg-floor/60 rounded-[6px] border border-rule">
-              <span className="font-bold text-zinc-200 block mb-1">🎯 Smart Queue Matcher</span>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
-                Because Parlamentum market notifications are anonymous (e.g. <span className="text-zinc-300 italic">&ldquo;2× Raw Iron sold — 10 gold&rdquo;</span>), the backend instantly matches the sale to the oldest citizen pending deposit requesting that amount.
-              </p>
-            </div>
-
-            <div className="p-3 bg-floor/60 rounded-[6px] border border-rule">
-              <span className="font-bold text-zinc-200 block mb-1">🔑 Secret Webhook Key</span>
-              <p className="text-[11px] text-zinc-400 leading-relaxed mb-2">
-                Embedded directly in the script for authenticated webhook callbacks:
-              </p>
-              <div className="flex items-center justify-between bg-pane px-2.5 py-1.5 rounded tabular text-[11px] text-paper border border-rule">
-                <span className="truncate">{apiKey || "not set"}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(apiKey);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                  className="ml-2 text-zinc-400 hover:text-white"
-                  title="Copy Key"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-paper" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-              </div>
             </div>
           </div>
         </div>

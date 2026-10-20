@@ -13,8 +13,8 @@ Takes about 15 minutes. You need the [Turso CLI](https://docs.turso.tech/cli/ins
 
 ## 1. Freeze the exchange
 
-In the Operator panel, set the market schedule to **Closed**, and pause the ledger userscript, so
-nothing changes while you copy the data.
+In the Operator panel, set the market schedule to **Closed** and turn the watcher off, so nothing
+changes while you copy the data.
 
 ## 2. Make a copy of your current data
 
@@ -51,6 +51,7 @@ Vercel → your project → Settings → Environment Variables. Add these for **
 | `DATABASE_AUTH_TOKEN` | the token from step 3 |
 | `SESSION_SECRET` | any long random string, e.g. the output of `openssl rand -hex 32` |
 | `ADMIN_SIGNUP_CODE` | optional: a code that lets new operators sign up (leave it out to turn that off) |
+| `CRON_SECRET` | optional: 32+ random characters. Vercel's daily cron sends it, so the watcher looks at the game even on a day nobody opens the exchange |
 
 - Keep `BLOB_READ_WRITE_TOKEN`. It's ignored while a database URL is set, and deleting `DATABASE_URL`
   takes you back to the old setup if you ever need to.
@@ -70,7 +71,7 @@ Merge and let Vercel deploy (or redeploy). Then:
 1. Log in. Everyone has to log in once more, because sessions are now signed.
 2. Check a few purses and the BCKRM, GUG and EI holders against what you expect.
 3. Place a small order, reload, and make sure it's still there.
-4. Set the market schedule back to **Auto** and resume the userscript.
+4. Set the market schedule back to **Auto** and turn the watcher back on (see below).
 
 ## 6. Lock it down (right after deploying)
 
@@ -90,9 +91,11 @@ UPDATE users SET password_hash = '<the hash>' WHERE username = 'JosephArora';
 
 Do the same for CardinalSanjay if that account is still used.
 
-**Update the webhook key.** The old key was public, so the server replaced it on startup. Copy the new one
-from the Operator panel into the userscript (`SECRET_API_KEY`) and, if you use it, the watcher
-(`EXCHANGE_API_KEY`).
+**Turn on the watcher.** It's the only automatic way deposits get credited. Operator panel → Watcher: paste
+the House's game login (on parlamentum.org, logged in as the House: F12 → Console → `localStorage.token`,
+copy it without the quotes). A login lasts about a week, and the panel warns two days before it runs out.
+While the watcher is off or failing, credit deposits by hand: **Approve & Credit** on the player's
+announcement, or **Load Citizen Purse from Game Sale**.
 
 **Stop committing `parlamentum_market.db`.** From now on the live data lives in Turso. Make changes through
 the Operator panel or `turso db shell gug`; the file only seeds brand-new installs.

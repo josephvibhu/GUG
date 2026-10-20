@@ -1,10 +1,6 @@
 import { createClient, Client } from "@libsql/client";
 import path from "path";
 import fs from "fs";
-import crypto from "crypto";
-
-// Webhook key that used to ship as the default; never accept it
-export const LEAKED_API_KEY = "pse_secret_parlamentum_key_2026";
 
 // Remote database (Turso / libSQL). The Vercel Marketplace Turso integration names these TURSO_*.
 const remoteDbUrl = () => process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL;
@@ -625,24 +621,20 @@ export async function initDb(): Promise<void> {
   await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_wallet_game_sale ON wallet_transactions(game_sale) WHERE game_sale IS NOT NULL`);
 
   // Default settings
-  await db.execute({
-    sql: `
+  await db.execute(`
     INSERT OR IGNORE INTO settings (key, value) VALUES
     ('tax_rate', '10'),
     ('iron_price', '5'),
     ('house_name', 'JosephArora'),
-    ('api_key', ?),
-    ('ipo_listing_fee', '200'),
-    ('auto_approve_deposits', 'false');
-  `,
-    args: [crypto.randomBytes(24).toString("hex")],
-  });
+    ('ipo_listing_fee', '200');
+  `);
 
-  // The old default webhook key is public (it was committed to the repo and the userscript): replace it
-  await db.execute({
-    sql: "UPDATE settings SET value = ? WHERE key = 'api_key' AND value = ?",
-    args: [crypto.randomBytes(24).toString("hex"), LEAKED_API_KEY],
-  });
+  // The watcher is the only automatic deposit path now: the webhook key, the auto-approve switch and the cookie
+  // sync's settings (a pasted game session cookie among them) have nothing left to read them
+  await db.execute(`
+    DELETE FROM settings WHERE key IN ('api_key', 'auto_approve_deposits', 'parlamentum_cookie', 'parlamentum_trade_insights',
+      'last_cloud_sync_at', 'last_cloud_sync_status', 'last_cloud_sync_message', 'last_cloud_sync_fills')
+  `);
 
   // Ensure Exchange Treasury user exists (trading and buyback fees are credited to it). It starts empty:
   // the seed no longer wipes admin purses on every cold start, so a starting balance would stay as
