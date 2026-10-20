@@ -53,6 +53,9 @@ export async function sendDiscordEmbed(
     if (!targetUrl) {
       return { success: false, message: "No Discord webhook URL configured." };
     }
+    if (!/^https:\/\/(?:discord\.com|discordapp\.com|ptb\.discord\.com|canary\.discord\.com)\/api\/webhooks\//.test(targetUrl)) {
+      return { success: false, message: "That isn't a Discord webhook URL (https://discord.com/api/webhooks/…)." };
+    }
 
     if (!customWebhookUrl && !config.alertsEnabled) {
       return { success: false, message: "Discord alerts are disabled." };

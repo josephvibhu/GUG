@@ -43,6 +43,7 @@ export const EXPENSE_CATEGORIES = [
 // Entries the exchange writes when treasury gold moves; shown as treasury movements, not P&L
 export const TREASURY_LABELS: Record<string, string> = {
   IPO_PROCEEDS: "IPO share sale",
+  OPERATING_PROFIT: "Profit paid in",
   FOUNDER_DEPOSIT: "From founder's purse",
   FOUNDER_WITHDRAWAL: "To founder's purse",
   DIVIDEND_DISTRIBUTION: "Dividend paid",

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import WalletModal from "./WalletModal";
 import TermsModal from "./TermsModal";
-import DepositAdjustmentModal, { RECALIBRATED_CITIZENS } from "./DepositAdjustmentModal";
+import DepositAdjustmentModal from "./DepositAdjustmentModal";
 import { FloorClock } from "./FloorClock";
 import { CoinMark } from "./CoinMark";
 import { useMarketFeed, refreshMarketFeed } from "@/hooks/useMarketFeed";
@@ -257,7 +257,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
 
       {/* Recalibration & Apology Notice modal for affected citizens */}
       <DepositAdjustmentModal
-        isOpen={Boolean(user && user.termsAccepted !== false && !user.adjustmentNoticeSeen && RECALIBRATED_CITIZENS[user.id])}
+        isOpen={Boolean(user && user.termsAccepted !== false && !user.adjustmentNoticeSeen && user.adjustment)}
         user={user}
       />
     </>
