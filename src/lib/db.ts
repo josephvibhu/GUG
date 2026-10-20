@@ -288,6 +288,11 @@ export async function initDb(): Promise<void> {
     await db.execute(`ALTER TABLE users ADD COLUMN deposit_adjustment_notice_seen_at TEXT;`);
   } catch {}
 
+  // Raised by a password change: session cookies carry it, so older sessions stop working
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN session_epoch INTEGER NOT NULL DEFAULT 0;`);
+  } catch {}
+
   try {
     await db.execute(`ALTER TABLE users ADD COLUMN state_realm_name TEXT;`);
   } catch {}
@@ -573,6 +578,51 @@ export async function initDb(): Promise<void> {
   ]) {
     await db.execute(ddl);
   }
+
+  // Wrong-password counts per name and connection (see auth.ts)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS login_attempts (
+      key TEXT PRIMARY KEY,
+      failures INTEGER NOT NULL,
+      window_start INTEGER NOT NULL
+    );
+  `);
+
+  // One-time password reset codes made by the operator; only a hash of each code is kept
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS password_resets (
+      code_hash TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      used_at INTEGER
+    );
+  `);
+
+  // The watcher's record of the House's trades in the game, by the game's own id: one trade pays one deposit
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS game_sales (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      at TEXT NOT NULL,
+      units INTEGER,
+      gross REAL NOT NULL,
+      tax REAL NOT NULL DEFAULT 0,
+      gold REAL NOT NULL,
+      name TEXT NOT NULL,
+      state TEXT NOT NULL,
+      reason TEXT,
+      user_id TEXT,
+      claim TEXT,
+      created_at TEXT NOT NULL
+    );
+  `);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_game_sales_state ON game_sales(state, at)`);
+  try {
+    await db.execute(`ALTER TABLE wallet_transactions ADD COLUMN game_sale TEXT;`);
+  } catch {}
+  await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_wallet_game_sale ON wallet_transactions(game_sale) WHERE game_sale IS NOT NULL`);
 
   // Default settings
   await db.execute({

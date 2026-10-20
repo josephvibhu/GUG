@@ -17,6 +17,7 @@ import {
   Bot,
   Coins,
   Landmark,
+  KeyRound,
 } from "lucide-react";
 import WalletModal from "./WalletModal";
 import TermsModal from "./TermsModal";
@@ -199,6 +200,9 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                       </button>
                       <Link role="menuitem" href="/portfolio" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
                         <Briefcase className="h-4 w-4 text-ash" /> Portfolio
+                      </Link>
+                      <Link role="menuitem" href="/login?mode=change" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
+                        <KeyRound className="h-4 w-4 text-ash" /> Change password
                       </Link>
                       {user.isAdmin && (
                         <>
