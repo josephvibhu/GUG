@@ -529,6 +529,18 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
     setCloudSyncing(true);
     setFeedback(null);
     try {
+      if (parlamentumCookie.trim()) {
+        await fetch("/api/admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "update_settings",
+            parlamentumCookie: parlamentumCookie.trim(),
+          }),
+        });
+        setHasParlamentumCookie(true);
+      }
+
       const res = await fetch("/api/admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2065,7 +2077,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               <button
                 type="button"
                 onClick={handleTriggerCloudSync}
-                disabled={cloudSyncing || !hasParlamentumCookie}
+                disabled={cloudSyncing || (!hasParlamentumCookie && !parlamentumCookie.trim())}
                 className="px-4 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 font-bold text-xs transition cursor-pointer flex items-center gap-2 disabled:opacity-50"
               >
                 {cloudSyncing ? (
@@ -2076,7 +2088,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 ) : (
                   <>
                     <Zap className="w-3.5 h-3.5 text-blue-400" />
-                    <span>Test & Sync Cloud Now</span>
+                    <span>Save & Sync Cloud Now</span>
                   </>
                 )}
               </button>
