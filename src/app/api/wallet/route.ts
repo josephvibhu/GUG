@@ -4,8 +4,9 @@ import { getDb, initDb } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { 
   IRON_UNIT_PRICE, 
-  BULK_IRON_UNIT_PRICE,
-  ALLOWED_DEPOSIT_PRICES,
+  COTTON_UNIT_PRICE,
+  COPPER_UNIT_PRICE,
+  DEPOSIT_COMMODITIES,
   getSetting, 
   calculateDepositRecipe, 
   calculateWithdrawalRecipe 
@@ -55,8 +56,7 @@ export async function GET() {
       houseOperator: houseName,
       parlamentumName: user.parlamentumName || user.username,
       ironPrice: IRON_UNIT_PRICE,
-      bulkIronPrice: BULK_IRON_UNIT_PRICE,
-      depositTiers: ALLOWED_DEPOSIT_PRICES,
+      depositCommodities: DEPOSIT_COMMODITIES.map(c => ({ id: c.id, name: c.name, unitPrice: c.unitPrice, emoji: c.emoji, badge: c.badge, subtitle: c.subtitle })),
       taxRate,
       ledger,
     });
@@ -103,15 +103,19 @@ export async function POST(request: Request) {
     const txId = `tx_${crypto.randomUUID().slice(0, 8)}`;
 
     if (action === "deposit") {
-      // 1. DEPOSIT (Buy Raw Iron at 10g or 1,000g each)
-      const unitPrice = body.unitPrice === 1000 || Number(body.unitPrice) === 1000 ? BULK_IRON_UNIT_PRICE : IRON_UNIT_PRICE;
+      // 1. DEPOSIT (Buy Raw Iron at 10g, Raw Cotton at 100g, or Raw Copper at 1,000g)
+      const requestedPrice = Number(body.unitPrice);
+      const matched = DEPOSIT_COMMODITIES.find((c) => c.unitPrice === requestedPrice) || DEPOSIT_COMMODITIES[0];
+      const unitPrice = matched.unitPrice;
+      const commodityName = matched.name;
       const depositCalc = calculateDepositRecipe(numAmount, taxRate, unitPrice);
-      const ironUnits = depositCalc.ironUnits;
+      const units = depositCalc.ironUnits;
+      const ironUnits = units;
       const actualGold = depositCalc.grossTotal;
 
       const recipe = method === "CONTRACT"
-        ? `In-game contract to ${houseName} giving ${actualGold} gold + 1 courier ticket for ${ironUnits} Raw Iron.`
-        : `Bought ${ironUnits} Raw Iron listed by ${houseName} at ${unitPrice} gold each (${actualGold} gold total).`;
+        ? `In-game contract to ${houseName} giving ${actualGold} gold + 1 courier ticket for ${units} ${commodityName}.`
+        : `Bought ${units} ${commodityName} listed by ${houseName} at ${unitPrice} gold each (${actualGold} gold total).`;
 
       const reqTaxRate = body.taxRate !== undefined && !isNaN(Number(body.taxRate))
         ? Math.max(0, Math.min(50, Number(body.taxRate)))

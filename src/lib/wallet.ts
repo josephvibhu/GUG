@@ -1,9 +1,50 @@
 import { getDb, initDb, scheduleBlobPersist } from "./db";
 import crypto from "crypto";
 
-export const IRON_UNIT_PRICE = 10; // Standard: 10 gold per Raw Iron
-export const BULK_IRON_UNIT_PRICE = 1000; // Bulk / Reserve-saving: 1,000 gold per Raw Iron
-export const ALLOWED_DEPOSIT_PRICES = [10, 1000];
+export interface DepositCommodity {
+  id: "IRON" | "COTTON" | "COPPER";
+  name: string;
+  unitPrice: number;
+  itemCodes: string[];
+  emoji: string;
+  badge: string;
+  subtitle: string;
+}
+
+export const DEPOSIT_COMMODITIES: DepositCommodity[] = [
+  {
+    id: "IRON",
+    name: "Raw Iron",
+    unitPrice: 10,
+    itemCodes: ["IRON_RAW", "RAW_IRON", "IRON"],
+    emoji: "🪙",
+    badge: "Raw Iron (10g)",
+    subtitle: "10g / unit · for small deposits < 500g",
+  },
+  {
+    id: "COTTON",
+    name: "Raw Cotton",
+    unitPrice: 100,
+    itemCodes: ["COTTON_RAW", "RAW_COTTON", "COTTON"],
+    emoji: "🌿",
+    badge: "Raw Cotton (100g)",
+    subtitle: "100g / unit · for deposits 500g–5,000g",
+  },
+  {
+    id: "COPPER",
+    name: "Raw Copper",
+    unitPrice: 1000,
+    itemCodes: ["COPPER_RAW", "RAW_COPPER", "COPPER"],
+    emoji: "💎",
+    badge: "Raw Copper (1,000g)",
+    subtitle: "1,000g / unit · preserves reserves for large deposits",
+  },
+];
+
+export const IRON_UNIT_PRICE = 10;
+export const COTTON_UNIT_PRICE = 100;
+export const COPPER_UNIT_PRICE = 1000;
+export const ALLOWED_DEPOSIT_PRICES = [10, 100, 1000];
 
 export interface RecipeResult {
   goldAmount: number;
@@ -36,9 +77,11 @@ export async function setSetting(key: string, value: string): Promise<void> {
   });
 }
 
-// Deposit calculation: Buy Raw Iron at 10g (standard) or 1000g (bulk) each
+// Deposit calculation: Buy Raw Iron (10g), Raw Cotton (100g), or Raw Copper (1,000g)
 export function calculateDepositRecipe(goldAmount: number, taxRate = 0, unitPrice = 10): RecipeResult {
-  const price = unitPrice === 1000 ? 1000 : 10;
+  const matched = DEPOSIT_COMMODITIES.find((c) => c.unitPrice === unitPrice) || DEPOSIT_COMMODITIES[0];
+  const price = matched.unitPrice;
+  const name = matched.name;
   const units = Math.max(1, Math.ceil(goldAmount / price));
   const total = units * price;
 
@@ -50,7 +93,7 @@ export function calculateDepositRecipe(goldAmount: number, taxRate = 0, unitPric
     taxAmount: 0,
     netPayout: total,
     taxRatePercent: taxRate,
-    instructions: `Buy ${units} Raw Iron listed by JosephArora at ${price} gold each (Total: ${total} gold).`,
+    instructions: `Buy ${units} ${name} listed by JosephArora at ${price} gold each (Total: ${total} gold).`,
   };
 }
 

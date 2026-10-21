@@ -353,13 +353,13 @@ export default function WalletModal({
                   <div className="space-y-1.5 text-paper">
                     <div>1. In <strong>Parlamentum</strong>, open the commodity market.</div>
                     <div>
-                      2. Buy <strong className="text-bullion">{depositIronUnits} Raw Iron</strong> listed by{" "}
+                      2. Buy <strong className="text-bullion">{depositIronUnits} {effectiveDepositPrice === 1000 ? "Raw Copper" : effectiveDepositPrice === 100 ? "Raw Cotton" : "Raw Iron"}</strong> listed by{" "}
                       <span className="tabular font-bold text-bullion">
                         {houseOperator}
                       </span>.
                     </div>
                     <div className="flex items-center gap-2 pt-1 tabular text-[12px] text-paper">
-                      <span>Rate: <strong className="text-bullion">{effectiveDepositPrice} gold</strong> per Raw Iron</span>
+                      <span>Rate: <strong className="text-bullion">{effectiveDepositPrice} gold</strong> each</span>
                       <span>·</span>
                       <span>Total Gold: <strong className="text-bullion">{depositGrossTotal.toLocaleString()} gold</strong></span>
                     </div>
@@ -384,47 +384,67 @@ export default function WalletModal({
                 )}
               </div>
 
-              {/* Deposit Tier Selector: 10g Standard vs 1,000g Bulk */}
+              {/* Deposit Commodity Tier Selector: Iron (10g), Cotton (100g), Copper (1000g) */}
               <div className="bg-floor border border-rule rounded-[4px] p-2.5">
                 <div className="text-[12px] font-semibold text-paper mb-1.5 flex items-center justify-between">
-                  <span>Raw Iron Deposit Tier</span>
-                  <span className="text-[11px] text-bullion font-bold tabular">{effectiveDepositPrice}g / unit</span>
+                  <span>Deposit Commodity Tier</span>
+                  <span className="text-[11px] text-bullion font-bold tabular">
+                    {depositPrice === 1000 ? "Raw Copper (1,000g)" : depositPrice === 100 ? "Raw Cotton (100g)" : "Raw Iron (10g)"}
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
                     onClick={() => {
                       setDepositPrice(10);
-                      setDepositAmount("500");
+                      setDepositAmount("250");
                     }}
-                    className={`py-1.5 px-2 rounded-[4px] border text-left transition cursor-pointer ${
+                    className={`py-1.5 px-1.5 rounded-[4px] border text-left transition cursor-pointer ${
                       effectiveDepositPrice === 10
                         ? "bg-rule border-zinc-500 text-zinc-50 font-bold"
                         : "bg-pane border-rule text-ash hover:text-paper"
                     }`}
                   >
-                    <div className="text-[12px] flex items-center gap-1">
-                      <span>🪙</span> Standard (10g)
+                    <div className="text-[11px] font-bold flex items-center gap-1">
+                      <span>🪙</span> Iron (10g)
                     </div>
-                    <div className="text-[10px] text-ash mt-0.5">For deposits &lt; 1,000g</div>
+                    <div className="text-[9px] text-ash mt-0.5">&lt; 500g</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDepositPrice(100);
+                      setDepositAmount("1000");
+                    }}
+                    className={`py-1.5 px-1.5 rounded-[4px] border text-left transition cursor-pointer ${
+                      effectiveDepositPrice === 100
+                        ? "bg-rule border-zinc-500 text-zinc-50 font-bold"
+                        : "bg-pane border-rule text-ash hover:text-paper"
+                    }`}
+                  >
+                    <div className="text-[11px] font-bold flex items-center gap-1">
+                      <span>🌿</span> Cotton (100g)
+                    </div>
+                    <div className="text-[9px] text-ash mt-0.5">500g–5k</div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => {
                       setDepositPrice(1000);
-                      setDepositAmount("1000");
+                      setDepositAmount("5000");
                     }}
-                    className={`py-1.5 px-2 rounded-[4px] border text-left transition cursor-pointer ${
+                    className={`py-1.5 px-1.5 rounded-[4px] border text-left transition cursor-pointer ${
                       effectiveDepositPrice === 1000
                         ? "bg-rule border-zinc-500 text-zinc-50 font-bold"
                         : "bg-pane border-rule text-ash hover:text-paper"
                     }`}
                   >
-                    <div className="text-[12px] flex items-center gap-1">
-                      <span>💎</span> Bulk (1,000g)
+                    <div className="text-[11px] font-bold flex items-center gap-1">
+                      <span>💎</span> Copper (1k)
                     </div>
-                    <div className="text-[10px] text-ash mt-0.5">High value · saves iron stock</div>
+                    <div className="text-[9px] text-ash mt-0.5">5,000g+</div>
                   </button>
                 </div>
               </div>
@@ -445,9 +465,9 @@ export default function WalletModal({
 
               <div>
                 <div className="flex justify-between text-paper font-semibold mb-1">
-                  <span>Target Gold Amount (at {effectiveDepositPrice}g / Raw Iron)</span>
+                  <span>Target Gold Amount ({effectiveDepositPrice === 1000 ? "Copper @ 1,000g" : effectiveDepositPrice === 100 ? "Cotton @ 100g" : "Iron @ 10g"})</span>
                   <span className="tabular text-bullion font-bold">
-                    = {depositIronUnits} Raw Iron {depositIronUnits === 1 ? "unit" : "units"}
+                    = {depositIronUnits} {effectiveDepositPrice === 1000 ? "Copper" : effectiveDepositPrice === 100 ? "Cotton" : "Iron"} {depositIronUnits === 1 ? "unit" : "units"}
                   </span>
                 </div>
                 <input
@@ -461,20 +481,29 @@ export default function WalletModal({
                 <div className="flex gap-1.5 mt-2">
                   {(effectiveDepositPrice === 1000
                     ? [
-                        { label: "1 Iron (1k)", val: 1000 },
-                        { label: "2 Iron (2k)", val: 2000 },
-                        { label: "3 Iron (3k)", val: 3000 },
-                        { label: "5 Iron (5k)", val: 5000 },
-                        { label: "10 Iron (10k)", val: 10000 },
-                        { label: "20 Iron (20k)", val: 20000 },
+                        { label: "1k (1 Copper)", val: 1000 },
+                        { label: "2k (2 Copper)", val: 2000 },
+                        { label: "3k (3 Copper)", val: 3000 },
+                        { label: "5k (5 Copper)", val: 5000 },
+                        { label: "10k (10 Copper)", val: 10000 },
+                        { label: "25k (25 Copper)", val: 25000 },
+                      ]
+                    : effectiveDepositPrice === 100
+                    ? [
+                        { label: "500g (5 Cotton)", val: 500 },
+                        { label: "1k (10 Cotton)", val: 1000 },
+                        { label: "2k (20 Cotton)", val: 2000 },
+                        { label: "3k (30 Cotton)", val: 3000 },
+                        { label: "5k (50 Cotton)", val: 5000 },
+                        { label: "10k (100 Cotton)", val: 10000 },
                       ]
                     : [
-                        { label: "10 Iron (100g)", val: 100 },
-                        { label: "25 Iron (250g)", val: 250 },
-                        { label: "50 Iron (500g)", val: 500 },
-                        { label: "100 Iron (1k)", val: 1000 },
-                        { label: "250 Iron (2.5k)", val: 2500 },
-                        { label: "500 Iron (5k)", val: 5000 },
+                        { label: "100g (10 Iron)", val: 100 },
+                        { label: "250g (25 Iron)", val: 250 },
+                        { label: "500g (50 Iron)", val: 500 },
+                        { label: "1k (100 Iron)", val: 1000 },
+                        { label: "2.5k (250 Iron)", val: 2500 },
+                        { label: "5k (500 Iron)", val: 5000 },
                       ]
                   ).map((preset) => (
                     <button
@@ -496,7 +525,7 @@ export default function WalletModal({
                 disabled={loading}
                 className="w-full py-2.5 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor font-bold text-[13px] transition cursor-pointer"
               >
-                {loading ? "Confirming with House..." : `I Bought ${depositIronUnits} Raw Iron (${depositGrossTotal.toLocaleString()} Gold) · Credit Purse`}
+                {loading ? "Confirming with House..." : `I Bought ${depositIronUnits} ${effectiveDepositPrice === 1000 ? "Raw Copper" : effectiveDepositPrice === 100 ? "Raw Cotton" : "Raw Iron"} (${depositGrossTotal.toLocaleString()} Gold) · Credit Purse`}
               </button>
             </form>
           )}
