@@ -98,8 +98,9 @@ export default function WalletModal({
   const numDeposit = parseInt(depositAmount, 10) || 0;
   const numWithdraw = parseInt(withdrawAmount, 10) || 0;
 
-  // Deposit Calculations (Raw Iron at 10g or 1,000g each)
-  const effectiveDepositPrice = depositPrice === 1000 ? 1000 : ironPrice;
+  // Deposit Calculations (Raw Iron at 10g, Raw Cotton at 100g, or Raw Copper at 1,000g)
+  const effectiveDepositPrice = depositPrice === 1000 ? 1000 : depositPrice === 100 ? 100 : 10;
+  const depositCommodityName = effectiveDepositPrice === 1000 ? "Raw Copper" : effectiveDepositPrice === 100 ? "Raw Cotton" : "Raw Iron";
   const depositIronUnits = Math.max(1, Math.ceil(numDeposit / effectiveDepositPrice));
   const depositGrossTotal = depositIronUnits * effectiveDepositPrice;
 
@@ -220,7 +221,7 @@ export default function WalletModal({
           </div>
           <div className="flex items-baseline justify-between">
             <p className="text-[12px] text-ash">
-              Transfer funds via <strong className="text-paper">Raw Iron ({ironPrice}g each)</strong>.
+              Deposit via <strong className="text-paper">Raw Iron (10g), Cotton (100g), or Copper (1k)</strong>.
             </p>
             <div className="text-right">
               <span className="text-[12px] text-ash font-sans">Purse Balance</span>
@@ -399,9 +400,9 @@ export default function WalletModal({
                       setDepositPrice(10);
                       setDepositAmount("250");
                     }}
-                    className={`py-1.5 px-1.5 rounded-[4px] border text-left transition cursor-pointer ${
+                    className={`py-1.5 px-2 rounded-[4px] border text-left transition cursor-pointer ${
                       effectiveDepositPrice === 10
-                        ? "bg-rule border-zinc-500 text-zinc-50 font-bold"
+                        ? "bg-bullion/15 border-bullion text-bullion font-bold shadow-sm"
                         : "bg-pane border-rule text-ash hover:text-paper"
                     }`}
                   >
@@ -417,9 +418,9 @@ export default function WalletModal({
                       setDepositPrice(100);
                       setDepositAmount("1000");
                     }}
-                    className={`py-1.5 px-1.5 rounded-[4px] border text-left transition cursor-pointer ${
+                    className={`py-1.5 px-2 rounded-[4px] border text-left transition cursor-pointer ${
                       effectiveDepositPrice === 100
-                        ? "bg-rule border-zinc-500 text-zinc-50 font-bold"
+                        ? "bg-bullion/15 border-bullion text-bullion font-bold shadow-sm"
                         : "bg-pane border-rule text-ash hover:text-paper"
                     }`}
                   >
@@ -435,9 +436,9 @@ export default function WalletModal({
                       setDepositPrice(1000);
                       setDepositAmount("5000");
                     }}
-                    className={`py-1.5 px-1.5 rounded-[4px] border text-left transition cursor-pointer ${
+                    className={`py-1.5 px-2 rounded-[4px] border text-left transition cursor-pointer ${
                       effectiveDepositPrice === 1000
-                        ? "bg-rule border-zinc-500 text-zinc-50 font-bold"
+                        ? "bg-bullion/15 border-bullion text-bullion font-bold shadow-sm"
                         : "bg-pane border-rule text-ash hover:text-paper"
                     }`}
                   >
