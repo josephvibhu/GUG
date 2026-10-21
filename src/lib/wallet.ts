@@ -1,7 +1,9 @@
 import { getDb, initDb, scheduleBlobPersist } from "./db";
 import crypto from "crypto";
 
-export const IRON_UNIT_PRICE = 10; // 10 gold per Raw Iron
+export const IRON_UNIT_PRICE = 10; // Standard: 10 gold per Raw Iron
+export const BULK_IRON_UNIT_PRICE = 1000; // Bulk / Reserve-saving: 1,000 gold per Raw Iron
+export const ALLOWED_DEPOSIT_PRICES = [10, 1000];
 
 export interface RecipeResult {
   goldAmount: number;
@@ -34,20 +36,21 @@ export async function setSetting(key: string, value: string): Promise<void> {
   });
 }
 
-// Deposit calculation: Buy Raw Iron at 10g each
-export function calculateDepositRecipe(goldAmount: number, taxRate = 0): RecipeResult {
-  const units = Math.max(1, Math.ceil(goldAmount / IRON_UNIT_PRICE));
-  const total = units * IRON_UNIT_PRICE;
+// Deposit calculation: Buy Raw Iron at 10g (standard) or 1000g (bulk) each
+export function calculateDepositRecipe(goldAmount: number, taxRate = 0, unitPrice = 10): RecipeResult {
+  const price = unitPrice === 1000 ? 1000 : 10;
+  const units = Math.max(1, Math.ceil(goldAmount / price));
+  const total = units * price;
 
   return {
     goldAmount,
     ironUnits: units,
-    unitPrice: IRON_UNIT_PRICE,
+    unitPrice: price,
     grossTotal: total,
     taxAmount: 0,
     netPayout: total,
     taxRatePercent: taxRate,
-    instructions: `Buy ${units} Raw Iron listed by JosephArora at ${IRON_UNIT_PRICE} gold each (Total: ${total} gold).`,
+    instructions: `Buy ${units} Raw Iron listed by JosephArora at ${price} gold each (Total: ${total} gold).`,
   };
 }
 

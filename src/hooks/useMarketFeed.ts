@@ -14,6 +14,9 @@ export interface FeedUser {
   lockedCash: number;
   avatar: string;
   isAdmin?: boolean;
+  isManager?: boolean;
+  isOperator?: boolean;
+  accountType?: string;
   termsAccepted?: boolean;
   adjustmentNoticeSeen?: boolean;
   adjustment?: import("@/components/DepositAdjustmentModal").RecalibratedInfo;

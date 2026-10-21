@@ -47,6 +47,7 @@ export default function WalletModal({
   const [balance, setBalance] = useState<number>(0);
   const [parlamentumName, setParlamentumName] = useState<string>("");
   const [depositAmount, setDepositAmount] = useState<string>("500");
+  const [depositPrice, setDepositPrice] = useState<number>(10);
   const [withdrawAmount, setWithdrawAmount] = useState<string>("");
   const [houseOperator, setHouseOperator] = useState<string>("JosephArora");
   const [ironPrice, setIronPrice] = useState<number>(10);
@@ -97,9 +98,10 @@ export default function WalletModal({
   const numDeposit = parseInt(depositAmount, 10) || 0;
   const numWithdraw = parseInt(withdrawAmount, 10) || 0;
 
-  // Deposit Calculations (Raw Iron at 10g each)
-  const depositIronUnits = Math.max(1, Math.ceil(numDeposit / ironPrice));
-  const depositGrossTotal = depositIronUnits * ironPrice;
+  // Deposit Calculations (Raw Iron at 10g or 1,000g each)
+  const effectiveDepositPrice = depositPrice === 1000 ? 1000 : ironPrice;
+  const depositIronUnits = Math.max(1, Math.ceil(numDeposit / effectiveDepositPrice));
+  const depositGrossTotal = depositIronUnits * effectiveDepositPrice;
 
   // Withdrawal Calculations: user pays in-game sales tax to Parlamentum
   const tDecimal = Math.max(0, Math.min(50, selectedTaxRate)) / 100;
@@ -113,8 +115,8 @@ export default function WalletModal({
     e.preventDefault();
     setFeedback(null);
 
-    if (numDeposit < ironPrice) {
-      setFeedback({ type: "error", message: `Minimum deposit is ${ironPrice} gold (1 Raw Iron).` });
+    if (numDeposit < effectiveDepositPrice) {
+      setFeedback({ type: "error", message: `Minimum deposit is ${effectiveDepositPrice} gold (1 Raw Iron).` });
       return;
     }
     if (!parlamentumName.trim()) {
@@ -130,6 +132,7 @@ export default function WalletModal({
         body: JSON.stringify({
           action: "deposit",
           amount: depositGrossTotal,
+          unitPrice: effectiveDepositPrice,
           method: depositMethod,
           parlamentumName: parlamentumName.trim(),
         }),
@@ -356,7 +359,7 @@ export default function WalletModal({
                       </span>.
                     </div>
                     <div className="flex items-center gap-2 pt-1 tabular text-[12px] text-paper">
-                      <span>Rate: <strong className="text-bullion">{ironPrice} gold</strong> per Raw Iron</span>
+                      <span>Rate: <strong className="text-bullion">{effectiveDepositPrice} gold</strong> per Raw Iron</span>
                       <span>·</span>
                       <span>Total Gold: <strong className="text-bullion">{depositGrossTotal.toLocaleString()} gold</strong></span>
                     </div>
@@ -381,6 +384,51 @@ export default function WalletModal({
                 )}
               </div>
 
+              {/* Deposit Tier Selector: 10g Standard vs 1,000g Bulk */}
+              <div className="bg-floor border border-rule rounded-[4px] p-2.5">
+                <div className="text-[12px] font-semibold text-paper mb-1.5 flex items-center justify-between">
+                  <span>Raw Iron Deposit Tier</span>
+                  <span className="text-[11px] text-bullion font-bold tabular">{effectiveDepositPrice}g / unit</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDepositPrice(10);
+                      setDepositAmount("500");
+                    }}
+                    className={`py-1.5 px-2 rounded-[4px] border text-left transition cursor-pointer ${
+                      effectiveDepositPrice === 10
+                        ? "bg-rule border-zinc-500 text-zinc-50 font-bold"
+                        : "bg-pane border-rule text-ash hover:text-paper"
+                    }`}
+                  >
+                    <div className="text-[12px] flex items-center gap-1">
+                      <span>🪙</span> Standard (10g)
+                    </div>
+                    <div className="text-[10px] text-ash mt-0.5">For deposits &lt; 1,000g</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDepositPrice(1000);
+                      setDepositAmount("1000");
+                    }}
+                    className={`py-1.5 px-2 rounded-[4px] border text-left transition cursor-pointer ${
+                      effectiveDepositPrice === 1000
+                        ? "bg-rule border-zinc-500 text-zinc-50 font-bold"
+                        : "bg-pane border-rule text-ash hover:text-paper"
+                    }`}
+                  >
+                    <div className="text-[12px] flex items-center gap-1">
+                      <span>💎</span> Bulk (1,000g)
+                    </div>
+                    <div className="text-[10px] text-ash mt-0.5">High value · saves iron stock</div>
+                  </button>
+                </div>
+              </div>
+
               {/* Character Name & Amount Inputs */}
               <div>
                 <label className="text-paper font-semibold block mb-1">
@@ -397,28 +445,38 @@ export default function WalletModal({
 
               <div>
                 <div className="flex justify-between text-paper font-semibold mb-1">
-                  <span>Target Gold Amount (at {ironPrice}g / Raw Iron)</span>
+                  <span>Target Gold Amount (at {effectiveDepositPrice}g / Raw Iron)</span>
                   <span className="tabular text-bullion font-bold">
-                    = {depositIronUnits} Raw Iron units
+                    = {depositIronUnits} Raw Iron {depositIronUnits === 1 ? "unit" : "units"}
                   </span>
                 </div>
                 <input
                   type="number"
-                  min={ironPrice}
-                  step={ironPrice}
+                  min={effectiveDepositPrice}
+                  step={effectiveDepositPrice}
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(e.target.value)}
                   className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 tabular text-bullion font-bold text-sm focus:outline-none focus:border-zinc-500"
                 />
                 <div className="flex gap-1.5 mt-2">
-                  {[
-                    { label: "10 Iron (100g)", val: 100 },
-                    { label: "25 Iron (250g)", val: 250 },
-                    { label: "50 Iron (500g)", val: 500 },
-                    { label: "100 Iron (1k)", val: 1000 },
-                    { label: "250 Iron (2.5k)", val: 2500 },
-                    { label: "500 Iron (5k)", val: 5000 },
-                  ].map((preset) => (
+                  {(effectiveDepositPrice === 1000
+                    ? [
+                        { label: "1 Iron (1k)", val: 1000 },
+                        { label: "2 Iron (2k)", val: 2000 },
+                        { label: "3 Iron (3k)", val: 3000 },
+                        { label: "5 Iron (5k)", val: 5000 },
+                        { label: "10 Iron (10k)", val: 10000 },
+                        { label: "20 Iron (20k)", val: 20000 },
+                      ]
+                    : [
+                        { label: "10 Iron (100g)", val: 100 },
+                        { label: "25 Iron (250g)", val: 250 },
+                        { label: "50 Iron (500g)", val: 500 },
+                        { label: "100 Iron (1k)", val: 1000 },
+                        { label: "250 Iron (2.5k)", val: 2500 },
+                        { label: "500 Iron (5k)", val: 5000 },
+                      ]
+                  ).map((preset) => (
                     <button
                       key={preset.val}
                       type="button"

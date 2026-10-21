@@ -5,7 +5,7 @@
 // Server-only. Ported from The Back Room casino's watcher.
 import crypto from "crypto";
 import { getDb, initDb, scheduleBlobPersist } from "./db";
-import { getSetting, setSetting, IRON_UNIT_PRICE } from "./wallet";
+import { getSetting, setSetting, IRON_UNIT_PRICE, BULK_IRON_UNIT_PRICE } from "./wallet";
 import { getSessionSecret } from "./auth";
 
 const GAME = (process.env.GAME_URL || "https://parlamentum.org").replace(/\/+$/, "");
@@ -123,9 +123,9 @@ interface Seen {
   name: string;
 }
 
-/** Buys of the deposit iron from the trade ledger: sold on the global market, at the deposit price, to a named buyer.
+/** Buys of the deposit iron from the trade ledger: sold on the global market, at either allowed deposit price (10g or 1000g), to a named buyer.
  *  The purse gets what the House kept after the game's export tax (the "net gold received" rule). */
-function ironBuys(v: unknown, priceCents: number, item: string, exportTaxPct: number): Seen[] {
+function ironBuys(v: unknown, allowedPricesCents: number[], item: string, exportTaxPct: number): Seen[] {
   const rows = rec(v) ? v.rows : null;
   if (!Array.isArray(rows)) changed("trade ledger");
   const out: Seen[] = [];
@@ -133,11 +133,12 @@ function ironBuys(v: unknown, priceCents: number, item: string, exportTaxPct: nu
     if (!rec(t) || !str(t.id) || !when(t.at) || !str(t.book) || !str(t.side) || !str(t.itemType) || !str(t.currency)
       || !(t.counterparty === null || str(t.counterparty)) || !digits(t.quantity) || !digits(t.pricePerUnit)) changed("trade ledger");
     const r = t as Row & { id: string; at: string; quantity: string; pricePerUnit: string; counterparty: string | null };
-    if (r.book !== "GLOBAL" || r.side !== "SOLD" || r.itemType !== item || r.currency !== "GOLD" || Number(r.pricePerUnit) !== priceCents || !r.counterparty) continue;
+    if (r.book !== "GLOBAL" || r.side !== "SOLD" || r.itemType !== item || r.currency !== "GOLD" || !allowedPricesCents.includes(Number(r.pricePerUnit)) || !r.counterparty) continue;
     const units = Number(r.quantity);
+    const unitPriceCents = Number(r.pricePerUnit);
     // The ledger gives the game's own figures in hundredths: `total` and `taxPaid` (the export tax the House paid).
     // Without them, the game's rules: total = units × price, tax rounded down and at least a hundredth.
-    const grossCents = digits(r.total) ? Number(r.total) : units * priceCents;
+    const grossCents = digits(r.total) ? Number(r.total) : units * unitPriceCents;
     const taxCents = digits(r.taxPaid)
       ? Number(r.taxPaid)
       : exportTaxPct > 0
@@ -187,14 +188,14 @@ function depositContracts(v: unknown, houseId: string, item: string): Seen[] {
   return out;
 }
 
-/** The deposit listing: the House's live Raw Iron on the global market at the deposit price. */
-function depositListing(v: unknown, priceCents: number, item: string): { remaining: number; endsAt: string } | null {
+/** The deposit listing: the House's live Raw Iron on the global market at either deposit price tier (10g or 1000g). */
+function depositListing(v: unknown, allowedPricesCents: number[], item: string): { remaining: number; endsAt: string } | null {
   if (!Array.isArray(v)) changed("listing list");
   let best: { remaining: number; endsAt: string } | null = null;
   for (const l of v as unknown[]) {
     if (!rec(l) || !str(l.itemType) || !digits(l.pricePerUnit) || !digits(l.remaining) || !when(l.expiresAt)) changed("listing list");
-    const x = l as Row & { itemType: string; pricePerUnit: string; remaining: string; expiresAt: string };
-    if (x.itemType !== item || Number(x.pricePerUnit) !== priceCents || x.expired === true || x.cancelledAt || Date.parse(x.expiresAt) <= Date.now()) continue;
+    const x = l as Row & { itemType: string; pricePerUnit: string; remaining: string; expiresAt: string; expired?: boolean; cancelledAt?: string };
+    if (x.itemType !== item || !allowedPricesCents.includes(Number(x.pricePerUnit)) || x.expired === true || x.cancelledAt || Date.parse(x.expiresAt) <= Date.now()) continue;
     if (!best || Number(x.remaining) > best.remaining) best = { remaining: Number(x.remaining), endsAt: new Date(x.expiresAt).toISOString() };
   }
   return best;
@@ -343,17 +344,17 @@ export async function watch(force = false): Promise<void> {
     }
     const item = (await getSetting("watcher_item", "IRON_RAW")).trim() || "IRON_RAW";
     const exportTax = Number(await getSetting("house_export_tax", "5"));
-    const priceCents = Math.round(IRON_UNIT_PRICE * 100);
+    const allowedPricesCents = [Math.round(IRON_UNIT_PRICE * 100), Math.round(BULK_IRON_UNIT_PRICE * 100)];
     const [ledger, contracts, listings] = await Promise.all([
       game("/api/trade/ledger", token),
       game("/api/contracts?box=history", token),
       game("/api/global-market/mine", token),
     ]);
     const seen = [
-      ...ironBuys(ledger, priceCents, item, Number.isFinite(exportTax) ? Math.max(0, Math.min(50, exportTax)) : 5),
+      ...ironBuys(ledger, allowedPricesCents, item, Number.isFinite(exportTax) ? Math.max(0, Math.min(50, exportTax)) : 5),
       ...depositContracts(contracts, houseId, item),
     ];
-    const listing = depositListing(listings, priceCents, item);
+    const listing = depositListing(listings, allowedPricesCents, item);
     const since = Date.parse((await getSetting("watcher_since", "")) || new Date().toISOString());
 
     // Each trade is remembered once, by the game's own id; those from before the watcher started stay the operator's
@@ -417,7 +418,7 @@ export async function watchView(): Promise<WatchView> {
     warnings.push(ends <= now ? "The game login has run out: paste a fresh one." : `The game login runs out ${utc(ends)}: paste a fresh one before then.`);
   }
   if (on && okAt && !error) {
-    if (!listing) warnings.push(`No Raw Iron listed at ${IRON_UNIT_PRICE} gold: players can't deposit until you list some.`);
+    if (!listing) warnings.push(`No Raw Iron listed at ${IRON_UNIT_PRICE} gold or ${BULK_IRON_UNIT_PRICE} gold: players can't deposit until you list some.`);
     else {
       if (listing.remaining < LOW_STOCK) warnings.push(`Only ${listing.remaining.toLocaleString("en-US")} Raw Iron left on the deposit listing.`);
       if (Date.parse(listing.endsAt) - now < ENDS_SOON_MS) warnings.push(`The deposit listing ends ${utc(Date.parse(listing.endsAt))}.`);

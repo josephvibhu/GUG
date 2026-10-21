@@ -4,6 +4,8 @@ import { getDb, initDb } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { 
   IRON_UNIT_PRICE, 
+  BULK_IRON_UNIT_PRICE,
+  ALLOWED_DEPOSIT_PRICES,
   getSetting, 
   calculateDepositRecipe, 
   calculateWithdrawalRecipe 
@@ -53,6 +55,8 @@ export async function GET() {
       houseOperator: houseName,
       parlamentumName: user.parlamentumName || user.username,
       ironPrice: IRON_UNIT_PRICE,
+      bulkIronPrice: BULK_IRON_UNIT_PRICE,
+      depositTiers: ALLOWED_DEPOSIT_PRICES,
       taxRate,
       ledger,
     });
@@ -99,14 +103,15 @@ export async function POST(request: Request) {
     const txId = `tx_${crypto.randomUUID().slice(0, 8)}`;
 
     if (action === "deposit") {
-      // 1. DEPOSIT (Buy Raw Iron at 10 gold each)
-      const depositCalc = calculateDepositRecipe(numAmount, taxRate);
+      // 1. DEPOSIT (Buy Raw Iron at 10g or 1,000g each)
+      const unitPrice = body.unitPrice === 1000 || Number(body.unitPrice) === 1000 ? BULK_IRON_UNIT_PRICE : IRON_UNIT_PRICE;
+      const depositCalc = calculateDepositRecipe(numAmount, taxRate, unitPrice);
       const ironUnits = depositCalc.ironUnits;
       const actualGold = depositCalc.grossTotal;
 
       const recipe = method === "CONTRACT"
-        ? `In-game contract to ${houseName} giving ${actualGold} gold + 1 courier ticket for 1 Raw Iron.`
-        : `Bought ${ironUnits} Raw Iron listed by ${houseName} at ${IRON_UNIT_PRICE} gold each (${actualGold} gold total).`;
+        ? `In-game contract to ${houseName} giving ${actualGold} gold + 1 courier ticket for ${ironUnits} Raw Iron.`
+        : `Bought ${ironUnits} Raw Iron listed by ${houseName} at ${unitPrice} gold each (${actualGold} gold total).`;
 
       const reqTaxRate = body.taxRate !== undefined && !isNaN(Number(body.taxRate))
         ? Math.max(0, Math.min(50, Number(body.taxRate)))

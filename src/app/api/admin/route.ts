@@ -15,8 +15,8 @@ export async function GET() {
     const db = getDb();
     const user = await getCurrentUser();
 
-    if (!user || !user.isAdmin) {
-      return NextResponse.json({ success: false, message: "Forbidden: Admin access required." }, { status: 403 });
+    if (!user || (!user.isAdmin && !user.isManager)) {
+      return NextResponse.json({ success: false, message: "Forbidden: Operator or Manager access required." }, { status: 403 });
     }
 
     const [
@@ -238,10 +238,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action } = body;
 
-    // Every action is the operator's
+    // Every action is the operator's or floor manager's
     const user = await getCurrentUser();
-    if (!user || !user.isAdmin) {
-      return NextResponse.json({ success: false, message: "Forbidden: Admin access required." }, { status: 403 });
+    if (!user || (!user.isAdmin && !user.isManager)) {
+      return NextResponse.json({ success: false, message: "Forbidden: Operator or Manager access required." }, { status: 403 });
     }
 
     if (action === "approve") {

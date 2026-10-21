@@ -13,6 +13,9 @@ export interface UserSession {
   lockedCash: number;
   avatar: string;
   isAdmin: boolean;
+  isManager: boolean;
+  isOperator: boolean;
+  accountType: string;
   isFrozen: boolean;
   termsAccepted: boolean;
   adjustmentNoticeSeen?: boolean;
@@ -132,6 +135,10 @@ export async function getCurrentUser(): Promise<UserSession | null> {
   if (Number(u.session_epoch || 0) !== session.epoch) {
     return null;
   }
+  const accountType = String(u.account_type || "CITIZEN");
+  const isManager = accountType === "MANAGER";
+  const isAdmin = Number(u.is_admin) === 1 && !isManager;
+  const isOperator = isAdmin || isManager;
   return {
     id: String(u.id),
     username: String(u.username),
@@ -140,7 +147,10 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     cashBalance: Number(u.cash_balance),
     lockedCash: Number(u.locked_cash),
     avatar: String(u.avatar || "👤"),
-    isAdmin: Number(u.is_admin) === 1,
+    isAdmin,
+    isManager,
+    isOperator,
+    accountType,
     isFrozen: Number(u.is_frozen || 0) === 1,
     termsAccepted: Boolean(u.terms_accepted_at),
     adjustmentNoticeSeen: Boolean(u.deposit_adjustment_notice_seen_at),
@@ -223,6 +233,9 @@ export async function registerUser(
       lockedCash: 0.0,
       avatar,
       isAdmin: isAdmin === 1,
+      isManager: false,
+      isOperator: isAdmin === 1,
+      accountType: 'CITIZEN',
       isFrozen: false,
       termsAccepted: true,
     },
@@ -277,20 +290,29 @@ export async function loginUser(
 
   return {
     success: true,
-    user: {
-      id: String(u.id),
-      username: String(u.username),
-      displayName: String(u.display_name),
-      parlamentumName: String(u.parlamentum_name || u.username),
-      cashBalance: Number(u.cash_balance),
-      lockedCash: Number(u.locked_cash),
-      avatar: String(u.avatar || "👤"),
-      isAdmin: Number(u.is_admin) === 1,
-      isFrozen: Number(u.is_frozen || 0) === 1,
-      termsAccepted: Boolean(u.terms_accepted_at),
-      adjustmentNoticeSeen: Boolean(u.deposit_adjustment_notice_seen_at),
-    adjustment: u.deposit_adjustment_notice_seen_at ? undefined : RECALIBRATED_CITIZENS[String(u.id)],
-    },
+    user: (() => {
+      const accountType = String(u.account_type || "CITIZEN");
+      const isManager = accountType === "MANAGER";
+      const isAdmin = Number(u.is_admin) === 1 && !isManager;
+      const isOperator = isAdmin || isManager;
+      return {
+        id: String(u.id),
+        username: String(u.username),
+        displayName: String(u.display_name),
+        parlamentumName: String(u.parlamentum_name || u.username),
+        cashBalance: Number(u.cash_balance),
+        lockedCash: Number(u.locked_cash),
+        avatar: String(u.avatar || "👤"),
+        isAdmin,
+        isManager,
+        isOperator,
+        accountType,
+        isFrozen: Number(u.is_frozen || 0) === 1,
+        termsAccepted: Boolean(u.terms_accepted_at),
+        adjustmentNoticeSeen: Boolean(u.deposit_adjustment_notice_seen_at),
+        adjustment: u.deposit_adjustment_notice_seen_at ? undefined : RECALIBRATED_CITIZENS[String(u.id)],
+      };
+    })(),
   };
 }
 
@@ -316,6 +338,42 @@ export async function dismissAdjustmentNotice(userId: string): Promise<boolean> 
   });
   await persistDbToBlob();
   return true;
+}
+
+export async function createManager(
+  username: string,
+  password: string
+): Promise<{ success: boolean; message: string; user?: { id: string; username: string } }> {
+  await initDb();
+  const db = getDb();
+  const clean = username.trim();
+  if (clean.length < 3) return { success: false, message: "Username must be at least 3 characters." };
+  if (password.length < 6) return { success: false, message: "Password must be at least 6 characters." };
+
+  const existing = await db.execute({
+    sql: "SELECT id FROM users WHERE LOWER(username) = ?",
+    args: [clean.toLowerCase()],
+  });
+  if (existing.rows.length > 0) {
+    return { success: false, message: "A user with this username already exists." };
+  }
+
+  const id = `usr_mgr_${crypto.randomUUID().slice(0, 8)}`;
+  const passwordHash = await bcrypt.hash(password, 10);
+  const now = new Date().toISOString();
+
+  await db.execute({
+    sql: `INSERT INTO users (
+            id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, 
+            avatar, is_admin, account_type, terms_accepted_at, created_at
+          ) VALUES (?, ?, ?, ?, ?, 0.0, 0.0, '👔', 0, 'MANAGER', ?, ?)`,
+    args: [id, clean, passwordHash, clean, clean, now, now],
+  });
+
+  const { scheduleBlobPersist } = await import("./db");
+  scheduleBlobPersist();
+
+  return { success: true, message: `Manager account @${clean} created successfully!`, user: { id, username: clean } };
 }
 
 export async function logoutUser(): Promise<boolean> {

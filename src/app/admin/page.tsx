@@ -10,7 +10,7 @@ async function AdminContent() {
   await cookies();
   const user = await getCurrentUser();
 
-  if (!user || !user.isAdmin) {
+  if (!user || (!user.isAdmin && !user.isManager)) {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex flex-col font-sans">
         <Navbar />
