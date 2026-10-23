@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grow UR Gold — Shareholder Report (Week 1)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --bg: #0b1317;
+    --card: #121c22;
+    --card-alt: #17242c;
+    --gold: #e3b85a;
+    --gold-dark: #b88a2e;
+    --text-white: #f3f6f8;
+    --text-gray: #8899a6;
+    --border: #1f303a;
+    --green: #4ade80;
+    --red: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text-white);
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    padding: 36px 20px;
+    display: flex;
+    justify-content: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .report {
+    width: 100%;
+    max-width: 760px;
+    background: var(--bg);
+    padding: 24px;
+    border-radius: 12px;
+  }
+  @media print {
+    body { padding: 0; background: #0b1317; }
+    .report { max-width: 100%; border: none; padding: 20px; }
+    .no-print { display: none !important; }
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 22px;
+  }
+  .brand h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 38px;
+    font-weight: 800;
+    font-style: italic;
+    color: var(--gold);
+    line-height: 1;
+    letter-spacing: -0.5px;
+  }
+  .brand .sub {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-gray);
+    margin-top: 6px;
+    font-weight: 600;
+  }
+  .ticker-badge {
+    text-align: right;
+  }
+  .badge {
+    background: var(--gold);
+    color: #0b1317;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    padding: 4px 14px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  .week {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    font-style: italic;
+    margin-top: 4px;
+    color: var(--text-white);
+  }
+
+  /* Metadata row */
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    row-gap: 3px;
+    font-size: 11px;
+    color: var(--text-gray);
+    margin-bottom: 22px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .meta-grid strong {
+    color: var(--text-white);
+    font-weight: 600;
+  }
+
+  /* 4 Metric Cards */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .metric-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 10px;
+    display: flex;
+    flex-col: column;
+  }
+  .metric-card .title {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-gray);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .metric-card .num {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--gold);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .metric-card .sub-text {
+    font-size: 10px;
+    color: var(--text-gray);
+    line-height: 1.2;
+  }
+
+  /* Section Title */
+  .sec-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    font-style: italic;
+    color: var(--gold);
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-bottom: 24px;
+  }
+  th {
+    text-align: left;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-gray);
+    font-weight: 600;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 8px 8px;
+    border-bottom: 1px solid rgba(31, 48, 58, 0.4);
+    font-variant-numeric: tabular-nums;
+  }
+  .r { text-align: right; }
+  .pos { color: var(--gold); font-weight: 700; }
+  .neg { color: var(--red); }
+
+  /* Two Column Breakdown */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(31, 48, 58, 0.3);
+    font-variant-numeric: tabular-nums;
+  }
+  .row.total {
+    border-top: 1px solid var(--border);
+    border-bottom: none;
+    padding-top: 8px;
+    margin-top: 4px;
+    font-weight: 700;
+  }
+  .row .lbl { color: var(--text-white); }
+  .row .sub-lbl { color: var(--text-gray); font-size: 10px; display: block; margin-top: 2px; }
+
+  /* Since launch bar */
+  .since-launch {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .since-launch .col { display: flex; flex-direction: column; }
+  .since-launch .col .title {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-gray);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .since-launch .col .num {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 19px;
+    font-weight: 800;
+    color: var(--gold);
+    line-height: 1.1;
+  }
+  .since-launch .col .sub {
+    font-size: 10px;
+    color: var(--text-gray);
+    margin-top: 3px;
+  }
+
+  /* Footer disclaimer */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: var(--text-gray);
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Print Button Floating */
+  .print-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--gold);
+    color: #0b1317;
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+  .print-btn:hover { background: #f3cb72; }
+</style>
+</head>
+<body>
+
+<button class="print-btn no-print" onclick="window.print()">🖨️ Save as PDF / Print</button>
+
+<div class="report">
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">
+      <h1>GROW UR GOLD</h1>
+      <div class="sub">Shareholder Report</div>
+    </div>
+    <div class="ticker-badge">
+      <div class="badge">$GUG</div>
+      <div class="week">WEEK 1</div>
+    </div>
+  </div>
+
+  <!-- Meta -->
+  <div class="meta-grid">
+    <span>Period</span>
+    <span><strong>Sun 18 Oct 2026, 09:00 UTC – Fri 23 Oct 2026, 00:00 UTC</strong></span>
+    <span>Generated</span>
+    <span><strong>Fri 23 Oct 2026, 09:30 UTC</strong></span>
+    <span>Payout Date</span>
+    <span><strong>Fri 23 Oct 2026, 00:00 UTC</strong></span>
+  </div>
+
+  <!-- 4 Top Cards -->
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="title">Net Profit</div>
+      <div class="num">+1,006.91</div>
+      <div class="sub-text">gold</div>
+    </div>
+    <div class="metric-card">
+      <div class="title">Total Payout</div>
+      <div class="num">201.38</div>
+      <div class="sub-text">20% of 1,006.91</div>
+    </div>
+    <div class="metric-card">
+      <div class="title">Per Share</div>
+      <div class="num">0.0201</div>
+      <div class="sub-text">gold on each of 10,000</div>
+    </div>
+    <div class="metric-card">
+      <div class="title">Public Float</div>
+      <div class="num">20.20</div>
+      <div class="sub-text">gold to its 1,005 shares</div>
+    </div>
+  </div>
+
+  <!-- The Operations Table -->
+  <div class="sec-title">The Exchange Floor</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Operation Stream</th>
+        <th class="r">Activity</th>
+        <th class="r">Volume</th>
+        <th class="r">Fee Rate</th>
+        <th class="r">House Kept</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Secondary Trading Fees</strong></td>
+        <td class="r">86 trades</td>
+        <td class="r">30,240.50</td>
+        <td class="r">1.0%</td>
+        <td class="r pos">+302.41</td>
+      </tr>
+      <tr>
+        <td><strong>IPO Corporate Charters</strong></td>
+        <td class="r">6 companies</td>
+        <td class="r">1,200.00</td>
+        <td class="r">Listing underwrite</td>
+        <td class="r pos">+722.66</td>
+      </tr>
+      <tr>
+        <td><strong>Deposit Rails & Utilities</strong></td>
+        <td class="r">42 batches</td>
+        <td class="r">28,822.50</td>
+        <td class="r">Liquidity inflow</td>
+        <td class="r pos">+342.10</td>
+      </tr>
+      <tr style="border-top: 1px solid var(--border); font-weight: 700;">
+        <td><strong>ALL THREE</strong></td>
+        <td class="r">134 events</td>
+        <td class="r">60,263.00</td>
+        <td class="r">—</td>
+        <td class="r pos">+1,367.17</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Two Column Breakdown -->
+  <div class="two-col">
+    <!-- Left Column: The Week's Profit -->
+    <div>
+      <div class="sec-title">The Week's Profit</div>
+      <div class="row">
+        <div>
+          <span class="lbl">Gross Operations Inflow</span>
+        </div>
+        <span class="pos">+1,367.17</span>
+      </div>
+      <div class="row">
+        <div>
+          <span class="lbl">Raw Iron & Utilities COGS</span>
+          <span class="sub-lbl">3,549 units bought @ 0.10g cost</span>
+        </div>
+        <span class="neg">−354.90</span>
+      </div>
+      <div class="row">
+        <div>
+          <span class="lbl">Courier Tickets & In-Game Taxes</span>
+          <span class="sub-lbl">Fulfillment logistics & postage</span>
+        </div>
+        <span class="neg">−5.36</span>
+      </div>
+      <div class="row total">
+        <span class="lbl">Net Profit</span>
+        <span class="pos" style="font-size: 14px;">+1,006.91</span>
+      </div>
+    </div>
+
+    <!-- Right Column: Payout Waterfall -->
+    <div>
+      <div class="sec-title">Payout</div>
+      <div class="row">
+        <span class="lbl">Net profit</span>
+        <span class="pos">+1,006.91</span>
+      </div>
+      <div class="row">
+        <span class="lbl">Loss carried in</span>
+        <span>0.00</span>
+      </div>
+      <div class="row">
+        <span class="lbl">Distributable pool</span>
+        <span>1,006.91</span>
+      </div>
+      <div class="row">
+        <span class="lbl">Payout ratio</span>
+        <span style="font-weight: 700; color: var(--gold);">20%</span>
+      </div>
+      <div class="row total">
+        <span class="lbl">Total payout</span>
+        <span class="pos">201.38</span>
+      </div>
+      <div class="row">
+        <span class="lbl">Per share (10,000 shares)</span>
+        <span>0.0201</span>
+      </div>
+      <div class="row">
+        <span class="lbl">Public float (1,005 shares)</span>
+        <span style="color: var(--gold); font-weight: 600;">20.20</span>
+      </div>
+      <div class="row">
+        <span class="lbl">Retained reserve (80% kept)</span>
+        <span style="color: var(--green); font-weight: 700;">805.53</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Since Launch -->
+  <div class="sec-title" style="font-size: 15px; margin-bottom: 6px;">Since Launch <span style="font-size: 11px; color: var(--text-gray); font-family: 'IBM Plex Sans'; text-transform: none; font-weight: 400; font-style: normal;">Sun 18 Oct 2026 to Fri 23 Oct 2026 · 1 weekly report</span></div>
+  <div class="since-launch">
+    <div class="col">
+      <div class="title">Volume</div>
+      <div class="num">60,263.00</div>
+      <div class="sub">gold transacted</div>
+    </div>
+    <div class="col">
+      <div class="title">Net Profit</div>
+      <div class="num">+1,006.91</div>
+      <div class="sub">gold</div>
+    </div>
+    <div class="col">
+      <div class="title">Paid Out</div>
+      <div class="num">201.38</div>
+      <div class="sub">gold, all shares</div>
+    </div>
+    <div class="col">
+      <div class="title">Corporate Treasury</div>
+      <div class="num">2,164.42</div>
+      <div class="sub">primary float retained</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>Figures in Parlamentum gold from Grow UR Gold sovereign exchange ledger. Central bankroll 100% backed.</span>
+    <span style="font-weight: 700; color: var(--text-white);">$GUG · Grow UR Gold</span>
+  </div>
+</div>
+
+</body>
+</html>

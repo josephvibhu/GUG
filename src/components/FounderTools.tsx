@@ -103,14 +103,16 @@ export function EarningsDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [profit, setProfit] = useState("1000");
+  const [profit, setProfit] = useState("1006.91");
+  const [payoutRate, setPayoutRate] = useState("20");
   const [note, setNote] = useState("");
   const [payNow, setPayNow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const profitNum = parseFloat(profit) || 0;
-  const pool = Math.round(profitNum * 0.5 * 100) / 100;
+  const rateNum = Math.max(1, Math.min(100, parseFloat(payoutRate) || 20));
+  const pool = Math.round(profitNum * (rateNum / 100) * 100) / 100;
   const perShare = company.totalShares > 0 ? pool / company.totalShares : 0;
   const backToFounder = perShare * founderShares;
   // Your own share comes straight back to your purse, so only the other holders' part has to be there
@@ -135,6 +137,7 @@ export function EarningsDialog({
           action: "report_earnings",
           companyId: company.id,
           netProfit: profitNum,
+          dividendPercent: rateNum,
           notes: note.trim() || undefined,
           distributeImmediately: payNow,
           scheduledFor: nextFriday,
@@ -154,17 +157,38 @@ export function EarningsDialog({
     <Dialog title="Report weekly earnings" onClose={onClose}>
       <form onSubmit={submit} className="flex flex-col gap-4 text-[13px]">
         <p className="text-ash leading-relaxed">
-          Half of the net profit goes to shareholders on {fridayLabel} at 00:00 UTC. It&apos;s paid from the {company.ticker} treasury first, then from your purse if the treasury runs short.
+          {rateNum}% of the net profit goes to shareholders on {fridayLabel} at 00:00 UTC. It&apos;s paid from the {company.ticker} treasury first, then from your purse if the treasury runs short.
         </p>
-        <label className="flex flex-col gap-1">
-          <span className="text-[12px] text-ash">Net profit this week</span>
-          <span className="relative">
-            <input type="number" inputMode="decimal" min="1" value={profit} onChange={(e) => setProfit(e.target.value)} className={inputClass} />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-ash pointer-events-none">gold</span>
-          </span>
-        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-[12px] text-ash">Net profit this week</span>
+            <span className="relative">
+              <input type="number" inputMode="decimal" min="1" value={profit} onChange={(e) => setProfit(e.target.value)} className={inputClass} />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-ash pointer-events-none">gold</span>
+            </span>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[12px] text-ash">Payout Ratio (%)</span>
+            <div className="flex gap-1.5">
+              {[20, 30, 50].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => setPayoutRate(String(pct))}
+                  className={`flex-1 py-1 rounded text-[12px] font-semibold border transition cursor-pointer ${
+                    rateNum === pct
+                      ? "bg-bullion/20 border-bullion text-bullion"
+                      : "bg-floor border-rule text-ash hover:text-paper"
+                  }`}
+                >
+                  {pct}%
+                </button>
+              ))}
+            </div>
+          </label>
+        </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px] border-y border-rule py-3">
-          <dt className="text-ash">Dividend (50%)</dt>
+          <dt className="text-ash">Dividend ({rateNum}%)</dt>
           <dd className="text-right text-bullion font-semibold">{fmtPrice(pool)} gold</dd>
           <dt className="text-ash">Per share</dt>
           <dd className="text-right text-paper">{perShare.toFixed(4)} gold</dd>

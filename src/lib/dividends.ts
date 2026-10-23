@@ -153,6 +153,7 @@ export async function reportEarningsAndDividend(params: {
   grossRevenue?: number;
   operatingExpenses?: number;
   netProfit: number;
+  dividendPercent?: number;
   notes?: string;
   distributeImmediately?: boolean;
   scheduledFor?: string;
@@ -191,8 +192,11 @@ export async function reportEarningsAndDividend(params: {
     return { success: false, message: "Only the enterprise founder or High Registrar operator can file official earnings." };
   }
 
-  // 50% profit dividend pool
-  const dividendPool = Math.round(netProfit * 0.50 * 100) / 100;
+  // Dividend pool (supports custom dividend percent or company default, e.g. 20% or 50%)
+  const customPercent = params.dividendPercent !== undefined && Number.isFinite(Number(params.dividendPercent))
+    ? Math.max(1, Math.min(100, Number(params.dividendPercent)))
+    : Number(company.dividend_rate || 50.0);
+  const dividendPool = Math.round(netProfit * (customPercent / 100) * 100) / 100;
   const eligibleShares = Number(company.total_shares);
   const dividendPerShare = Math.round((dividendPool / eligibleShares) * 10000) / 10000;
 
@@ -210,7 +214,7 @@ export async function reportEarningsAndDividend(params: {
         id, company_id, reporter_id, period_title, gross_revenue, operating_expenses,
         net_profit, dividend_percent, dividend_pool, eligible_shares, dividend_per_share,
         scheduled_for, status, notes, total_distributed, shareholders_count, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 50.0, ?, ?, ?, ?, 'SCHEDULED', ?, 0.0, 0, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SCHEDULED', ?, 0.0, 0, ?)
     `,
     args: [
       reportId,
@@ -220,11 +224,12 @@ export async function reportEarningsAndDividend(params: {
       params.grossRevenue || netProfit,
       params.operatingExpenses || 0,
       netProfit,
+      customPercent,
       dividendPool,
       eligibleShares,
       dividendPerShare,
       scheduledIso,
-      params.notes || "50% Net Profit Weekly Dividend Allocation",
+      params.notes || `${customPercent}% Net Profit Weekly Dividend Allocation`,
       now,
     ],
   });

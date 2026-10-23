@@ -53,7 +53,8 @@ export async function POST(request: Request) {
         periodTitle, 
         notes, 
         distributeImmediately,
-        scheduledFor 
+        scheduledFor,
+        dividendPercent 
       } = body;
 
       if (!companyId) {
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
         operatingExpenses: operatingExpenses ? parseFloat(operatingExpenses) : undefined,
         netProfit: profitVal,
         periodTitle,
+        dividendPercent: dividendPercent !== undefined ? parseFloat(dividendPercent) : undefined,
         notes,
         distributeImmediately: Boolean(distributeImmediately),
         scheduledFor,
