@@ -337,7 +337,7 @@ function Terminal({ ticker }: { ticker: string }) {
             {active === "dividends" && (
               <div className="flex flex-col">
                 <p className="px-4 py-3 text-[13px] text-ash border-b border-rule">
-                  {c.ticker} pays half of each week&apos;s reported net profit to shareholders, every Friday at 00:00 UTC.
+                  {c.ticker} pays dividends of reported net profit to shareholders every Friday at 00:00 UTC as declared by the corporate board.
                   {data.nextFriday && ` Next payout: ${new Date(data.nextFriday).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}.`}
                   {` Paid so far: ${fmtGold(c.totalDividendsPaid || 0)} gold.`}
                 </p>

@@ -116,7 +116,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   const [creditAmount, setCreditAmount] = useState<string>("500");
   const [creditReason, setCreditReason] = useState<string>("Verified Parlamentum Raw Iron sale");
 
-  // 50% Profit Dividend & Friday UTC 00:00 Engine
+  // Profit Dividend & Friday UTC 00:00 Engine
   const [earningsReports, setEarningsReports] = useState<any[]>([]);
   const [nextFriday, setNextFriday] = useState<string>("");
   const [divCompanyId, setDivCompanyId] = useState<string>("");
@@ -2041,21 +2041,21 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           )}
         </div>
 
-        {/* Section 5: Corporate Earnings & Friday 50% Profit Dividend Desk */}
+        {/* Section 5: Corporate Earnings & Friday Profit Dividend Desk */}
         <div className="bg-pane/60 border border-rule rounded-[6px] p-5 flex flex-col gap-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rule pb-4">
             <div>
               <div className="flex items-center gap-2">
                 <Coins className="w-5 h-5 text-bullion" />
                 <h3 className="font-bold text-white text-base">
-                  Corporate Earnings & Friday 50% Profit Dividend Desk
+                  Corporate Earnings & Friday Dividend Desk
                 </h3>
                 <span className="px-2 py-0.5 rounded text-[10px] tabular font-bold bg-floor text-paper border border-rule">
                   WEEKLY UTC 00:00 PAYOUT
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400 mt-1">
-                Audit weekly net profits, declare 50% profit distributions, and automatically sweep dividend gold into shareholder purses every Friday at 00:00 UTC.
+                Audit weekly net profits, declare corporate profit distributions, and automatically sweep dividend gold into shareholder purses every Friday at 00:00 UTC.
               </p>
             </div>
 
@@ -2248,7 +2248,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                       <tr className="text-zinc-400 uppercase text-[10px] tracking-wider border-b border-rule font-sans">
                         <th className="py-2.5 px-3">Enterprise</th>
                         <th className="py-2.5 px-3">Audited Profit</th>
-                        <th className="py-2.5 px-3">50% Pool</th>
+                        <th className="py-2.5 px-3">Dividend Pool</th>
                         <th className="py-2.5 px-3">Per Share</th>
                         <th className="py-2.5 px-3">Status</th>
                         <th className="py-2.5 px-3 text-right">Actions</th>

@@ -248,14 +248,14 @@ export async function reportEarningsAndDividend(params: {
     }
     return {
       success: true,
-      message: `Earnings filed and 50% dividend (${dividendPool.toLocaleString()} gold) distributed immediately to ${distRes.shareholdersPaid} shareholders!`,
+      message: `Earnings filed and ${customPercent}% dividend (${dividendPool.toLocaleString()} gold) distributed immediately to ${distRes.shareholdersPaid} shareholders!`,
       reportId,
     };
   }
 
   return {
     success: true,
-    message: `Earnings filed! 50% dividend pool (${dividendPool.toLocaleString()} gold, ${dividendPerShare.toFixed(4)}g/share) is scheduled for automatic distribution on Friday at 00:00 UTC.`,
+    message: `Earnings filed! ${customPercent}% dividend pool (${dividendPool.toLocaleString()} gold, ${dividendPerShare.toFixed(4)}g/share) is scheduled for automatic distribution on Friday at 00:00 UTC.`,
     reportId,
   };
 }
@@ -584,8 +584,8 @@ export async function executeDividendPayout(reportId: string): Promise<{
     args: [
       annId,
       companyId,
-      `🪙 50% PROFIT DIVIDEND: ${totalPaid.toLocaleString()} gold distributed!`,
-      `Official Earnings & 50% Profit Dividend Distribution for period "${report.period_title}". Enterprise net profit: ${Number(report.net_profit).toLocaleString()} gold. A total of ${totalPaid.toLocaleString()} gold was allocated and deposited into the purses of ${shareholdersPaid} shareholder citizens (${dividendPerShare.toFixed(4)} gold per share).`,
+      `🪙 ${report.dividend_percent || 50}% PROFIT DIVIDEND: ${totalPaid.toLocaleString()} gold distributed!`,
+      `Official Earnings & ${report.dividend_percent || 50}% Profit Dividend Distribution for period "${report.period_title}". Enterprise net profit: ${Number(report.net_profit).toLocaleString()} gold. A total of ${totalPaid.toLocaleString()} gold was allocated and deposited into the purses of ${shareholdersPaid} shareholder citizens (${dividendPerShare.toFixed(4)} gold per share).`,
       String(report.reporter_id),
       now,
     ],
