@@ -135,7 +135,7 @@ export function getDb(): Client {
 
     if (databaseUrl) {
       clientInstance = createClient({
-        url: databaseUrl,
+        url: databaseUrl.startsWith("libsql://") ? databaseUrl.replace("libsql://", "https://") : databaseUrl,
         authToken: authToken,
       });
     } else {
