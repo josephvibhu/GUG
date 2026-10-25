@@ -123,6 +123,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   const [divGrossRev, setDivGrossRev] = useState<string>("");
   const [divExpenses, setDivExpenses] = useState<string>("");
   const [divNetProfit, setDivNetProfit] = useState<string>("1000");
+  const [divPercent, setDivPercent] = useState<string>("20");
   const [divPeriod, setDivPeriod] = useState<string>("Weekly Audit Cycle");
   const [divNotes, setDivNotes] = useState<string>("Audited weekly trading and enterprise revenue.");
   const [divImmediate, setDivImmediate] = useState<boolean>(false);
@@ -274,6 +275,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
           grossRevenue: divGrossRev ? parseFloat(divGrossRev) : undefined,
           operatingExpenses: divExpenses ? parseFloat(divExpenses) : undefined,
           netProfit: profit,
+          dividendPercent: parseFloat(divPercent) || 20,
           periodTitle: divPeriod,
           notes: divNotes,
           distributeImmediately: divImmediate,
@@ -296,7 +298,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   };
 
   const handleDistributeNow = async (reportId: string) => {
-    if (!confirm("Are you sure you want to distribute this 50% profit dividend now? Shareholder purses will immediately receive gold credits.")) return;
+    if (!confirm("Are you sure you want to distribute this profit dividend now? Shareholder purses will immediately receive gold credits.")) return;
     try {
       const res = await fetch("/api/admin", {
         method: "POST",
@@ -2135,7 +2137,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     Net Audited Profit (gold) *
                   </label>
                   <span className="text-[10px] text-bullion tabular font-bold">
-                    50% Pool = {(parseFloat(divNetProfit || "0") * 0.5).toFixed(1)}g
+                    {divPercent || "20"}% Pool = {(parseFloat(divNetProfit || "0") * ((parseFloat(divPercent) || 20) / 100)).toFixed(2)}g
                   </span>
                 </div>
                 <input
@@ -2148,6 +2150,46 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   onChange={(e) => setDivNetProfit(e.target.value)}
                   className="w-full bg-pane border border-rule rounded-[4px] px-3 py-2 text-paper tabular text-sm font-bold focus:outline-none focus:border-rule"
                 />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-[11px] font-semibold text-zinc-300">
+                    Dividend Payout Ratio (%)
+                  </label>
+                  <span className="text-[10px] text-zinc-400 tabular">
+                    Shareholders receive {divPercent || "20"}% of net profit
+                  </span>
+                </div>
+                <div className="flex gap-1.5 mb-2">
+                  {[10, 15, 20, 25, 30, 50].map((pct) => (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => setDivPercent(String(pct))}
+                      className={`flex-1 py-1 rounded-[4px] text-[11px] font-bold border transition cursor-pointer ${
+                        parseFloat(divPercent) === pct
+                          ? "bg-bullion/20 border-bullion text-bullion shadow-sm"
+                          : "bg-pane border-rule text-ash hover:text-paper"
+                      }`}
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    step="1"
+                    placeholder="Custom % (e.g. 20)"
+                    value={divPercent}
+                    onChange={(e) => setDivPercent(e.target.value)}
+                    className="w-full bg-pane border border-rule rounded-[4px] px-3 py-1.5 text-white tabular text-xs focus:outline-none focus:border-rule"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ash pointer-events-none font-bold">%</span>
+                </div>
               </div>
 
               <div>
@@ -2183,7 +2225,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 disabled={divSubmitting || !divCompanyId}
                 className="mt-1 w-full py-2.5 rounded-[6px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs transition cursor-pointer disabled:opacity-50"
               >
-                {divSubmitting ? "Committing Report..." : divImmediate ? "Declare & Distribute 50% Profit Now" : "Schedule 50% Profit for Next Friday (00:00 UTC)"}
+                {divSubmitting ? "Committing Report..." : divImmediate ? `Declare & Distribute ${divPercent || "20"}% Profit Now` : `Schedule ${divPercent || "20"}% Profit for Next Friday (00:00 UTC)`}
               </button>
             </form>
 

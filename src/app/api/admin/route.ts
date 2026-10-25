@@ -477,7 +477,7 @@ export async function POST(request: Request) {
 
 
     if (action === "report_earnings") {
-      const { companyId, grossRevenue, operatingExpenses, netProfit, periodTitle, notes, distributeImmediately, scheduledFor } = body;
+      const { companyId, grossRevenue, operatingExpenses, netProfit, periodTitle, notes, distributeImmediately, scheduledFor, dividendPercent } = body;
       const user = await getCurrentUser();
       if (!user) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
 
@@ -488,6 +488,7 @@ export async function POST(request: Request) {
         grossRevenue: grossRevenue ? parseFloat(grossRevenue) : undefined,
         operatingExpenses: operatingExpenses ? parseFloat(operatingExpenses) : undefined,
         netProfit: parseFloat(netProfit),
+        dividendPercent: dividendPercent !== undefined ? parseFloat(dividendPercent) : undefined,
         periodTitle,
         notes,
         distributeImmediately: Boolean(distributeImmediately),
