@@ -83,7 +83,7 @@ interface PendingDeposit {
 
 export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   const [loading, setLoading] = useState(!initialUser);
-  const [isAdmin, setIsAdmin] = useState(Boolean(initialUser?.isAdmin));
+  const [isAdmin, setIsAdmin] = useState(Boolean(initialUser?.isAdmin || initialUser?.isManager));
   const [citizens, setCitizens] = useState<Citizen[]>([]);
   const [pendingDeposits, setPendingDeposits] = useState<PendingDeposit[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);

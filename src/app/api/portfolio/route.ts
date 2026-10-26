@@ -12,6 +12,10 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
+    if (user.isManager) {
+      return NextResponse.json({ success: false, message: "Manager accounts do not have a portfolio." }, { status: 403 });
+    }
+
     const { getUserDividendHistory } = await import("@/lib/dividends");
     const [portfolio, openOrders, dividendHistory] = await Promise.all([
       getUserPortfolio(user.id),

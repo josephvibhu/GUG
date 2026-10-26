@@ -10,6 +10,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Unauthorized. Please log in." }, { status: 401 });
     }
 
+    if (user.isManager) {
+      return NextResponse.json({ success: false, message: "Manager accounts cannot place trades on the exchange floor." }, { status: 403 });
+    }
+
     const tradingCheck = await isTradingAllowed();
     if (!tradingCheck.allowed) {
       return NextResponse.json({ success: false, message: tradingCheck.reason }, { status: 403 });

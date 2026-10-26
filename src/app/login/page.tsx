@@ -99,9 +99,9 @@ export default function LoginPage() {
           setPassword("");
           setNewPassword("");
           setRepeatPassword("");
-          setTimeout(() => (window.location.href = "/"), 1800);
+          setTimeout(() => (window.location.href = data.user?.isManager ? "/admin" : "/"), 1800);
         } else {
-          window.location.href = "/";
+          window.location.href = data.user?.isManager ? "/admin" : "/";
         }
       } else {
         setError(data.message || "That didn't work. Check the details and try again.");

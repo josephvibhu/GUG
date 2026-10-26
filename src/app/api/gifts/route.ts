@@ -24,6 +24,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Please log in to manage stock gifts." }, { status: 401 });
     }
 
+    if (user.isManager) {
+      return NextResponse.json({ success: false, message: "Manager accounts cannot transfer stock gifts." }, { status: 403 });
+    }
+
     const body = await request.json();
     const { action } = body;
     const userName = user.parlamentumName || user.displayName || user.username;

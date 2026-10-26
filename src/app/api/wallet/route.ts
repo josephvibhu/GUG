@@ -23,6 +23,10 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
+    if (user.isManager) {
+      return NextResponse.json({ success: false, message: "Manager accounts do not have a wallet." }, { status: 403 });
+    }
+
     const [taxRateStr, houseName] = await Promise.all([
       getSetting("tax_rate", "10"),
       getSetting("house_name", "JosephArora"),
@@ -74,6 +78,10 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ success: false, message: "Please log in with your Parlamentum name." }, { status: 401 });
+    }
+
+    if (user.isManager) {
+      return NextResponse.json({ success: false, message: "Manager accounts cannot perform personal wallet transactions." }, { status: 403 });
     }
 
     if (user.isFrozen) {

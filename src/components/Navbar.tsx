@@ -52,6 +52,13 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
     };
   }, [menuOpen]);
 
+  // Manager accounts can ONLY access the Operator Desk (/admin)
+  useEffect(() => {
+    if (user?.isManager && pathname !== "/admin" && !pathname.startsWith("/login")) {
+      router.replace("/admin");
+    }
+  }, [user?.isManager, pathname, router]);
+
   const openWallet = (tab: "deposit" | "withdraw") => {
     setWalletTab(tab);
     setIsWalletOpen(true);
@@ -110,20 +117,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
           </Link>
 
           <nav className="hidden lg:flex items-stretch h-full ml-2" aria-label="Main">
-            {links.map((l) => (
-              <Link
-                key={l.label}
-                href={l.href}
-                aria-current={l.active ? "page" : undefined}
-                className={`px-3 flex items-center gap-1.5 text-[13px] border-b-2 transition-colors ${
-                  l.active ? "text-zinc-50 border-zinc-50" : "text-ash border-transparent hover:text-paper"
-                }`}
-              >
-                <span>{l.label}</span>
-                {l.soon && <span className="text-[11px] text-ash/70">soon</span>}
-              </Link>
-            ))}
-            {user?.isAdmin && (
+            {user?.isManager ? (
               <Link
                 href="/admin"
                 aria-current={pathname === "/admin" ? "page" : undefined}
@@ -131,9 +125,37 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                   pathname === "/admin" ? "text-zinc-50 border-zinc-50" : "text-ash border-transparent hover:text-paper"
                 }`}
               >
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Operator
+                <ShieldCheck className="h-3.5 w-3.5 text-bullion" />
+                Operator Desk
               </Link>
+            ) : (
+              <>
+                {links.map((l) => (
+                  <Link
+                    key={l.label}
+                    href={l.href}
+                    aria-current={l.active ? "page" : undefined}
+                    className={`px-3 flex items-center gap-1.5 text-[13px] border-b-2 transition-colors ${
+                      l.active ? "text-zinc-50 border-zinc-50" : "text-ash border-transparent hover:text-paper"
+                    }`}
+                  >
+                    <span>{l.label}</span>
+                    {l.soon && <span className="text-[11px] text-ash/70">soon</span>}
+                  </Link>
+                ))}
+                {user?.isAdmin && (
+                  <Link
+                    href="/admin"
+                    aria-current={pathname === "/admin" ? "page" : undefined}
+                    className={`px-3 flex items-center gap-1.5 text-[13px] border-b-2 transition-colors ${
+                      pathname === "/admin" ? "text-zinc-50 border-zinc-50" : "text-ash border-transparent hover:text-paper"
+                    }`}
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Operator
+                  </Link>
+                )}
+              </>
             )}
           </nav>
 
@@ -142,16 +164,23 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
 
             {user ? (
               <>
-                <button
-                  type="button"
-                  onClick={() => openWallet("deposit")}
-                  title="Your purse: deposit or withdraw gold"
-                  className="h-8 px-2.5 rounded-[4px] border border-rule hover:border-zinc-600 flex items-center gap-1.5 transition-colors"
-                >
-                  <CoinMark className="h-3.5 w-3.5" />
-                  <span className="text-[13px] font-semibold text-bullion">{fmtGold(user.cashBalance)}</span>
-                  <span className="text-[11px] text-ash hidden sm:inline">gold</span>
-                </button>
+                {!user.isManager ? (
+                  <button
+                    type="button"
+                    onClick={() => openWallet("deposit")}
+                    title="Your purse: deposit or withdraw gold"
+                    className="h-8 px-2.5 rounded-[4px] border border-rule hover:border-zinc-600 flex items-center gap-1.5 transition-colors"
+                  >
+                    <CoinMark className="h-3.5 w-3.5" />
+                    <span className="text-[13px] font-semibold text-bullion">{fmtGold(user.cashBalance)}</span>
+                    <span className="text-[11px] text-ash hidden sm:inline">gold</span>
+                  </button>
+                ) : (
+                  <span className="h-8 px-2.5 rounded-[4px] border border-rule flex items-center gap-1.5 text-[12px] text-zinc-300">
+                    <ShieldCheck className="h-3.5 w-3.5 text-bullion" />
+                    <span className="hidden sm:inline font-mono">Operator</span>
+                  </span>
+                )}
 
                 <div className="relative" ref={menuRef}>
                   <button
@@ -173,46 +202,50 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                       <div className="px-3 py-2 border-b border-rule">
                         <div className="text-zinc-50 font-semibold truncate">{name}</div>
                         <div className="text-[12px] text-ash truncate">
-                          In game as {user.parlamentumName || user.username}
+                          {user.isManager ? "Operator Desk Manager" : `In game as ${user.parlamentumName || user.username}`}
                         </div>
                       </div>
-                      <dl className="px-3 py-2 border-b border-rule flex flex-col gap-1">
-                        <div className="flex justify-between gap-3">
-                          <dt className="text-ash">Purse</dt>
-                          <dd className="tabular text-bullion font-semibold">{fmtGold(user.cashBalance)}</dd>
-                        </div>
-                        {founded.map((c) => (
-                          <div key={c.id} className="flex justify-between gap-3">
-                            <dt>
-                              <Link href={`/trade/${c.ticker}?tab=founder`} onClick={() => setMenuOpen(false)} className="text-ash hover:text-paper">
-                                {c.ticker} treasury
-                              </Link>
-                            </dt>
-                            <dd className="tabular text-bullion font-semibold">{fmtGold(c.treasuryBalance || 0)}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                      <button role="menuitem" onClick={() => openWallet("deposit")} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
-                        <ArrowDownToLine className="h-4 w-4 text-ash" /> Deposit gold
-                      </button>
-                      <button role="menuitem" onClick={() => openWallet("withdraw")} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
-                        <ArrowUpFromLine className="h-4 w-4 text-ash" /> Withdraw gold
-                      </button>
-                      <Link role="menuitem" href="/portfolio" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
-                        <Briefcase className="h-4 w-4 text-ash" /> Portfolio
-                      </Link>
+                      {!user.isManager && (
+                        <>
+                          <dl className="px-3 py-2 border-b border-rule flex flex-col gap-1">
+                            <div className="flex justify-between gap-3">
+                              <dt className="text-ash">Purse</dt>
+                              <dd className="tabular text-bullion font-semibold">{fmtGold(user.cashBalance)}</dd>
+                            </div>
+                            {founded.map((c) => (
+                              <div key={c.id} className="flex justify-between gap-3">
+                                <dt>
+                                  <Link href={`/trade/${c.ticker}?tab=founder`} onClick={() => setMenuOpen(false)} className="text-ash hover:text-paper">
+                                    {c.ticker} treasury
+                                  </Link>
+                                </dt>
+                                <dd className="tabular text-bullion font-semibold">{fmtGold(c.treasuryBalance || 0)}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                          <button role="menuitem" onClick={() => openWallet("deposit")} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
+                            <ArrowDownToLine className="h-4 w-4 text-ash" /> Deposit gold
+                          </button>
+                          <button role="menuitem" onClick={() => openWallet("withdraw")} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
+                            <ArrowUpFromLine className="h-4 w-4 text-ash" /> Withdraw gold
+                          </button>
+                          <Link role="menuitem" href="/portfolio" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
+                            <Briefcase className="h-4 w-4 text-ash" /> Portfolio
+                          </Link>
+                        </>
+                      )}
                       <Link role="menuitem" href="/login?mode=change" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
                         <KeyRound className="h-4 w-4 text-ash" /> Change password
                       </Link>
+                      {(user.isAdmin || user.isManager) && (
+                        <Link role="menuitem" href="/admin" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
+                          <ShieldCheck className="h-4 w-4 text-ash" /> Operator panel
+                        </Link>
+                      )}
                       {user.isAdmin && (
-                        <>
-                          <Link role="menuitem" href="/admin" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
-                            <ShieldCheck className="h-4 w-4 text-ash" /> Operator panel
-                          </Link>
-                          <button role="menuitem" onClick={handlePulse} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
-                            <Bot className="h-4 w-4 text-ash" /> Run a bot trading round
-                          </button>
-                        </>
+                        <button role="menuitem" onClick={handlePulse} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
+                          <Bot className="h-4 w-4 text-ash" /> Run a bot trading round
+                        </button>
                       )}
                       <div className="border-t border-rule mt-1 pt-1">
                         <button role="menuitem" onClick={handleLogout} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
@@ -243,21 +276,40 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
 
       {/* Phones: the main sections as a bottom tab bar (the header has no room for them) */}
       <nav className="mobile-tabbar lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-rule bg-floor grid grid-cols-4" aria-label="Main">
-        {links.filter((l) => !l.soon).map((l) => (
-          <Link
-            key={l.label}
-            href={l.href}
-            aria-current={l.active ? "page" : undefined}
-            className={`flex flex-col items-center justify-center gap-0.5 text-[11px] ${l.active ? "text-zinc-50" : "text-ash"}`}
-          >
-            <l.icon className="h-5 w-5" />
-            {l.short || l.label}
-          </Link>
-        ))}
+        {user?.isManager ? (
+          <div className="col-span-4 flex items-center justify-around h-12">
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 text-xs text-bullion font-semibold"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Operator Desk
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-xs text-ash hover:text-paper"
+            >
+              <LogOut className="h-4 w-4" />
+              Log out
+            </button>
+          </div>
+        ) : (
+          links.filter((l) => !l.soon).map((l) => (
+            <Link
+              key={l.label}
+              href={l.href}
+              aria-current={l.active ? "page" : undefined}
+              className={`flex flex-col items-center justify-center gap-0.5 text-[11px] ${l.active ? "text-zinc-50" : "text-ash"}`}
+            >
+              <l.icon className="h-5 w-5" />
+              {l.short || l.label}
+            </Link>
+          ))
+        )}
       </nav>
 
       {/* Mounted per opening so "Withdraw gold" really opens the withdraw tab (the tab used to stick) */}
-      {isWalletOpen && (
+      {isWalletOpen && !user?.isManager && (
         <WalletModal
           key={walletTab}
           isOpen

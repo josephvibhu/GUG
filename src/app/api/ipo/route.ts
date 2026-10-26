@@ -24,6 +24,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Please log in to apply for an IPO charter" }, { status: 401 });
     }
 
+    if (user.isManager) {
+      return NextResponse.json({ success: false, message: "Manager accounts cannot apply for or start an IPO." }, { status: 403 });
+    }
+
     const body = await request.json();
     const { 
       ticker, 
