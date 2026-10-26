@@ -13,6 +13,8 @@ import {
   HelpCircle,
   ShieldCheck,
   Percent,
+  Clock,
+  MessageSquare,
   X 
 } from "lucide-react";
 
@@ -72,12 +74,12 @@ export default function WalletModal({
         setSelectedTaxRate((prev) => prev !== 10 ? prev : (data.taxRate || 10));
         setLedger(data.ledger || []);
 
-        // Percentage-based autofill for withdrawal
-        if (bal < 20) {
+        // Percentage-based autofill for withdrawal (min 100 gold)
+        if (bal < 100) {
           setWithdrawAmount(bal > 0 ? bal.toString() : "");
         } else {
-          // Default to 50% of available balance (minimum 20 gold)
-          const defaultWithdraw = Math.max(20, Math.floor(bal * 0.5));
+          // Default to 50% of available balance (minimum 100 gold)
+          const defaultWithdraw = Math.max(100, Math.floor(bal * 0.5));
           setWithdrawAmount(defaultWithdraw.toString());
         }
       }
@@ -111,6 +113,7 @@ export default function WalletModal({
   const withdrawNet = Math.max(0, Math.round((withdrawGross - withdrawTax) * 100) / 100);
   const withdrawIronUnits = numWithdraw >= 100 ? 100 : Math.max(1, Math.ceil(numWithdraw / ironPrice));
   const withdrawUnitPrice = Math.round((withdrawGross / withdrawIronUnits) * 100) / 100;
+  const isFridayUtc = new Date().getUTCDay() === 5;
 
   const handleDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,8 +163,17 @@ export default function WalletModal({
     e.preventDefault();
     setFeedback(null);
 
-    if (numWithdraw < 20) {
-      setFeedback({ type: "error", message: "Minimum cash out is 20 gold. You need at least 20 gold to withdraw." });
+    const isFridayUtc = new Date().getUTCDay() === 5;
+    if (!isFridayUtc) {
+      setFeedback({
+        type: "error",
+        message: "Withdrawal requests can only be made on Fridays (00:00 – 23:59 UTC) and are processed within 48 hours. Need support? Join https://discord.gg/q3QA6WzHQZ",
+      });
+      return;
+    }
+
+    if (numWithdraw < 100) {
+      setFeedback({ type: "error", message: "Minimum cash out is 100 gold. Withdrawal requests must be at least 100 gold." });
       return;
     }
     if (numWithdraw > balance) {
@@ -534,6 +546,50 @@ export default function WalletModal({
           {/* TAB 2: TAKE GOLD OUT (WITHDRAW TO PARLAMENTUM) */}
           {tab === "withdraw" && (
             <form onSubmit={handleWithdrawSubmit} className="flex flex-col gap-4">
+              {/* Official Friday Withdrawal Policy Banner */}
+              <div className={`p-3.5 rounded-[4px] border flex flex-col gap-2 ${
+                isFridayUtc
+                  ? "bg-bull/10 border-bull/40 text-bull"
+                  : "bg-bear/10 border-bear/40 text-bear"
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[13px] flex items-center gap-1.5">
+                    <Clock className="w-4 h-4" />
+                    {isFridayUtc ? "Withdrawal Window OPEN (Friday UTC)" : "Withdrawal Window CLOSED (Fridays Only)"}
+                  </span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-floor border border-rule">
+                    {isFridayUtc ? "Active Window" : "Opens Friday 00:00 UTC"}
+                  </span>
+                </div>
+                <div className="text-[12px] text-paper space-y-1">
+                  <p>• <strong>Friday Requests Only:</strong> Cash-out requests can only be submitted on <strong>Fridays (00:00 – 23:59 UTC)</strong>.</p>
+                  <p>• <strong>Minimum Cash Out:</strong> <strong>100 gold minimum</strong> (no requests under 100g accepted).</p>
+                  <p>• <strong>48-Hour In-Game Fulfillment:</strong> All Friday requests are reviewed and fulfilled in-game by the House Operator within <strong>48 hours</strong>.</p>
+                </div>
+              </div>
+
+              {/* Support & Ticket Link */}
+              <div className="p-3 bg-floor border border-rule rounded-[4px] flex flex-col gap-1 text-[12px]">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-zinc-100 flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-bullion" />
+                    Need Support or Withdrawal Delayed?
+                  </span>
+                  <span className="text-[11px] text-ash">48h SLA</span>
+                </div>
+                <p className="text-ash text-[11px] leading-relaxed">
+                  If your in-game trade has not been fulfilled within 48 hours or you need assistance with your contract, please join our official Discord server and raise a support ticket:
+                </p>
+                <a
+                  href="https://discord.gg/q3QA6WzHQZ"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-bullion underline hover:text-amber-300 font-semibold flex items-center gap-1 text-[12px] mt-0.5"
+                >
+                  discord.gg/q3QA6WzHQZ ↗ (Raise a Support Ticket)
+                </a>
+              </div>
+
               <div className="bg-floor border border-rule rounded-[4px] p-3.5 text-[12px] leading-relaxed">
                 <div className="font-bold text-zinc-50 text-[13px] mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
@@ -574,13 +630,13 @@ export default function WalletModal({
                 </div>
               </div>
 
-              {balance < 20 && (
+              {balance < 100 && (
                 <div className="p-3 rounded-[4px] bg-floor border border-rule text-paper text-[13px] flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-bullion shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-bold">Minimum 20 Gold Required to Cash Out</div>
+                    <div className="font-bold">Minimum 100 Gold Required to Cash Out</div>
                     <div className="text-[12px] text-paper mt-0.5">
-                      Your purse holds <strong className="text-zinc-50 tabular">{balance.toLocaleString()} gold</strong>. An account needs at least 20 gold to withdraw to Parlamentum.
+                      Your purse holds <strong className="text-zinc-50 tabular">{balance.toLocaleString()} gold</strong>. An account needs at least 100 gold to withdraw to Parlamentum.
                     </div>
                   </div>
                 </div>
@@ -656,12 +712,12 @@ export default function WalletModal({
                 </div>
                 <input
                   type="number"
-                  min="20"
+                  min="100"
                   max={balance}
                   step="1"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
-                  placeholder="Min 20 gold"
+                  placeholder="Min 100 gold"
                   className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 tabular text-bullion font-bold text-sm focus:outline-none focus:border-zinc-500"
                 />
 
@@ -674,10 +730,10 @@ export default function WalletModal({
                         key={pct}
                         type="button"
                         onClick={() => {
-                          if (balance < 20) {
+                          if (balance < 100) {
                             setWithdrawAmount(balance.toString());
                           } else {
-                            setWithdrawAmount(Math.max(20, calcAmount).toString());
+                            setWithdrawAmount(Math.max(100, calcAmount).toString());
                           }
                         }}
                         className="bg-floor hover:bg-rule text-paper tabular py-1.5 px-1 rounded text-center transition cursor-pointer border border-rule hover:border-zinc-500"
@@ -690,31 +746,33 @@ export default function WalletModal({
                 </div>
 
                 <div className="flex items-center justify-between text-[12px] text-ash mt-2">
-                  <span>ℹ️ Minimum cash out is <strong className="text-paper">20 gold</strong>.</span>
-                  {numWithdraw > 0 && numWithdraw < 20 && (
-                    <span className="text-bear font-semibold">Needs at least 20 gold to withdraw</span>
+                  <span>ℹ️ Minimum cash out is <strong className="text-paper">100 gold</strong> (Fridays only).</span>
+                  {numWithdraw > 0 && numWithdraw < 100 && (
+                    <span className="text-bear font-semibold">Needs at least 100 gold</span>
                   )}
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || balance < 20 || numWithdraw < 20 || numWithdraw > balance}
+                disabled={loading || !isFridayUtc || balance < 100 || numWithdraw < 100 || numWithdraw > balance}
                 className={`w-full py-2.5 rounded-[4px] font-bold text-[13px] transition shadow-lg cursor-pointer ${
-                  balance < 20 || numWithdraw < 20 || numWithdraw > balance
+                  !isFridayUtc || balance < 100 || numWithdraw < 100 || numWithdraw > balance
                     ? "bg-zinc-800 text-ash border border-rule cursor-not-allowed shadow-none"
                     : "bg-bullion hover:bg-amber-300 text-floor"
                 }`}
               >
                 {loading
                   ? "Requesting House Purchase..."
-                  : balance < 20
-                  ? "Needs at least 20 gold to withdraw"
-                  : numWithdraw < 20
-                  ? "Needs at least 20 gold to withdraw"
+                  : !isFridayUtc
+                  ? "Withdrawals Closed (Fridays Only)"
+                  : balance < 100
+                  ? "Minimum 100 gold required to cash out"
+                  : numWithdraw < 100
+                  ? "Needs at least 100 gold to withdraw"
                   : numWithdraw > balance
                   ? `Exceeds available purse (${balance.toLocaleString()} gold)`
-                  : `Withdraw ${numWithdraw.toLocaleString()} Gold (~${withdrawNet.toFixed(2)}g in game)`}
+                  : `Withdraw ${numWithdraw.toLocaleString()} Gold (~${withdrawNet.toFixed(2)}g in game) · Fulfilled in 48h`}
               </button>
             </form>
           )}

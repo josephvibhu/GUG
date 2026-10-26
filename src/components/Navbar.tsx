@@ -18,6 +18,7 @@ import {
   Coins,
   Landmark,
   KeyRound,
+  MessageSquare,
 } from "lucide-react";
 import WalletModal from "./WalletModal";
 import TermsModal from "./TermsModal";
@@ -247,6 +248,16 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                           <Bot className="h-4 w-4 text-ash" /> Run a bot trading round
                         </button>
                       )}
+                      <a
+                        role="menuitem"
+                        href="https://discord.gg/q3QA6WzHQZ"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setMenuOpen(false)}
+                        className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60 text-bullion"
+                      >
+                        <MessageSquare className="h-4 w-4" /> Discord Support & Tickets ↗
+                      </a>
                       <div className="border-t border-rule mt-1 pt-1">
                         <button role="menuitem" onClick={handleLogout} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
                           <LogOut className="h-4 w-4 text-ash" /> Log out

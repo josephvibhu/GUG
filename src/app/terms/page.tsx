@@ -68,6 +68,19 @@ export default function TermsPage() {
           </p>
         </section>
 
+        <section id="withdrawal-policy" className="flex flex-col gap-3">
+          <h2 className={h2}>5. Official Withdrawal Policy & Processing Window</h2>
+          <p>
+            To maintain orderly in-game liquidity and prevent fraudulent abuse, cash-out withdrawals back into Parlamentum follow a strict schedule:
+          </p>
+          <ul className={list}>
+            <li><strong>Friday Windows Only:</strong> Withdrawal requests can only be submitted on <strong>Fridays (00:00 – 23:59 UTC)</strong>.</li>
+            <li><strong>Minimum Amount:</strong> The minimum withdrawal is strictly <strong>100 gold</strong>. No requests under 100 gold are accepted.</li>
+            <li><strong>48-Hour Processing Window:</strong> All Friday withdrawal requests are reviewed and fulfilled in-game by the House Operator within <strong>48 hours</strong> of submission.</li>
+            <li><strong>Support & Tickets:</strong> If your in-game withdrawal has not been fulfilled within 48 hours or you need assistance with your contract, join our official Discord server (<a href="https://discord.gg/q3QA6WzHQZ" target="_blank" rel="noopener noreferrer" className="text-bullion underline">discord.gg/q3QA6WzHQZ</a>) and raise a support ticket.</li>
+          </ul>
+        </section>
+
         <p className="border-t border-rule pt-6 text-[13px] text-ash">
           Creating an account or trading on Grow Ur Gold means you accept these terms.
         </p>

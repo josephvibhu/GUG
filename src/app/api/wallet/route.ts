@@ -174,11 +174,19 @@ export async function POST(request: Request) {
     }
 
     if (action === "withdraw") {
-      // 2. WITHDRAWAL (Send back money by negating tax)
-      if (numAmount < 20) {
+      // 2. WITHDRAWAL POLICY: Fridays only (00:00 - 23:59 UTC), min 100 gold, 48h SLA
+      const isFridayUtc = new Date().getUTCDay() === 5;
+      if (!isFridayUtc && !user.isAdmin) {
         return NextResponse.json({
           success: false,
-          message: "Minimum cash out is 20 gold. You need at least 20 gold to withdraw.",
+          message: "Withdrawal requests can only be made on Fridays (00:00 – 23:59 UTC) and are fulfilled in-game within 48 hours. Minimum withdrawal is 100 gold. For support or queries, join: https://discord.gg/q3QA6WzHQZ",
+        }, { status: 400 });
+      }
+
+      if (numAmount < 100) {
+        return NextResponse.json({
+          success: false,
+          message: "Minimum withdrawal amount is 100 gold. Requests must be at least 100 gold.",
         }, { status: 400 });
       }
 

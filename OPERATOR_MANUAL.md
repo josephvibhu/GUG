@@ -74,12 +74,18 @@ Before selling Raw Iron in-game, citizens submit a "Deposit Announcement" on the
 
 When citizens want to convert their website gold back into in-game Parlamentum gold, they request a **Withdrawal**.
 
+### ⚠️ Official Withdrawal Policy & Rules:
+* **Window:** Withdrawal requests can **ONLY be submitted on Fridays (00:00 – 23:59 UTC)**. The website automatically closes submission on all other days.
+* **Minimum Amount:** Strictly **100 gold minimum**.
+* **Fulfillment SLA:** All Friday requests must be fulfilled in-game within **48 hours** (by Sunday 23:59 UTC).
+* **Support Ticket Handling:** If a player has not received their in-game trade within 48 hours, they open a ticket on the Discord support server: `https://discord.gg/q3QA6WzHQZ`.
+
 ### Fulfilling a Withdrawal Step-by-Step:
 1. Go to the **Withdrawals Queue** on `/admin`.
 2. Note the citizen's **Parlamentum character name** and the **Net Gold Amount**.
 3. Log into the Parlamentum game with the House character (`JosephArora`).
-4. Find the player's trade offer / Raw Iron contract in-game (players typically list an agreed item for the withdrawal gold amount).
-5. Buy the item or accept the player's trade contract in-game so the gold transfers to them.
+4. Find the player's trade offer / Raw Iron contract in-game (players list an agreed item for the gross gold amount).
+5. Buy the item in Parlamentum so the gold transfers to them.
 6. Return to `/admin` and click **Approve / Complete Withdrawal**.
    * *Note: The player's web balance is deducted upon request creation and permanently cleared once completed.*
 
@@ -181,7 +187,7 @@ If an account is flagged for exploit attempts or duplicate abuse:
 | Situation | Recommended Action |
 | :--- | :--- |
 | Player deposits Raw Iron in-game | Verify trade on `JosephArora` in Parlamentum -> If not auto-credited by Watcher, approve manual deposit ticket on `/admin`. |
-| Player requests Gold Withdrawal | Check player's in-game trade contract -> Buy item in Parlamentum with `JosephArora` -> Mark withdrawal Approved on `/admin`. |
+| Player requests Gold Withdrawal (Fridays only, min 100g) | Verify Friday request -> Buy item in Parlamentum with `JosephArora` within 48h -> Mark withdrawal Approved on `/admin`. |
 | Citizen submits duplicate/ghost ticket | Click **Reject** on `/admin`. Never credit without verifying in-game trade history. |
 | Thursday/Friday Dividend Day | Audit weekly net profit -> Go to Section 5 on `/admin` -> Enter profit & % -> Click Distribute Immediately. |
 | Player forgot password | Generate one-time reset code in Section 4 -> Send privately via Discord. |
