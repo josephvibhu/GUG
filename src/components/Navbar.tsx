@@ -101,7 +101,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
     { href: "/portfolio", label: "Portfolio", icon: Briefcase, active: pathname === "/portfolio" },
     { href: "/ipo", label: "List a company", short: "List", icon: CirclePlus, active: pathname === "/ipo" },
     { href: "/crypto", label: "Crypto", icon: Coins, active: pathname === "/crypto", soon: true },
-    { href: "/funds", label: "Funds", icon: Landmark, active: pathname === "/funds", soon: true },
+    { href: "/funds", label: "Funds", icon: Landmark, active: pathname === "/funds" },
   ];
   const name = user ? (user.displayName || user.username) : "";
   // Founders see each company's treasury next to their purse

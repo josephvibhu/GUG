@@ -4,6 +4,7 @@ export const SECTORS = [
   "Industry & Metallurgy",
   "Agriculture & Grain Trade",
   "Banking & Corporate Credit",
+  "Managed Funds & Unit Trusts",
   "Newspaper & Public Press",
   "Logistics & Courier Guild",
   "Military & Defense Outfitting",

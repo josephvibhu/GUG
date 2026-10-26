@@ -384,16 +384,16 @@ function Terminal({ ticker }: { ticker: string }) {
               <div className="px-4 py-4 flex flex-col gap-4 max-w-2xl">
                 <p className="text-[13px] text-paper leading-relaxed">{c.description}</p>
                 <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
-                  <Stat label="Founder" value={c.creatorName || "Unknown"} />
-                  <Stat label="Total shares" value={fmtQty(c.totalShares)} />
-                  <Stat label="Public float" value={fmtQty(c.floatShares)} />
-                  <Stat label="IPO price" value={`${fmtPrice(c.ipoPrice)} gold`} />
+                  <Stat label={c.ticker === "BOMF" ? "Fund manager" : "Founder"} value={c.creatorName || "Unknown"} />
+                  <Stat label={c.ticker === "BOMF" ? "Total units" : "Total shares"} value={fmtQty(c.totalShares)} />
+                  <Stat label={c.ticker === "BOMF" ? "Pre-release float" : "Public float"} value={fmtQty(c.floatShares)} />
+                  <Stat label={c.ticker === "BOMF" ? "Launch price" : "IPO price"} value={`${fmtPrice(c.ipoPrice)} gold`} />
                   {c.weeklyRevenue && c.weeklyRevenue > 0 ? (
                     <Stat label="Est. weekly revenue" value={`${c.weeklyRevenue.toLocaleString()} gold`} />
                   ) : null}
-                  <Stat label="Company treasury" value={`${fmtGold(c.treasuryBalance || 0)} gold`} />
+                  <Stat label={c.ticker === "BOMF" ? "Fund seed reserve" : "Company treasury"} value={`${fmtGold(c.treasuryBalance || 0)} gold`} />
                   <Stat label="Listed" value={fmtUtcDate(c.createdAt)} />
-                  <Stat label="Bought back" value={fmtQty(c.sharesBoughtBack)} />
+                  <Stat label={c.ticker === "BOMF" ? "Units redeemed" : "Bought back"} value={fmtQty(c.sharesBoughtBack)} />
                 </dl>
               </div>
             )}
