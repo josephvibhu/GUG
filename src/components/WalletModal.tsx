@@ -56,6 +56,9 @@ export default function WalletModal({
   const [taxRate, setTaxRate] = useState<number>(10);
   const [selectedTaxRate, setSelectedTaxRate] = useState<number>(10);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [canWithdrawNow, setCanWithdrawNow] = useState(false);
+  const [minWithdraw, setMinWithdraw] = useState(100);
+  const [isExempt, setIsExempt] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -74,12 +77,19 @@ export default function WalletModal({
         setSelectedTaxRate((prev) => prev !== 10 ? prev : (data.taxRate || 10));
         setLedger(data.ledger || []);
 
-        // Percentage-based autofill for withdrawal (min 100 gold)
-        if (bal < 100) {
+        const serverCanWithdraw = Boolean(data.canWithdrawNow);
+        const serverMin = Number(data.minWithdraw) || 100;
+        const serverExempt = Boolean(data.isExempt);
+        setCanWithdrawNow(serverCanWithdraw);
+        setMinWithdraw(serverMin);
+        setIsExempt(serverExempt);
+
+        // Percentage-based autofill for withdrawal
+        if (bal < serverMin) {
           setWithdrawAmount(bal > 0 ? bal.toString() : "");
         } else {
-          // Default to 50% of available balance (minimum 100 gold)
-          const defaultWithdraw = Math.max(100, Math.floor(bal * 0.5));
+          // Default to 50% of available balance (minimum serverMin gold)
+          const defaultWithdraw = Math.max(serverMin, Math.floor(bal * 0.5));
           setWithdrawAmount(defaultWithdraw.toString());
         }
       }
@@ -98,7 +108,7 @@ export default function WalletModal({
   if (!isOpen) return null;
 
   const numDeposit = parseInt(depositAmount, 10) || 0;
-  const numWithdraw = parseInt(withdrawAmount, 10) || 0;
+  const numWithdraw = parseFloat(withdrawAmount) || 0;
 
   // Deposit Calculations (Raw Iron at 10g, Raw Cotton at 100g, or Raw Copper at 1,000g)
   const effectiveDepositPrice = depositPrice === 1000 ? 1000 : depositPrice === 100 ? 100 : 10;
@@ -114,6 +124,7 @@ export default function WalletModal({
   const withdrawIronUnits = numWithdraw >= 100 ? 100 : Math.max(1, Math.ceil(numWithdraw / ironPrice));
   const withdrawUnitPrice = Math.round((withdrawGross / withdrawIronUnits) * 100) / 100;
   const isFridayUtc = new Date().getUTCDay() === 5;
+  const effectiveCanWithdraw = isFridayUtc || canWithdrawNow || isExempt;
 
   const handleDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,8 +174,7 @@ export default function WalletModal({
     e.preventDefault();
     setFeedback(null);
 
-    const isFridayUtc = new Date().getUTCDay() === 5;
-    if (!isFridayUtc) {
+    if (!effectiveCanWithdraw) {
       setFeedback({
         type: "error",
         message: "Withdrawal requests can only be made on Fridays (00:00 – 23:59 UTC) and are processed within 48 hours. Need support? Join https://discord.gg/q3QA6WzHQZ",
@@ -172,8 +182,8 @@ export default function WalletModal({
       return;
     }
 
-    if (numWithdraw < 100) {
-      setFeedback({ type: "error", message: "Minimum cash out is 100 gold. Withdrawal requests must be at least 100 gold." });
+    if (numWithdraw < minWithdraw) {
+      setFeedback({ type: "error", message: `Minimum cash out is ${minWithdraw} gold. Withdrawal requests must be at least ${minWithdraw} gold.` });
       return;
     }
     if (numWithdraw > balance) {
@@ -546,27 +556,39 @@ export default function WalletModal({
           {/* TAB 2: TAKE GOLD OUT (WITHDRAW TO PARLAMENTUM) */}
           {tab === "withdraw" && (
             <form onSubmit={handleWithdrawSubmit} className="flex flex-col gap-4">
-              {/* Official Friday Withdrawal Policy Banner */}
-              <div className={`p-3.5 rounded-[4px] border flex flex-col gap-2 ${
-                isFridayUtc
-                  ? "bg-bull/10 border-bull/40 text-bull"
-                  : "bg-bear/10 border-bear/40 text-bear"
-              }`}>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[13px] flex items-center gap-1.5">
-                    <Clock className="w-4 h-4" />
-                    {isFridayUtc ? "Withdrawal Window OPEN (Friday UTC)" : "Withdrawal Window CLOSED (Fridays Only)"}
-                  </span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-floor border border-rule">
-                    {isFridayUtc ? "Active Window" : "Opens Friday 00:00 UTC"}
-                  </span>
+              {/* Official Friday Withdrawal Policy Banner / Exemption Notice */}
+              {isExempt ? (
+                <div className="p-3.5 rounded-[4px] border border-bullion/40 bg-bullion/10 text-bullion flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-bullion" />
+                  <div>
+                    <div className="font-bold text-[13px] text-bullion">Special Operator Window Active (Authorized Exemption)</div>
+                    <div className="text-[12px] text-paper mt-0.5">
+                      Temporary withdrawal window and lowered threshold ({minWithdraw}g) active for your account. You can submit your cash-out request immediately.
+                    </div>
+                  </div>
                 </div>
-                <div className="text-[12px] text-paper space-y-1">
-                  <p>• <strong>Friday Requests Only:</strong> Cash-out requests can only be submitted on <strong>Fridays (00:00 – 23:59 UTC)</strong>.</p>
-                  <p>• <strong>Minimum Cash Out:</strong> <strong>100 gold minimum</strong> (no requests under 100g accepted).</p>
-                  <p>• <strong>48-Hour In-Game Fulfillment:</strong> All Friday requests are reviewed and fulfilled in-game by the House Operator within <strong>48 hours</strong>.</p>
+              ) : (
+                <div className={`p-3.5 rounded-[4px] border flex flex-col gap-2 ${
+                  isFridayUtc
+                    ? "bg-bull/10 border-bull/40 text-bull"
+                    : "bg-bear/10 border-bear/40 text-bear"
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[13px] flex items-center gap-1.5">
+                      <Clock className="w-4 h-4" />
+                      {isFridayUtc ? "Withdrawal Window OPEN (Friday UTC)" : "Withdrawal Window CLOSED (Fridays Only)"}
+                    </span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-floor border border-rule">
+                      {isFridayUtc ? "Active Window" : "Opens Friday 00:00 UTC"}
+                    </span>
+                  </div>
+                  <div className="text-[12px] text-paper space-y-1">
+                    <p>• <strong>Friday Requests Only:</strong> Cash-out requests can only be submitted on <strong>Fridays (00:00 – 23:59 UTC)</strong>.</p>
+                    <p>• <strong>Minimum Cash Out:</strong> <strong>100 gold minimum</strong> (no requests under 100g accepted).</p>
+                    <p>• <strong>48-Hour In-Game Fulfillment:</strong> All Friday requests are reviewed and fulfilled in-game by the House Operator within <strong>48 hours</strong>.</p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Support & Ticket Link */}
               <div className="p-3 bg-floor border border-rule rounded-[4px] flex flex-col gap-1 text-[12px]">
@@ -630,13 +652,13 @@ export default function WalletModal({
                 </div>
               </div>
 
-              {balance < 100 && (
+              {balance < minWithdraw && (
                 <div className="p-3 rounded-[4px] bg-floor border border-rule text-paper text-[13px] flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-bullion shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-bold">Minimum 100 Gold Required to Cash Out</div>
+                    <div className="font-bold">Minimum {minWithdraw} Gold Required to Cash Out</div>
                     <div className="text-[12px] text-paper mt-0.5">
-                      Your purse holds <strong className="text-zinc-50 tabular">{balance.toLocaleString()} gold</strong>. An account needs at least 100 gold to withdraw to Parlamentum.
+                      Your purse holds <strong className="text-zinc-50 tabular">{balance.toLocaleString()} gold</strong>. An account needs at least {minWithdraw} gold to withdraw to Parlamentum.
                     </div>
                   </div>
                 </div>
@@ -712,28 +734,28 @@ export default function WalletModal({
                 </div>
                 <input
                   type="number"
-                  min="100"
+                  min={minWithdraw}
                   max={balance}
-                  step="1"
+                  step="any"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
-                  placeholder="Min 100 gold"
+                  placeholder={`Min ${minWithdraw} gold`}
                   className="w-full bg-floor border border-rule rounded-[4px] px-3 py-2 tabular text-bullion font-bold text-sm focus:outline-none focus:border-zinc-500"
                 />
 
                 {/* Percentage Suboptions with calculated gold amounts */}
                 <div className="grid grid-cols-4 gap-1.5 mt-2">
                   {[25, 50, 75, 100].map((pct) => {
-                    const calcAmount = Math.floor(balance * (pct / 100));
+                    const calcAmount = Math.round(balance * (pct / 100) * 100) / 100;
                     return (
                       <button
                         key={pct}
                         type="button"
                         onClick={() => {
-                          if (balance < 100) {
+                          if (pct === 100 || balance < minWithdraw) {
                             setWithdrawAmount(balance.toString());
                           } else {
-                            setWithdrawAmount(Math.max(100, calcAmount).toString());
+                            setWithdrawAmount(Math.max(minWithdraw, calcAmount).toString());
                           }
                         }}
                         className="bg-floor hover:bg-rule text-paper tabular py-1.5 px-1 rounded text-center transition cursor-pointer border border-rule hover:border-zinc-500"
@@ -746,30 +768,30 @@ export default function WalletModal({
                 </div>
 
                 <div className="flex items-center justify-between text-[12px] text-ash mt-2">
-                  <span>ℹ️ Minimum cash out is <strong className="text-paper">100 gold</strong> (Fridays only).</span>
-                  {numWithdraw > 0 && numWithdraw < 100 && (
-                    <span className="text-bear font-semibold">Needs at least 100 gold</span>
+                  <span>ℹ️ Minimum cash out is <strong className="text-paper">{minWithdraw} gold</strong>{isExempt ? " (Exemption Active)" : " (Fridays only)"}.</span>
+                  {numWithdraw > 0 && numWithdraw < minWithdraw && (
+                    <span className="text-bear font-semibold">Needs at least {minWithdraw} gold</span>
                   )}
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || !isFridayUtc || balance < 100 || numWithdraw < 100 || numWithdraw > balance}
+                disabled={loading || !effectiveCanWithdraw || balance < minWithdraw || numWithdraw < minWithdraw || numWithdraw > balance}
                 className={`w-full py-2.5 rounded-[4px] font-bold text-[13px] transition shadow-lg cursor-pointer ${
-                  !isFridayUtc || balance < 100 || numWithdraw < 100 || numWithdraw > balance
+                  !effectiveCanWithdraw || balance < minWithdraw || numWithdraw < minWithdraw || numWithdraw > balance
                     ? "bg-zinc-800 text-ash border border-rule cursor-not-allowed shadow-none"
                     : "bg-bullion hover:bg-amber-300 text-floor"
                 }`}
               >
                 {loading
                   ? "Requesting House Purchase..."
-                  : !isFridayUtc
+                  : !effectiveCanWithdraw
                   ? "Withdrawals Closed (Fridays Only)"
-                  : balance < 100
-                  ? "Minimum 100 gold required to cash out"
-                  : numWithdraw < 100
-                  ? "Needs at least 100 gold to withdraw"
+                  : balance < minWithdraw
+                  ? `Minimum ${minWithdraw} gold required to cash out`
+                  : numWithdraw < minWithdraw
+                  ? `Needs at least ${minWithdraw} gold to withdraw`
                   : numWithdraw > balance
                   ? `Exceeds available purse (${balance.toLocaleString()} gold)`
                   : `Withdraw ${numWithdraw.toLocaleString()} Gold (~${withdrawNet.toFixed(2)}g in game) · Fulfilled in 48h`}

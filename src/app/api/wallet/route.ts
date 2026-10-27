@@ -34,6 +34,11 @@ export async function GET() {
 
     const taxRate = parseFloat(taxRateStr) || 10;
 
+    const isFridayUtc = new Date().getUTCDay() === 5;
+    const isExempt = user.id === "usr_467a4aa3" || (user.username && user.username.toLowerCase() === "bishop_richiee") || Boolean(user.isAdmin);
+    const canWithdrawNow = isFridayUtc || isExempt;
+    const minWithdraw = isExempt ? 1 : 100;
+
     // Fetch user's wallet transactions
     const ledgerRes = await db.execute({
       sql: `SELECT * FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 30`,
@@ -63,6 +68,9 @@ export async function GET() {
       depositCommodities: DEPOSIT_COMMODITIES.map(c => ({ id: c.id, name: c.name, unitPrice: c.unitPrice, emoji: c.emoji, badge: c.badge, subtitle: c.subtitle })),
       taxRate,
       ledger,
+      canWithdrawNow,
+      minWithdraw,
+      isExempt,
     });
   } catch (error: any) {
     console.error("GET /api/wallet error:", error);
@@ -93,11 +101,15 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { action, amount, method, parlamentumName } = body;
-    const numAmount = Math.floor(Number(amount));
+    const numAmount = action === "withdraw" ? Math.round(Number(amount) * 100) / 100 : Math.floor(Number(amount));
     const targetName = (parlamentumName || user.parlamentumName || user.username).trim();
 
-    if (!Number.isFinite(numAmount) || numAmount < IRON_UNIT_PRICE) {
-      return NextResponse.json({ success: false, message: `Minimum transaction is ${IRON_UNIT_PRICE} gold.` }, { status: 400 });
+    const isFridayUtc = new Date().getUTCDay() === 5;
+    const isExempt = user.id === "usr_467a4aa3" || (user.username && user.username.toLowerCase() === "bishop_richiee") || Boolean(user.isAdmin);
+    const minTransaction = (action === "withdraw" && isExempt) ? 1 : IRON_UNIT_PRICE;
+
+    if (!Number.isFinite(numAmount) || numAmount < minTransaction) {
+      return NextResponse.json({ success: false, message: `Minimum transaction is ${minTransaction} gold.` }, { status: 400 });
     }
 
     const [taxRateStr, houseName] = await Promise.all([
@@ -174,19 +186,20 @@ export async function POST(request: Request) {
     }
 
     if (action === "withdraw") {
-      // 2. WITHDRAWAL POLICY: Fridays only (00:00 - 23:59 UTC), min 100 gold, 48h SLA
-      const isFridayUtc = new Date().getUTCDay() === 5;
-      if (!isFridayUtc && !user.isAdmin) {
+      // 2. WITHDRAWAL POLICY: Fridays only (00:00 - 23:59 UTC), min 100 gold, 48h SLA (Exemption granted for authorized users)
+      const minWithdraw = isExempt ? 1 : 100;
+
+      if (!isFridayUtc && !isExempt) {
         return NextResponse.json({
           success: false,
           message: "Withdrawal requests can only be made on Fridays (00:00 – 23:59 UTC) and are fulfilled in-game within 48 hours. Minimum withdrawal is 100 gold. For support or queries, join: https://discord.gg/q3QA6WzHQZ",
         }, { status: 400 });
       }
 
-      if (numAmount < 100) {
+      if (numAmount < minWithdraw) {
         return NextResponse.json({
           success: false,
-          message: "Minimum withdrawal amount is 100 gold. Requests must be at least 100 gold.",
+          message: `Minimum withdrawal amount is ${minWithdraw} gold. Requests must be at least ${minWithdraw} gold.`,
         }, { status: 400 });
       }
 
@@ -196,7 +209,7 @@ export async function POST(request: Request) {
       });
       const currentCash = Number(userRes.rows[0].cash_balance);
 
-      if (currentCash < numAmount) {
+      if (currentCash < (numAmount - 0.001)) {
         return NextResponse.json({
           success: false,
           message: `Insufficient purse balance. Available: ${currentCash.toLocaleString()} gold, Requested: ${numAmount.toLocaleString()} gold.`,
@@ -217,7 +230,7 @@ export async function POST(request: Request) {
 
       // Deduct requested gold from user purse, only if it is still there (parallel requests can't overdraw)
       const debit = await db.execute({
-        sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ? AND cash_balance >= ?",
+        sql: "UPDATE users SET cash_balance = MAX(0, ROUND(cash_balance - ?, 2)) WHERE id = ? AND cash_balance >= (? - 0.001)",
         args: [numAmount, user.id, numAmount],
       });
       if (debit.rowsAffected === 0) {
