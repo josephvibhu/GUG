@@ -6,6 +6,8 @@ export interface FloorSchedule {
   openTimeStr: string; // "15:30" UTC
   closeTimeStr: string; // "16:30" UTC
   override: "auto" | "force_open" | "force_closed";
+  reason?: string;
+  statusText?: string;
 }
 
 export interface FloorState {

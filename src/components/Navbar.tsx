@@ -110,8 +110,16 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 h-12 border-b border-rule bg-floor">
-        <div className="h-full px-3 sm:px-4 flex items-center gap-4">
+      <div className="sticky top-0 z-40">
+        {schedule?.override === "force_closed" && (
+          <div className="w-full bg-rose-950/95 border-b border-rose-500/50 text-zinc-100 text-[12px] py-1.5 px-3 sm:px-4 flex items-center justify-center gap-2 text-center font-medium shadow-lg backdrop-blur-sm">
+            <span className="inline-block w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0" />
+            <strong className="text-amber-400 font-bold uppercase tracking-wider">⚔️ WORLD WAR EMERGENCY:</strong>
+            <span>The exchange floor is <strong>CLOSED</strong> due to the <strong>World War</strong>. All trading operations are suspended until further notice.</span>
+          </div>
+        )}
+        <header className="h-12 border-b border-rule bg-floor">
+          <div className="h-full px-3 sm:px-4 flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="Grow Ur Gold, markets">
             <CoinMark />
             <span className="condensed text-[17px] font-extrabold tracking-tight text-zinc-50 leading-none">Grow Ur Gold</span>
@@ -284,6 +292,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
           </div>
         )}
       </header>
+    </div>
 
       {/* Phones: the main sections as a bottom tab bar (the header has no room for them) */}
       <nav className="mobile-tabbar lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-rule bg-floor grid grid-cols-4" aria-label="Main">

@@ -371,13 +371,19 @@ export default function TradeForm({
       )}
 
       {blocked && (
-        <p className="text-[12px] text-paper border-l-2 border-bullion pl-2">
-          {notTrading
-            ? company.status === "HALTED"
-              ? "Trading in this company is halted by the operator."
-              : "This company is flagged as defaulted. Trading is suspended."
-            : `The floor is closed. ${marketSchedule?.statusText || ""}`}
-        </p>
+        <div className="p-2.5 rounded-[4px] bg-rose-950/40 border border-rose-500/40 text-[12px] text-zinc-200 flex flex-col gap-1">
+          <div className="font-bold text-rose-400 flex items-center gap-1.5">
+            <span>⚔️</span>
+            <span>{notTrading ? "Trading Suspended" : "Exchange Floor Closed (World War)"}</span>
+          </div>
+          <p className="text-[11px] text-ash">
+            {notTrading
+              ? company.status === "HALTED"
+                ? "Trading in this company is halted by the operator."
+                : "This company is flagged as defaulted. Trading is suspended."
+              : (marketSchedule?.statusText || "All trading operations are suspended due to the World War.")}
+          </p>
+        </div>
       )}
 
       {feedback && (
@@ -399,6 +405,8 @@ export default function TradeForm({
       >
         {isLoading
           ? "Placing order…"
+          : floorClosed
+          ? "Floor Closed (World War)"
           : mode === "BASIC" && ((side === "BUY" && lowestAsk == null) || (side === "SELL" && highestBid == null))
           ? side === "BUY" ? "Nothing for sale" : "No buyers"
           : `${side === "BUY" ? "Buy" : "Sell"} ${numQty > 0 ? fmtQty(numQty) + " " : ""}${company.ticker}${mode === "BASIC" && numQty > 0 ? ` for ${fmtPrice(totalCost)} gold` : ""}`}

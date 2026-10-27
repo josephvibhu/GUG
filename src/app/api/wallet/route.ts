@@ -35,9 +35,9 @@ export async function GET() {
     const taxRate = parseFloat(taxRateStr) || 10;
 
     const isFridayUtc = new Date().getUTCDay() === 5;
-    const isExempt = user.id === "usr_467a4aa3" || (user.username && user.username.toLowerCase() === "bishop_richiee") || Boolean(user.isAdmin);
+    const isExempt = Boolean(user.isAdmin);
     const canWithdrawNow = isFridayUtc || isExempt;
-    const minWithdraw = isExempt ? 1 : 100;
+    const minWithdraw = 100;
 
     // Fetch user's wallet transactions
     const ledgerRes = await db.execute({
@@ -105,8 +105,8 @@ export async function POST(request: Request) {
     const targetName = (parlamentumName || user.parlamentumName || user.username).trim();
 
     const isFridayUtc = new Date().getUTCDay() === 5;
-    const isExempt = user.id === "usr_467a4aa3" || (user.username && user.username.toLowerCase() === "bishop_richiee") || Boolean(user.isAdmin);
-    const minTransaction = (action === "withdraw" && isExempt) ? 1 : IRON_UNIT_PRICE;
+    const isExempt = Boolean(user.isAdmin);
+    const minTransaction = IRON_UNIT_PRICE;
 
     if (!Number.isFinite(numAmount) || numAmount < minTransaction) {
       return NextResponse.json({ success: false, message: `Minimum transaction is ${minTransaction} gold.` }, { status: 400 });
@@ -186,9 +186,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "withdraw") {
-      // 2. WITHDRAWAL POLICY: Fridays only (00:00 - 23:59 UTC), min 100 gold, 48h SLA (Exemption granted for authorized users)
-      const minWithdraw = isExempt ? 1 : 100;
-
+      // 2. WITHDRAWAL POLICY: Fridays only (00:00 - 23:59 UTC), min 100 gold, 48h SLA
       if (!isFridayUtc && !isExempt) {
         return NextResponse.json({
           success: false,
@@ -196,10 +194,10 @@ export async function POST(request: Request) {
         }, { status: 400 });
       }
 
-      if (numAmount < minWithdraw) {
+      if (numAmount < 100) {
         return NextResponse.json({
           success: false,
-          message: `Minimum withdrawal amount is ${minWithdraw} gold. Requests must be at least ${minWithdraw} gold.`,
+          message: "Minimum withdrawal amount is 100 gold. Requests must be at least 100 gold.",
         }, { status: 400 });
       }
 

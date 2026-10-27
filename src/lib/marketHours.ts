@@ -21,13 +21,15 @@ export interface MarketSchedule {
 export async function getMarketSchedule(): Promise<MarketSchedule> {
   await initDb();
   
-  const [openTimeSetting, closeTimeSetting, overrideSetting] = await Promise.all([
+  const [openTimeSetting, closeTimeSetting, overrideSetting, reasonSetting] = await Promise.all([
     getSetting("market_open_time", "15:30"), // 15:30 UTC (3:30 PM UTC)
     getSetting("market_close_time", "16:30"), // 16:30 UTC (4:30 PM UTC)
     getSetting("market_override", "auto"),
+    getSetting("market_close_reason", "Closed due to the World War"),
   ]);
 
   const override = (overrideSetting as "auto" | "force_open" | "force_closed") || "auto";
+  const closeReason = reasonSetting || "Closed due to the World War";
 
   // Calculate current time in UTC
   const now = new Date();
@@ -64,7 +66,7 @@ export async function getMarketSchedule(): Promise<MarketSchedule> {
     statusText = "Floor Force-Opened by Operator";
   } else if (override === "force_closed") {
     isOpen = false;
-    statusText = "Floor Closed by Operator";
+    statusText = `Floor Closed: ${closeReason}`;
   } else {
     if (isCurrentlyWindow) {
       isOpen = true;
@@ -99,6 +101,7 @@ export async function getMarketSchedule(): Promise<MarketSchedule> {
     timeRemainingSeconds,
     timeRemainingFormatted,
     override,
+    reason: override === "force_closed" ? closeReason : undefined,
   };
 }
 
@@ -106,6 +109,12 @@ export async function isTradingAllowed(): Promise<{ allowed: boolean; reason?: s
   const schedule = await getMarketSchedule();
   if (schedule.isOpen) {
     return { allowed: true };
+  }
+  if (schedule.override === "force_closed") {
+    return {
+      allowed: false,
+      reason: `The Parlamentum Bourse trading floor is CLOSED due to the World War. All trading and order executions are suspended.`,
+    };
   }
   return {
     allowed: false,
