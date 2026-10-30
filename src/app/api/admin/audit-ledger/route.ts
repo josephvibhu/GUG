@@ -92,6 +92,19 @@ export async function GET(request: Request) {
       args: [cutoffDate, cutoffDate],
     });
 
+    // 4b. Fetch all corporate ledger expense & income entries since cutoff
+    const companyLedgerRes = await db.execute({
+      sql: `
+        SELECT l.*, c.ticker, c.name as company_name, u.username as user_name
+        FROM company_ledger l
+        JOIN companies c ON l.company_id = c.id
+        LEFT JOIN users u ON l.user_id = u.id
+        WHERE l.created_at >= ?
+        ORDER BY l.created_at DESC
+      `,
+      args: [cutoffDate],
+    });
+
     // 5. Fetch all shareholders grouped by stock
     const shareholdersRes = await db.execute(`
       SELECT p.company_id, c.ticker, c.name as company_name,
@@ -161,6 +174,7 @@ export async function GET(request: Request) {
       trades: tradesDeltaRes.rows,
       tradesAllTime: tradesAllTimeRes.rows,
       earningsReports: earningsReportsRes.rows,
+      companyLedgerEntries: companyLedgerRes.rows,
       shareholders: shareholdersRes.rows,
       pendingWithdrawals: pendingWithdrawalsRes.rows,
     });

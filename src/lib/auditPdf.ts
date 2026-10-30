@@ -87,6 +87,19 @@ export interface AuditLedgerData {
     created_at: string;
     reporter_name: string;
   }>;
+  companyLedgerEntries?: Array<{
+    id: string;
+    company_id: string;
+    ticker: string;
+    company_name: string;
+    entry_type: "INCOME" | "EXPENSE";
+    category: string;
+    amount: number;
+    description: string;
+    entry_date: string;
+    created_at: string;
+    user_name?: string;
+  }>;
   shareholders: Array<{
     ticker: string;
     company_name: string;
@@ -453,6 +466,49 @@ export function generateAuditLedgerPdf(data: AuditLedgerData) {
     columnStyles: {
       2: { halign: "right" },
       4: { halign: "right", fontStyle: "bold" },
+    },
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 20;
+
+  // Corporate Expenses & Incomes table (P&L Ledger)
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(darkBg[0], darkBg[1], darkBg[2]);
+  doc.text("Corporate Operating Expenses & Income Entries (In Period)", 40, currentY);
+  currentY += 10;
+
+  const ledgerEntries = data.companyLedgerEntries || [];
+  const ledgerHeaders = [["Date", "Stock", "Type", "Category", "Amount", "Description"]];
+  const ledgerBody = ledgerEntries.map((e) => [
+    e.entry_date || fmtDate(e.created_at).slice(0, 10),
+    `$${e.ticker}`,
+    e.entry_type,
+    e.category,
+    `${e.entry_type === "EXPENSE" ? "-" : "+"}${fmt(e.amount)} g`,
+    e.description,
+  ]);
+
+  autoTable(doc, {
+    startY: currentY,
+    head: ledgerHeaders,
+    body: ledgerBody.length > 0 ? ledgerBody : [["No corporate ledger entries filed in this period.", "", "", "", "", ""]],
+    theme: "striped",
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255] },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: {
+      4: { halign: "right", fontStyle: "bold" },
+    },
+    didParseCell: (cellData) => {
+      if (cellData.column.index === 2) {
+        if (cellData.cell.raw === "INCOME") cellData.cell.styles.textColor = accentGreen;
+        if (cellData.cell.raw === "EXPENSE") cellData.cell.styles.textColor = accentRed;
+      }
+      if (cellData.column.index === 4) {
+        const strVal = String(cellData.cell.raw || "");
+        if (strVal.startsWith("-")) cellData.cell.styles.textColor = accentRed;
+        else if (strVal.startsWith("+")) cellData.cell.styles.textColor = accentGreen;
+      }
     },
   });
 
