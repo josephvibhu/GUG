@@ -132,7 +132,7 @@ export default function HomePage() {
         </section>
 
         <section aria-labelledby="next" className="border-t border-rule pt-5 flex flex-wrap items-baseline gap-x-6 gap-y-2 text-[13px]">
-          <h2 id="next" className="text-ash">Coming soon</h2>
+          <h2 id="next" className="text-ash">Coming soon</h2>`n          <Link href="/auction" className="text-paper hover:text-zinc-50 underline underline-offset-4 decoration-rule">Auction House</Link>
           <Link href="/crypto" className="text-paper hover:text-zinc-50 underline underline-offset-4 decoration-rule">BREADCOIN</Link>
           <Link href="/funds" className="text-paper hover:text-zinc-50 underline underline-offset-4 decoration-rule">GUG funds</Link>
         </section>

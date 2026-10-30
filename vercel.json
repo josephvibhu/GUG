@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/sync-ledger",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/tick-auctions",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

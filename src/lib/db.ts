@@ -704,5 +704,91 @@ export async function initDb(): Promise<void> {
     await db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('migr_company_profile_backfill', 'done')");
   }
 
+  // ── NFT Auction System ───────────────────────────────────────────────────
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS nfts (
+      id                  TEXT PRIMARY KEY,
+      title               TEXT NOT NULL,
+      description         TEXT,
+      image_url           TEXT NOT NULL,
+      creator_id          TEXT NOT NULL,
+      creator_name        TEXT NOT NULL,
+      current_owner_id    TEXT NOT NULL,
+      edition_note        TEXT,
+      creator_royalty_bps INTEGER NOT NULL DEFAULT 500,
+      status              TEXT NOT NULL DEFAULT 'OWNED'
+                            CHECK(status IN ('OWNED','IN_AUCTION')),
+      minted_at           TEXT NOT NULL,
+      FOREIGN KEY (creator_id)       REFERENCES users(id),
+      FOREIGN KEY (current_owner_id) REFERENCES users(id)
+    );
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS nft_auctions (
+      id                  TEXT PRIMARY KEY,
+      nft_id              TEXT NOT NULL,
+      seller_id           TEXT NOT NULL,
+      reserve_price       REAL NOT NULL DEFAULT 0.0,
+      start_price         REAL NOT NULL,
+      current_bid         REAL,
+      current_bidder_id   TEXT,
+      bid_count           INTEGER NOT NULL DEFAULT 0,
+      starts_at           TEXT NOT NULL,
+      ends_at             TEXT NOT NULL,
+      extended_at         TEXT,
+      status              TEXT NOT NULL DEFAULT 'SCHEDULED'
+                            CHECK(status IN ('SCHEDULED','LIVE','ENDED','SETTLED','CANCELLED')),
+      house_cut_bps       INTEGER NOT NULL DEFAULT 1500,
+      settled_at          TEXT,
+      created_at          TEXT NOT NULL,
+      FOREIGN KEY (nft_id)    REFERENCES nfts(id),
+      FOREIGN KEY (seller_id) REFERENCES users(id)
+    );
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS nft_bids (
+      id          TEXT PRIMARY KEY,
+      auction_id  TEXT NOT NULL,
+      bidder_id   TEXT NOT NULL,
+      amount      REAL NOT NULL,
+      placed_at   TEXT NOT NULL,
+      status      TEXT NOT NULL DEFAULT 'ACTIVE'
+                    CHECK(status IN ('ACTIVE','OUTBID','WON','REFUNDED')),
+      FOREIGN KEY (auction_id) REFERENCES nft_auctions(id),
+      FOREIGN KEY (bidder_id)  REFERENCES users(id)
+    );
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS nft_history (
+      id           TEXT PRIMARY KEY,
+      nft_id       TEXT NOT NULL,
+      event        TEXT NOT NULL CHECK(event IN ('MINTED','SOLD','TRANSFERRED','GIFTED')),
+      from_user_id TEXT,
+      to_user_id   TEXT NOT NULL,
+      price        REAL,
+      auction_id   TEXT,
+      note         TEXT,
+      created_at   TEXT NOT NULL,
+      FOREIGN KEY (nft_id) REFERENCES nfts(id)
+    );
+  `);
+
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_nft_auctions_status ON nft_auctions(status, ends_at)`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_nft_bids_auction    ON nft_bids(auction_id, placed_at)`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_nft_history_nft     ON nft_history(nft_id, created_at)`);
+
+  // NFT default settings
+  await db.execute(`
+    INSERT OR IGNORE INTO settings (key, value) VALUES
+    ('nft_house_cut_bps',        '1500'),
+    ('nft_creator_royalty_bps',  '500'),
+    ('nft_min_bid_increment_pct','5'),
+    ('nft_snipe_extension_min',  '5'),
+    ('nft_default_duration_hours','72');
+  `);
+
   isInitialized = true;
 }

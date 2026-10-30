@@ -19,6 +19,7 @@ import {
   Landmark,
   KeyRound,
   MessageSquare,
+  Gavel,
 } from "lucide-react";
 import WalletModal from "./WalletModal";
 import TermsModal from "./TermsModal";
@@ -100,6 +101,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
     { href: "/", label: "Markets", icon: ChartNoAxesColumn, active: pathname === "/" },
     { href: tradeHref, label: "Trade", icon: ChartCandlestick, active: pathname.startsWith("/trade") },
     { href: "/portfolio", label: "Portfolio", icon: Briefcase, active: pathname === "/portfolio" },
+    { href: "/auction", label: "Auction", icon: Gavel, active: pathname.startsWith("/auction") },
     { href: "/ipo", label: "List a company", short: "List", icon: CirclePlus, active: pathname === "/ipo" },
     { href: "/crypto", label: "Crypto", icon: Coins, active: pathname === "/crypto", soon: true },
     { href: "/funds", label: "Funds", icon: Landmark, active: pathname === "/funds" },
@@ -249,6 +251,11 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                       {(user.isAdmin || user.isManager) && (
                         <Link role="menuitem" href="/admin" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
                           <ShieldCheck className="h-4 w-4 text-ash" /> Operator panel
+                        </Link>
+                      )}
+                      {user.isAdmin && (
+                        <Link role="menuitem" href="/admin/nft" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
+                          <Gavel className="h-4 w-4 text-ash" /> NFT Admin
                         </Link>
                       )}
                       {user.isAdmin && (
