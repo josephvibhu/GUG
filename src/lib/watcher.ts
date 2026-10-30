@@ -106,8 +106,13 @@ async function game(path: string, token: string): Promise<unknown> {
 
 type Row = Record<string, unknown>;
 const str = (v: unknown): v is string => typeof v === "string";
-const digits = (v: unknown): v is string => str(v) && /^\d{1,15}$/.test(v);
-const when = (v: unknown): v is string => str(v) && !Number.isNaN(Date.parse(v));
+const toNum = (v: unknown): number | null => {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && /^-?\d+(\.\d+)?$/.test(v.trim())) return Number(v.trim());
+  return null;
+};
+const digits = (v: unknown): boolean => toNum(v) !== null;
+const when = (v: unknown): v is string => (str(v) || typeof v === "number") && !Number.isNaN(Date.parse(String(v)));
 const rec = (v: unknown): v is Row => !!v && typeof v === "object" && !Array.isArray(v);
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -129,37 +134,94 @@ interface Seen {
  *  - Raw Copper at 1,000g
  *  The purse gets what the House kept after the game's export tax (the "net gold received" rule). */
 function depositBuys(v: unknown, exportTaxPct: number): Seen[] {
-  const rows = rec(v) ? v.rows : null;
+  const rows = Array.isArray(v)
+    ? v
+    : rec(v) && Array.isArray(v.rows)
+    ? v.rows
+    : rec(v) && Array.isArray(v.trades)
+    ? v.trades
+    : rec(v) && Array.isArray(v.data)
+    ? v.data
+    : null;
   if (!Array.isArray(rows)) changed("trade ledger");
   const out: Seen[] = [];
   for (const t of rows as unknown[]) {
-    if (!rec(t) || !str(t.id) || !when(t.at) || !str(t.book) || !str(t.side) || !str(t.itemType) || !str(t.currency)
-      || !(t.counterparty === null || str(t.counterparty)) || !digits(t.quantity) || !digits(t.pricePerUnit)) changed("trade ledger");
-    const r = t as Row & { id: string; at: string; quantity: string; pricePerUnit: string; counterparty: string | null; itemType: string };
-    if (r.book !== "GLOBAL" || r.side !== "SOLD" || r.currency !== "GOLD" || !r.counterparty) continue;
+    if (!rec(t)) continue;
+
+    const rawId = t.id ?? t._id ?? t.tradeId;
+    const id = str(rawId) ? rawId : typeof rawId === "number" ? String(rawId) : null;
+    if (!id) continue;
+
+    const book = str(t.book) ? t.book.toUpperCase() : "";
+    const side = str(t.side) ? t.side.toUpperCase() : "";
+    const currency = str(t.currency) ? t.currency.toUpperCase() : "";
+    if (book !== "GLOBAL" || side !== "SOLD" || currency !== "GOLD") continue;
+
+    let counterparty: string | null = null;
+    if (str(t.counterparty)) {
+      counterparty = t.counterparty.trim();
+    } else if (rec(t.counterparty) && str((t.counterparty as Row).name)) {
+      counterparty = ((t.counterparty as Row).name as string).trim();
+    } else if (str(t.buyer)) {
+      counterparty = t.buyer.trim();
+    } else if (rec(t.buyer) && str((t.buyer as Row).name)) {
+      counterparty = ((t.buyer as Row).name as string).trim();
+    }
+    if (!counterparty) continue;
+
+    const rawItem = t.itemType ?? t.item ?? t.commodity;
+    const itemType = str(rawItem) ? rawItem.toUpperCase() : "";
+    if (!itemType) continue;
+
+    const qty = toNum(t.quantity ?? t.qty ?? t.units);
+    const pricePerUnit = toNum(t.pricePerUnit ?? t.price ?? t.unitPrice);
+    if (qty === null || pricePerUnit === null) continue;
+
+    const rawAt = t.at ?? t.createdAt ?? t.timestamp ?? t.time;
+    if (!rawAt || (typeof rawAt !== "string" && typeof rawAt !== "number")) continue;
+    const dateAt = new Date(rawAt);
+    if (Number.isNaN(dateAt.getTime())) continue;
 
     const matchedTier = DEPOSIT_COMMODITIES.find((tier) =>
-      tier.itemCodes.includes(r.itemType.toUpperCase()) && Number(r.pricePerUnit) === Math.round(tier.unitPrice * 100)
+      tier.itemCodes.includes(itemType) &&
+      (Math.round(pricePerUnit) === Math.round(tier.unitPrice * 100) || Math.round(pricePerUnit) === tier.unitPrice)
     );
     if (!matchedTier) continue;
 
-    const units = Number(r.quantity);
-    const unitPriceCents = Number(r.pricePerUnit);
-    const grossCents = digits(r.total) ? Number(r.total) : units * unitPriceCents;
-    const taxCents = digits(r.taxPaid)
-      ? Number(r.taxPaid)
-      : exportTaxPct > 0
-      ? Math.max(1, Math.floor((grossCents * exportTaxPct) / 100))
-      : 0;
+    const units = qty;
+    const unitPriceCents = Math.round(pricePerUnit) === Math.round(matchedTier.unitPrice * 100)
+      ? Math.round(pricePerUnit)
+      : Math.round(matchedTier.unitPrice * 100);
+
+    const rawTotal = toNum(t.total);
+    let grossCents = units * unitPriceCents;
+    if (rawTotal !== null) {
+      if (Math.round(rawTotal) === units * unitPriceCents) {
+        grossCents = Math.round(rawTotal);
+      } else if (Math.round(rawTotal * 100) === units * unitPriceCents) {
+        grossCents = Math.round(rawTotal * 100);
+      }
+    }
+
+    const rawTax = toNum(t.taxPaid ?? t.tax);
+    let taxCents = exportTaxPct > 0 ? Math.max(1, Math.floor((grossCents * exportTaxPct) / 100)) : 0;
+    if (rawTax !== null) {
+      if (rawTax <= grossCents && rawTax >= 1) {
+        taxCents = Math.round(rawTax);
+      } else if (rawTax * 100 <= grossCents && rawTax * 100 >= 1) {
+        taxCents = Math.round(rawTax * 100);
+      }
+    }
+
     out.push({
-      id: `trade:${r.id}`,
+      id: `trade:${id}`,
       kind: "market",
-      at: new Date(r.at).toISOString(),
+      at: dateAt.toISOString(),
       units,
       gross: grossCents / 100,
       tax: taxCents / 100,
       gold: Math.max(0, grossCents - taxCents) / 100,
-      name: r.counterparty.trim(),
+      name: counterparty,
     });
   }
   return out;
@@ -168,29 +230,62 @@ function depositBuys(v: unknown, exportTaxPct: number): Seen[] {
 /** Accepted deposit contracts: sent to the House, gold from the sender and nothing else, Raw Iron back from the House.
  *  Contracts pay no tax, so the purse gets all of the gold. */
 function depositContracts(v: unknown, houseId: string): Seen[] {
-  if (!Array.isArray(v)) changed("contract list");
+  const list = Array.isArray(v)
+    ? v
+    : rec(v) && Array.isArray(v.contracts)
+    ? v.contracts
+    : rec(v) && Array.isArray(v.data)
+    ? v.data
+    : null;
+  if (!Array.isArray(list)) changed("contract list");
+
   const allAllowedCodes = DEPOSIT_COMMODITIES.flatMap((t) => t.itemCodes);
   const out: Seen[] = [];
-  for (const c of v as unknown[]) {
-    if (!rec(c) || !str(c.id) || !str(c.status) || !(c.respondedAt === null || when(c.respondedAt)) || !rec(c.proposer) || !rec(c.receiver)
-      || !str(c.proposer.id) || !str(c.proposer.name) || !str(c.receiver.id) || !Array.isArray(c.lines)) changed("contract list");
+  for (const c of list as unknown[]) {
+    if (!rec(c)) continue;
+    const rawId = c.id ?? c._id;
+    const id = str(rawId) ? rawId : typeof rawId === "number" ? String(rawId) : null;
+    const status = str(c.status) ? c.status.toUpperCase() : "";
+    if (!id || status !== "ACCEPTED") continue;
+
+    const rawRespondedAt = c.respondedAt ?? c.acceptedAt ?? c.updatedAt ?? c.createdAt;
+    if (!rawRespondedAt || (typeof rawRespondedAt !== "string" && typeof rawRespondedAt !== "number")) continue;
+    const dateAt = new Date(rawRespondedAt);
+    if (Number.isNaN(dateAt.getTime())) continue;
+
+    if (!rec(c.proposer) || !rec(c.receiver)) continue;
+    const proposerName = str(c.proposer.name) ? c.proposer.name.trim() : "";
+    const receiverId = str(c.receiver.id) ? c.receiver.id : typeof c.receiver.id === "number" ? String(c.receiver.id) : "";
+    if (!proposerName || receiverId !== houseId) continue;
+
+    if (!Array.isArray(c.lines)) continue;
     const lines = c.lines as unknown[];
-    if (lines.some((l) => !rec(l) || !str(l.side) || !str(l.asset) || !digits(l.amount))) changed("contract list");
-    const ls = lines as { side: string; asset: string; amount: string; itemType?: unknown }[];
-    if (c.status !== "ACCEPTED" || !c.respondedAt || (c.receiver as Row).id !== houseId) continue;
+    const validLines = lines.map((l) => {
+      if (!rec(l)) return null;
+      const side = str(l.side) ? l.side.toUpperCase() : "";
+      const asset = str(l.asset) ? l.asset.toUpperCase() : "";
+      const amount = toNum(l.amount);
+      const itemType = str(l.itemType) ? l.itemType.toUpperCase() : "";
+      if (!side || !asset || amount === null) return null;
+      return { side, asset, amount, itemType };
+    });
+    if (validLines.some((l) => l === null)) continue;
+    const ls = validLines as { side: string; asset: string; amount: number; itemType: string }[];
+
     const given = ls.filter((l) => l.side === "PROPOSER");
     const back = ls.filter((l) => l.side === "RECEIVER");
-    if (!given.length || given.some((l) => l.asset !== "GOLD") || !back.length || back.some((l) => l.asset !== "ITEM" || !allAllowedCodes.includes(String(l.itemType || "").toUpperCase()))) continue;
-    const cents = given.reduce((t, l) => t + Number(l.amount), 0);
+    if (!given.length || given.some((l) => l.asset !== "GOLD") || !back.length || back.some((l) => l.asset !== "ITEM" || !allAllowedCodes.includes(l.itemType))) continue;
+
+    const cents = given.reduce((t, l) => t + l.amount, 0);
     out.push({
-      id: `contract:${c.id}`,
+      id: `contract:${id}`,
       kind: "contract",
-      at: new Date(c.respondedAt as string).toISOString(),
+      at: dateAt.toISOString(),
       units: null,
       gross: cents / 100,
       tax: 0,
       gold: cents / 100,
-      name: String((c.proposer as Row).name).trim(),
+      name: proposerName,
     });
   }
   return out;
@@ -198,16 +293,38 @@ function depositContracts(v: unknown, houseId: string): Seen[] {
 
 /** The deposit listing: the House's live deposit commodity listing on the global market across any tier. */
 function depositListing(v: unknown): { remaining: number; endsAt: string } | null {
-  if (!Array.isArray(v)) changed("listing list");
+  const list = Array.isArray(v)
+    ? v
+    : rec(v) && Array.isArray(v.listings)
+    ? v.listings
+    : rec(v) && Array.isArray(v.data)
+    ? v.data
+    : null;
+  if (!Array.isArray(list)) changed("listing list");
+
   let best: { remaining: number; endsAt: string } | null = null;
-  for (const l of v as unknown[]) {
-    if (!rec(l) || !str(l.itemType) || !digits(l.pricePerUnit) || !digits(l.remaining) || !when(l.expiresAt)) changed("listing list");
-    const x = l as Row & { itemType: string; pricePerUnit: string; remaining: string; expiresAt: string; expired?: boolean; cancelledAt?: string };
+  for (const l of list as unknown[]) {
+    if (!rec(l)) continue;
+    const rawItem = l.itemType ?? l.item ?? l.commodity;
+    const itemType = str(rawItem) ? rawItem.toUpperCase() : "";
+    const pricePerUnit = toNum(l.pricePerUnit ?? l.price ?? l.unitPrice);
+    const remaining = toNum(l.remaining ?? l.quantity ?? l.amount);
+    const rawExpires = l.expiresAt ?? l.endsAt ?? l.expires;
+    if (!itemType || pricePerUnit === null || remaining === null || !rawExpires) continue;
+
+    const expiresAtMs = Date.parse(String(rawExpires));
+    if (Number.isNaN(expiresAtMs) || expiresAtMs <= Date.now()) continue;
+    if (l.expired === true || l.cancelledAt) continue;
+
     const matched = DEPOSIT_COMMODITIES.find((tier) =>
-      tier.itemCodes.includes(x.itemType.toUpperCase()) && Number(x.pricePerUnit) === Math.round(tier.unitPrice * 100)
+      tier.itemCodes.includes(itemType) &&
+      (Math.round(pricePerUnit) === Math.round(tier.unitPrice * 100) || Math.round(pricePerUnit) === tier.unitPrice)
     );
-    if (!matched || x.expired === true || x.cancelledAt || Date.parse(x.expiresAt) <= Date.now()) continue;
-    if (!best || Number(x.remaining) > best.remaining) best = { remaining: Number(x.remaining), endsAt: new Date(x.expiresAt).toISOString() };
+    if (!matched) continue;
+
+    if (!best || remaining > best.remaining) {
+      best = { remaining, endsAt: new Date(expiresAtMs).toISOString() };
+    }
   }
   return best;
 }
@@ -350,8 +467,8 @@ export async function watch(force = false): Promise<void> {
     let houseId = await getSetting("watcher_house_id", "");
     if (!houseId) {
       const me = await game("/api/me", token);
-      if (!rec(me) || !str(me.id)) changed("player profile");
-      houseId = (me as Row).id as string;
+      if (!rec(me) || (!str(me.id) && typeof me.id !== "number")) changed("player profile");
+      houseId = String((me as Row).id);
     }
     const item = (await getSetting("watcher_item", "IRON_RAW")).trim() || "IRON_RAW";
     const exportTax = Number(await getSetting("house_export_tax", "5"));
