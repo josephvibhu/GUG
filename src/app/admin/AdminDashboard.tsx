@@ -151,6 +151,8 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfMode, setPdfMode] = useState<"since_last" | "all_time">("since_last");
+  const [cardGenerating, setCardGenerating] = useState(false);
+  const [reportFiling, setReportFiling] = useState(false);
   // A one-time password reset code, shown once to the operator to send privately
   const [resetCode, setResetCode] = useState<{ username: string; code: string; expiresAt: string } | null>(null);
   const [resetCopied, setResetCopied] = useState(false);
@@ -717,6 +719,56 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
     }
   };
 
+  const handleExportShareholderCard = async () => {
+    setCardGenerating(true);
+    setFeedback(null);
+    try {
+      const res = await fetch("/api/admin/shareholder-report");
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.message || "Failed to load shareholder report data");
+      }
+      const { generateShareholderCardPdf } = await import("@/lib/shareholderCardPdf");
+      generateShareholderCardPdf(data.cardData);
+      setFeedback({
+        type: "success",
+        message: "Visual Shareholder Report Card ($GUG Week 2) generated and downloaded!",
+      });
+    } catch (err: any) {
+      console.error("Card generation failed:", err);
+      setFeedback({ type: "error", message: `Failed to generate report card: ${err.message}` });
+    } finally {
+      setCardGenerating(false);
+    }
+  };
+
+  const handleFileWeek2Report = async () => {
+    if (!confirm("Confirm filing Week 2 operational profits (554.20 gold) and distributing 50% dividend (277.10 gold total, 0.0277g/share) to all shareholders?")) return;
+    setReportFiling(true);
+    setFeedback(null);
+    try {
+      const res = await fetch("/api/admin/shareholder-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "file_and_distribute", payoutPercent: 50 }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.message || "Failed to file report");
+      }
+      setFeedback({
+        type: "success",
+        message: data.message || "Week 2 report successfully filed and dividends distributed!",
+      });
+      fetchAdminData();
+    } catch (err: any) {
+      console.error("Filing failed:", err);
+      setFeedback({ type: "error", message: `Failed to file: ${err.message}` });
+    } finally {
+      setReportFiling(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-floor text-white flex flex-col">
@@ -896,6 +948,21 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   <span>{pdfGenerating ? "Generating Audit PDF..." : "Export Audit Ledger PDF"}</span>
                 </button>
 
+                <button
+                  type="button"
+                  onClick={handleExportShareholderCard}
+                  disabled={cardGenerating}
+                  className="h-10 px-4 rounded-[4px] bg-zinc-900 border border-amber-500/50 hover:border-amber-400 text-amber-300 font-bold text-xs flex items-center gap-2 shadow-lg transition cursor-pointer disabled:opacity-50"
+                  title="Generate sleek visual 1-page dark Shareholder Report Card ($GUG Week 2)"
+                >
+                  {cardGenerating ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-amber-400" />
+                  )}
+                  <span>{cardGenerating ? "Generating Card..." : "$GUG Shareholder Report"}</span>
+                </button>
+
                 <div className="text-right pl-2 sm:border-l sm:border-rule">
                   <span className="text-[10px] font-sans text-zinc-400 uppercase tracking-wider block">
                     Total Platform Net Profit
@@ -904,6 +971,47 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                     +{Number(financialSummary.totalPlatformProfit || 0).toLocaleString()} gold
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* GUG Executive Shareholder Report Banner & Quick Action */}
+            <div className="p-4 rounded-[6px] bg-gradient-to-r from-zinc-900 via-zinc-900 to-amber-950/40 border border-amber-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-md">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-[4px] text-amber-400 mt-0.5">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-zinc-100">$GUG Shareholder Report & Dividends (Week 2)</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-black">OFFICIAL</span>
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
+                    Week 2 Operating Profit: <span className="text-amber-400 font-bold tabular">+554.20 gold</span> (Trading fees + IPO charters + deposit rail spread, excluding primary share capital). 
+                    50% Payout Pool: <span className="text-emerald-400 font-bold tabular">277.10 gold</span> (0.0277g on each of 10,000 shares; 31.02g to public float).
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleExportShareholderCard}
+                  disabled={cardGenerating}
+                  className="px-3.5 py-2 rounded-[4px] bg-zinc-800 hover:bg-zinc-700 border border-rule text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                  title="Download 1-page visual Shareholder Report Card PDF"
+                >
+                  {cardGenerating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5 text-amber-400" />}
+                  <span>Download Report Card</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFileWeek2Report}
+                  disabled={reportFiling}
+                  className="px-4 py-2 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 shadow-md"
+                  title="File audited Week 2 profit and immediately distribute 50% dividends to all shareholders"
+                >
+                  {reportFiling ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Award className="w-3.5 h-3.5" />}
+                  <span>File Profits & Distribute 50%</span>
+                </button>
               </div>
             </div>
 

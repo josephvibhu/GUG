@@ -179,6 +179,27 @@ ${recent || "• No entries yet."}
           {copied ? <Check className="h-3.5 w-3.5 text-bull" /> : <Copy className="h-3.5 w-3.5 text-ash" />}
           {copied ? "Copied" : "Copy for Discord"}
         </button>
+        {ticker === "GUG" && (
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/admin/shareholder-report");
+                const data = await res.json();
+                if (data.success) {
+                  const { generateShareholderCardPdf } = await import("@/lib/shareholderCardPdf");
+                  generateShareholderCardPdf(data.cardData);
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+            className="h-8 px-3 rounded-[4px] bg-zinc-900 border border-amber-500/50 hover:border-amber-400 text-amber-300 text-[12px] font-semibold transition cursor-pointer"
+            title="Download the official single-page visual Shareholder Report Card for $GUG"
+          >
+            Shareholder Report (Week 2)
+          </button>
+        )}
         {isFounderOrAdmin && (
           <button
             type="button"
