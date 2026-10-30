@@ -28,13 +28,13 @@ export async function moveFounderGold(params: {
   const note = (params.note || "").trim().slice(0, 140);
 
   const compRes = await db.execute({
-    sql: "SELECT id, ticker, creator_id, status FROM companies WHERE UPPER(ticker) = UPPER(?) OR id = ? LIMIT 1",
+    sql: "SELECT id, ticker, creator_id, co_founder_id, status FROM companies WHERE UPPER(ticker) = UPPER(?) OR id = ? LIMIT 1",
     args: [params.ticker, params.ticker],
   });
   if (compRes.rows.length === 0) return { success: false, message: "Company not found." };
   const company = compRes.rows[0];
   const companyId = String(company.id);
-  if (String(company.creator_id) !== params.userId) {
+  if (String(company.creator_id) !== params.userId && String(company.co_founder_id) !== params.userId) {
     return { success: false, message: "Only the founder can move gold in and out of the company treasury." };
   }
 
@@ -65,8 +65,8 @@ export async function moveFounderGold(params: {
     }
     const debit = await db.execute({
       sql: `UPDATE companies SET treasury_balance = MAX(0, ROUND(treasury_balance - ?, 2))
-            WHERE id = ? AND creator_id = ? AND treasury_balance >= ? - ?`,
-      args: [amount, companyId, params.userId, amount, EPSILON],
+            WHERE id = ? AND (creator_id = ? OR co_founder_id = ?) AND treasury_balance >= ? - ?`,
+      args: [amount, companyId, params.userId, params.userId, amount, EPSILON],
     });
     if (debit.rowsAffected === 0) {
       return { success: false, message: "The company treasury doesn't hold that much gold." };
@@ -131,12 +131,12 @@ export async function updateCompanyProfile(params: {
   const db = getDb();
 
   const compRes = await db.execute({
-    sql: "SELECT id, ticker, creator_id FROM companies WHERE UPPER(ticker) = UPPER(?) OR id = ? LIMIT 1",
+    sql: "SELECT id, ticker, creator_id, co_founder_id FROM companies WHERE UPPER(ticker) = UPPER(?) OR id = ? LIMIT 1",
     args: [params.ticker, params.ticker],
   });
   if (compRes.rows.length === 0) return { success: false, message: "Company not found." };
   const company = compRes.rows[0];
-  if (String(company.creator_id) !== params.userId && !params.isAdmin) {
+  if (String(company.creator_id) !== params.userId && String(company.co_founder_id) !== params.userId && !params.isAdmin) {
     return { success: false, message: "Only the founder or the operator can edit this company." };
   }
 

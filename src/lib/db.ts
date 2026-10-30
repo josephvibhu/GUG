@@ -338,6 +338,10 @@ export async function initDb(): Promise<void> {
     await db.execute(`ALTER TABLE companies ADD COLUMN discord_handle TEXT;`);
   } catch {}
 
+  try {
+    await db.execute(`ALTER TABLE companies ADD COLUMN co_founder_id TEXT;`);
+  } catch {}
+
   // Migrations for enhanced IPO applications
   try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN discord_id TEXT;`); } catch {}
   try { await db.execute(`ALTER TABLE ipo_applications ADD COLUMN business_type TEXT DEFAULT 'FACTORY';`); } catch {}

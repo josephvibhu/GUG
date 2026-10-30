@@ -63,7 +63,7 @@ export async function GET(
         getUserHolding(user.id, company.id),
         getUserOrders(user.id, company.id),
       ]);
-      if (user.id === company.creatorId || user.isAdmin) {
+      if (user.id === company.creatorId || user.id === company.coFounderId || user.isAdmin) {
         founderView = { discordHandle: await getCompanyDiscordHandle(company.id) };
       }
     }

@@ -185,7 +185,7 @@ export async function reportEarningsAndDividend(params: {
     return { success: false, message: "Reporter not found." };
   }
   const user = userRes.rows[0];
-  const isCreator = String(company.creator_id) === String(user.id);
+  const isCreator = String(company.creator_id) === String(user.id) || (company.co_founder_id && String(company.co_founder_id) === String(user.id));
   const isAdmin = Number(user.is_admin) === 1;
 
   if (!isCreator && !isAdmin) {
@@ -295,7 +295,7 @@ export async function depositCompanyProfit(params: {
     return { success: false, message: "Reporter not found." };
   }
   const user = userRes.rows[0];
-  const isCreator = String(company.creator_id) === String(user.id);
+  const isCreator = String(company.creator_id) === String(user.id) || (company.co_founder_id && String(company.co_founder_id) === String(user.id));
   const isAdmin = Number(user.is_admin) === 1;
 
   if (!isCreator && !isAdmin) {

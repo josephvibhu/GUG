@@ -106,7 +106,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
   ];
   const name = user ? (user.displayName || user.username) : "";
   // Founders see each company's treasury next to their purse
-  const founded = user ? companies.filter((c) => c.creatorId === user.id) : [];
+  const founded = user ? companies.filter((c) => c.creatorId === user.id || c.coFounderId === user.id) : [];
 
   return (
     <>

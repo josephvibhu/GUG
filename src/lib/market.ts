@@ -10,6 +10,8 @@ export interface Company {
   sector: string;
   creatorId: string;
   creatorName?: string;
+  coFounderId?: string;
+  coFounderName?: string;
   totalShares: number;
   floatShares: number;
   ipoPrice: number;
@@ -150,7 +152,7 @@ export async function getAllCompanies(): Promise<Company[]> {
 
   const [res, dayStats] = await Promise.all([
     db.execute(`
-      SELECT c.*, u.display_name as creator_name,
+      SELECT c.*, u.display_name as creator_name, u2.display_name as co_founder_name,
              o.initial_quantity as ipo_initial,
              o.remaining_quantity as ipo_remaining,
              o.status as ipo_status,
@@ -187,6 +189,7 @@ export async function getAllCompanies(): Promise<Company[]> {
              ) as total_active_asks
       FROM companies c
       LEFT JOIN users u ON c.creator_id = u.id
+      LEFT JOIN users u2 ON c.co_founder_id = u2.id
       LEFT JOIN orders o ON o.id = 'ord_ipo_' || c.id
       ORDER BY (c.current_price * c.total_shares) DESC
     `),
@@ -206,6 +209,8 @@ export async function getAllCompanies(): Promise<Company[]> {
       sector: String(row.sector),
       creatorId: String(row.creator_id),
       creatorName: String(row.creator_name || "Unknown"),
+      coFounderId: row.co_founder_id ? String(row.co_founder_id) : undefined,
+      coFounderName: row.co_founder_name ? String(row.co_founder_name) : undefined,
       totalShares: Number(row.total_shares),
       floatShares: floatListed,
       sharesSold,
@@ -240,7 +245,7 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
   const db = getDb();
 
   const res = await db.execute({
-    sql: `SELECT c.*, u.display_name as creator_name,
+    sql: `SELECT c.*, u.display_name as creator_name, u2.display_name as co_founder_name,
                  o.initial_quantity as ipo_initial,
                  o.remaining_quantity as ipo_remaining,
                  o.status as ipo_status,
@@ -276,7 +281,8 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
                  AND s.status IN ('OPEN', 'PARTIAL')
              ) as total_active_asks
           FROM companies c 
-          LEFT JOIN users u ON c.creator_id = u.id 
+          LEFT JOIN users u ON c.creator_id = u.id
+       LEFT JOIN users u2 ON c.co_founder_id = u2.id 
           LEFT JOIN orders o ON o.id = 'ord_ipo_' || c.id
           WHERE UPPER(c.ticker) = UPPER(?) OR c.id = ?`,
     args: [ticker, ticker],
@@ -298,6 +304,8 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
     sector: String(row.sector),
     creatorId: String(row.creator_id),
     creatorName: String(row.creator_name || "Unknown"),
+    coFounderId: row.co_founder_id ? String(row.co_founder_id) : undefined,
+    coFounderName: row.co_founder_name ? String(row.co_founder_name) : undefined,
     totalShares: Number(row.total_shares),
     floatShares: floatListed,
     sharesSold,
@@ -588,7 +596,7 @@ export async function getUserPortfolio(userId: string): Promise<{
   const lockedCash = userRes.rows.length > 0 ? Number(userRes.rows[0].locked_cash) : 0;
 
   const res = await db.execute({
-    sql: `SELECT p.*, c.ticker, c.name, c.current_price, c.creator_id, c.total_shares, c.float_shares, c.ipo_fee_collected, c.treasury_balance 
+    sql: `SELECT p.*, c.ticker, c.name, c.current_price, c.creator_id, c.co_founder_id, c.total_shares, c.float_shares, c.ipo_fee_collected, c.treasury_balance 
           FROM portfolios p
           JOIN companies c ON p.company_id = c.id
           WHERE p.user_id = ? AND (p.shares > 0 OR p.locked_shares > 0)
@@ -612,7 +620,7 @@ export async function getUserPortfolio(userId: string): Promise<{
     const costBasis = Math.round(shares * avgBuyPrice * 100) / 100;
     const pnl = Math.round((marketValue - costBasis) * 100) / 100;
     const pnlPercent = costBasis > 0 ? Math.round(((marketValue - costBasis) / costBasis) * 10000) / 100 : 0;
-    const isCreator = String(r.creator_id) === String(userId);
+    const isCreator = String(r.creator_id) === String(userId) || (r.co_founder_id && String(r.co_founder_id) === String(userId));
     const totalCompanyShares = Number(r.total_shares || 0);
     const floatShares = Number(r.float_shares || 0);
     const ownershipPercent = totalCompanyShares > 0 ? Math.round((shares / totalCompanyShares) * 10000) / 100 : 0;
@@ -1121,7 +1129,7 @@ export async function executeShareBuyback(params: {
     return { success: false, message: "Company not found" };
   }
   const company = compRes.rows[0];
-  if (String(company.creator_id) !== params.founderId && Number(user.is_admin) !== 1) {
+  if (String(company.creator_id) !== params.founderId && String(company.co_founder_id) !== params.founderId && Number(user.is_admin) !== 1) {
     return { success: false, message: "Only the company founder (or operator) can initiate a corporate share buyback." };
   }
   if (company.status === "HALTED" || company.status === "DEFAULTED") {

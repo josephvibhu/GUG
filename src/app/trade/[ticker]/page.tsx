@@ -148,10 +148,12 @@ function Terminal({ ticker }: { ticker: string }) {
     trades.length > 1 ? (trades[0].price > trades[1].price ? "up" : trades[0].price < trades[1].price ? "down" : "flat") : "flat";
   const freshTrade = trades[0] && data.serverNow - Date.parse(trades[0].timestamp) < 6000;
   const prevRef = c.currentPrice / (1 + c.change24h / 100);
-  const isFounder = !!data.user && c.creatorId === data.user.id;
+  const isFounder = !!data.user && (c.creatorId === data.user.id || c.coFounderId === data.user.id);
   const canFound = isFounder || !!data.user?.isAdmin;
   const dividendDue = data.earningsReports.filter((r) => r.status === "SCHEDULED").reduce((sum, r) => sum + r.dividendPool, 0);
-  const founderShares = data.shareholders.find((h) => h.userId === c.creatorId)?.shares || 0;
+  const founderShares = data.shareholders
+    .filter((h) => h.userId === c.creatorId || h.userId === c.coFounderId)
+    .reduce((sum, h) => sum + h.shares, 0);
   const latestReport = data.earningsReports[0];
 
   const tabs: { id: Tab; label: string; mobileOnly?: boolean }[] = [
@@ -321,7 +323,7 @@ function Terminal({ ticker }: { ticker: string }) {
                     <tr key={h.userId} className="border-t border-rule">
                       <td className="py-2 pl-4 pr-2">
                         <span className="text-paper">{h.displayName}</span>
-                        {h.userId === c.creatorId && <span className="ml-2 text-[11px] text-bullion">founder</span>}
+                        {(h.userId === c.creatorId || h.userId === c.coFounderId) && <span className="ml-2 text-[11px] text-bullion">founder</span>}
                       </td>
                       <td className="py-2 px-2 text-right text-zinc-50">{fmtQty(h.shares)}</td>
                       <td className="py-2 px-2 text-right text-paper">{h.equityPercent.toFixed(2)}%</td>
@@ -384,7 +386,10 @@ function Terminal({ ticker }: { ticker: string }) {
               <div className="px-4 py-4 flex flex-col gap-4 max-w-2xl">
                 <p className="text-[13px] text-paper leading-relaxed">{c.description}</p>
                 <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
-                  <Stat label={c.ticker === "BOMF" ? "Fund manager" : "Founder"} value={c.creatorName || "Unknown"} />
+                  <Stat
+                    label={c.ticker === "BOMF" ? "Fund manager" : c.coFounderName ? "Founders" : "Founder"}
+                    value={c.coFounderName ? `${c.creatorName} & ${c.coFounderName}` : (c.creatorName || "Unknown")}
+                  />
                   <Stat label={c.ticker === "BOMF" ? "Total units" : "Total shares"} value={fmtQty(c.totalShares)} />
                   <Stat label={c.ticker === "BOMF" ? "Pre-release float" : "Public float"} value={fmtQty(c.floatShares)} />
                   <Stat label={c.ticker === "BOMF" ? "Launch price" : "IPO price"} value={`${fmtPrice(c.ipoPrice)} gold`} />

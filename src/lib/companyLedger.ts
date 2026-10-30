@@ -24,7 +24,7 @@ export async function getCompanyLedger(
 
   // Find company by ID or Ticker
   const compRes = await db.execute({
-    sql: "SELECT id, ticker, name, logo_url, creator_id, description, treasury_balance FROM companies WHERE id = ? OR UPPER(ticker) = UPPER(?) LIMIT 1",
+    sql: "SELECT id, ticker, name, logo_url, creator_id, co_founder_id, description, treasury_balance FROM companies WHERE id = ? OR UPPER(ticker) = UPPER(?) LIMIT 1",
     args: [companyIdOrTicker, companyIdOrTicker],
   });
 
@@ -44,6 +44,7 @@ export async function getCompanyLedger(
     name: String(rawComp.name),
     logoUrl: String(rawComp.logo_url || "🏛️"),
     creatorId: String(rawComp.creator_id),
+    coFounderId: rawComp.co_founder_id ? String(rawComp.co_founder_id) : undefined,
     description: String(rawComp.description || ""),
   };
 
@@ -121,7 +122,7 @@ export async function addCompanyLedgerEntry(
 
   // Verify authorization: must be company creator or exchange operator (admin)
   const compRes = await db.execute({
-    sql: "SELECT id, ticker, creator_id FROM companies WHERE id = ? OR UPPER(ticker) = UPPER(?) LIMIT 1",
+    sql: "SELECT id, ticker, creator_id, co_founder_id FROM companies WHERE id = ? OR UPPER(ticker) = UPPER(?) LIMIT 1",
     args: [companyIdOrTicker, companyIdOrTicker],
   });
   if (compRes.rows.length === 0) {
@@ -130,7 +131,7 @@ export async function addCompanyLedgerEntry(
 
   const company = compRes.rows[0];
   const companyId = String(company.id);
-  const isCreator = String(company.creator_id) === userId;
+  const isCreator = String(company.creator_id) === userId || (company.co_founder_id && String(company.co_founder_id) === userId);
   if (!isCreator && !isAdmin) {
     return { success: false, message: "Only the enterprise founder or exchange operator can record entries in the official company ledger." };
   }
@@ -199,7 +200,7 @@ export async function deleteCompanyLedgerEntry(
   const db = getDb();
 
   const entryRes = await db.execute({
-    sql: "SELECT cl.*, c.creator_id FROM company_ledger cl JOIN companies c ON cl.company_id = c.id WHERE cl.id = ?",
+    sql: "SELECT cl.*, c.creator_id, c.co_founder_id FROM company_ledger cl JOIN companies c ON cl.company_id = c.id WHERE cl.id = ?",
     args: [entryId],
   });
   if (entryRes.rows.length === 0) {
@@ -207,7 +208,7 @@ export async function deleteCompanyLedgerEntry(
   }
 
   const entry = entryRes.rows[0];
-  const isCreator = String(entry.creator_id) === userId;
+  const isCreator = String(entry.creator_id) === userId || (entry.co_founder_id && String(entry.co_founder_id) === userId);
   const isAuthor = String(entry.user_id) === userId;
 
   if (!isCreator && !isAuthor && !isAdmin) {

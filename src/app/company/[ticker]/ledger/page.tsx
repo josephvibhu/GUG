@@ -7,7 +7,7 @@ import Navbar from "@/components/Navbar";
 import CompanyLedger from "@/components/CompanyLedger";
 
 interface LedgerHeader {
-  company: { name: string; logoUrl: string; creatorId: string };
+  company: { name: string; logoUrl: string; creatorId: string; coFounderId?: string };
   user: { id: string; isAdmin?: boolean } | null;
 }
 
@@ -23,7 +23,7 @@ function CompanyLedgerContent({ params }: { params: Promise<{ ticker: string }> 
       .catch(() => {});
   }, [t]);
 
-  const isFounderOrAdmin = !!data?.user && (!!data.user.isAdmin || data.user.id === data.company.creatorId);
+  const isFounderOrAdmin = !!data?.user && (!!data.user.isAdmin || data.user.id === data.company.creatorId || data.user.id === data.company.coFounderId);
 
   return (
     <main className="w-full max-w-[900px] mx-auto px-4 sm:px-6 py-6 flex flex-col gap-4">
