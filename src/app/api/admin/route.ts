@@ -393,6 +393,90 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: "Test alert delivered to Discord successfully!" });
     }
 
+    if (action === "register_discord_commands") {
+      const { botToken, clientId, guildId } = body;
+      if (!botToken || !clientId) {
+        return NextResponse.json({ success: false, message: "Bot Token and Client ID are required." }, { status: 400 });
+      }
+
+      const commands = [
+        {
+          name: "gug",
+          description: "Grow UR Gold stock exchange commands",
+          options: [
+            {
+              name: "price",
+              description: "Fetch live price, 24h change, and order book spread",
+              type: 1,
+              options: [
+                {
+                  name: "ticker",
+                  description: "Stock ticker symbol (e.g. GUG, BCKRM, EI)",
+                  type: 3,
+                  required: false,
+                },
+              ],
+            },
+            {
+              name: "portfolio",
+              description: "Check citizen holdings and purse balance",
+              type: 1,
+              options: [
+                {
+                  name: "citizen",
+                  description: "Parlamentum or Grow UR Gold username",
+                  type: 3,
+                  required: true,
+                },
+              ],
+            },
+            {
+              name: "market",
+              description: "View the 24/7 market floor board",
+              type: 1,
+            },
+          ],
+        },
+        {
+          name: "price",
+          description: "Fetch live stock price and order book for a company",
+          options: [
+            {
+              name: "ticker",
+              description: "Stock ticker (e.g. GUG)",
+              type: 3,
+              required: false,
+            },
+          ],
+        },
+        {
+          name: "market",
+          description: "View the 24/7 Grow UR Gold floor overview",
+        },
+      ];
+
+      const url = guildId && guildId.trim()
+        ? `https://discord.com/api/v10/applications/${clientId.trim()}/guilds/${guildId.trim()}/commands`
+        : `https://discord.com/api/v10/applications/${clientId.trim()}/commands`;
+
+      const discRes = await fetch(url, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bot ${botToken.trim()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(commands),
+      });
+
+      if (!discRes.ok) {
+        const errText = await discRes.text();
+        return NextResponse.json({ success: false, message: `Discord API error (${discRes.status}): ${errText}` }, { status: 400 });
+      }
+
+      const data = await discRes.json();
+      return NextResponse.json({ success: true, count: Array.isArray(data) ? data.length : 1, message: "Slash commands registered successfully with Discord!" });
+    }
+
     if (action === "freeze_user") {
       const { userId } = body;
       const db = getDb();

@@ -101,6 +101,11 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
   const [discordWhaleThreshold, setDiscordWhaleThreshold] = useState<number>(25);
   const [discordAlertsEnabled, setDiscordAlertsEnabled] = useState<boolean>(true);
   const [discordTesting, setDiscordTesting] = useState<boolean>(false);
+  const [discBotToken, setDiscBotToken] = useState<string>("");
+  const [discClientId, setDiscClientId] = useState<string>("");
+  const [discGuildId, setDiscGuildId] = useState<string>("");
+  const [discRegistering, setDiscRegistering] = useState<boolean>(false);
+  const [discRegisterMsg, setDiscRegisterMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
 
   // Market Trading Hours (UTC)
@@ -566,6 +571,40 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
       setFeedback({ type: "error", message: e.message });
     } finally {
       setDiscordTesting(false);
+    }
+  };
+
+  const handleRegisterDiscordCommands = async () => {
+    if (!discBotToken.trim() || !discClientId.trim()) {
+      setDiscRegisterMsg({ ok: false, text: "Please enter both Bot Token and Application/Client ID." });
+      return;
+    }
+    setDiscRegistering(true);
+    setDiscRegisterMsg(null);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "register_discord_commands",
+          botToken: discBotToken.trim(),
+          clientId: discClientId.trim(),
+          guildId: discGuildId.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDiscRegisterMsg({
+          ok: true,
+          text: `Success! ${data.count} slash commands (/gug, /price, /market) registered ${discGuildId.trim() ? "instantly to your server!" : "globally! (may take Discord up to 1h to propagate cache)"}`,
+        });
+      } else {
+        setDiscRegisterMsg({ ok: false, text: data.message || "Failed to register commands." });
+      }
+    } catch (e: any) {
+      setDiscRegisterMsg({ ok: false, text: e.message || "Network error." });
+    } finally {
+      setDiscRegistering(false);
     }
   };
 
@@ -2008,8 +2047,8 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </div>
           </div>
 
-          {/* Discord Slash Commands Endpoint Info */}
-          <div className="mt-2 p-3 bg-floor rounded-[4px] border border-rule flex flex-col gap-2 text-xs">
+          {/* Discord Slash Commands Endpoint & 1-Click Register */}
+          <div className="mt-2 p-3 bg-floor rounded-[4px] border border-rule flex flex-col gap-3 text-xs">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-bullion flex items-center gap-1.5">
                 🤖 Discord Slash Commands (/gug) Interactions Endpoint
@@ -2024,9 +2063,55 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 https://growurgold.vercel.app/api/discord/interactions
               </code>
             </div>
-            <p className="text-[10px] text-zinc-400">
-              Active commands: <code className="text-paper">/gug price &lt;ticker&gt;</code> &middot; <code className="text-paper">/gug portfolio &lt;citizen&gt;</code> &middot; <code className="text-paper">/gug market</code>. To register commands globally with Discord, run <code className="text-paper">node scripts/register-discord-commands.mjs</code>.
-            </p>
+
+            {/* Direct Slash Command Registration Form */}
+            <div className="pt-2 border-t border-rule/70 flex flex-col gap-2">
+              <span className="font-semibold text-zinc-200">
+                ⚡ 1-Click Register Slash Commands to Discord
+              </span>
+              <p className="text-[10px] text-zinc-400">
+                Register <code className="text-paper">/gug price</code>, <code className="text-paper">/gug portfolio</code>, and <code className="text-paper">/gug market</code>. Tip: Enter your <strong>Discord Server ID</strong> to make the commands appear <em>instantly</em> in your server without waiting for Discord&apos;s 1-hour global cache!
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input
+                  type="password"
+                  placeholder="Bot Token (Developer Portal > Bot)"
+                  value={discBotToken}
+                  onChange={(e) => setDiscBotToken(e.target.value)}
+                  className="bg-pane border border-rule rounded px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Application / Client ID"
+                  value={discClientId}
+                  onChange={(e) => setDiscClientId(e.target.value)}
+                  className="bg-pane border border-rule rounded px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Server / Guild ID (Optional, for instant update)"
+                  value={discGuildId}
+                  onChange={(e) => setDiscGuildId(e.target.value)}
+                  className="bg-pane border border-rule rounded px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:outline-none"
+                />
+              </div>
+
+              {discRegisterMsg && (
+                <div className={`p-2 rounded text-[11px] ${discRegisterMsg.ok ? "bg-emerald-950/60 border border-emerald-800 text-emerald-300" : "bg-rose-950/60 border border-rose-800 text-rose-300"}`}>
+                  {discRegisterMsg.text}
+                </div>
+              )}
+
+              <button
+                type="button"
+                disabled={discRegistering}
+                onClick={handleRegisterDiscordCommands}
+                className="self-start h-8 px-3 rounded-[3px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs disabled:opacity-50 transition-colors flex items-center gap-1.5"
+              >
+                {discRegistering ? "Registering with Discord API…" : "Register Slash Commands Now"}
+              </button>
+            </div>
           </div>
         </div>
 
