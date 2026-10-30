@@ -3,8 +3,6 @@ import crypto from "crypto";
 import { getDb, initDb } from "@/lib/db";
 import { getSetting } from "@/lib/wallet";
 
-export const dynamic = "force-dynamic";
-
 // Discord Interaction Types
 const InteractionType = {
   PING: 1,
@@ -65,8 +63,6 @@ export async function POST(req: Request) {
 
     // 2. Handle PING (Discord endpoint validation challenge)
     if (interaction.type === InteractionType.PING) {
-      return NextResponse.json({ type: InteractionResponseType.PONG });
-    }
       return NextResponse.json({ type: InteractionResponseType.PONG });
     }
 
