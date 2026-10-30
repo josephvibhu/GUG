@@ -194,10 +194,16 @@ export function generateAuditLedgerPdf(data: AuditLedgerData) {
       "Held in trust for corporate expenditures"
     ],
     [
-      "TOTAL REQUIRED IN-GAME VAULT BACKING",
+      "MANDATORY CUSTOMER & COMPANY BACKING",
       `${fmt(data.requiredInGameReserves.totalCustomerBackingRequired)} g`,
       "MANDATORY PARLAMENTUM RESERVE",
-      "Exact in-game gold JosephArora must hold"
+      "Do NOT spend: belongs to citizens & company treasuries"
+    ],
+    [
+      "FULL SYSTEM RESERVE (CUSTOMERS + HOUSE)",
+      `${fmt(data.requiredInGameReserves.totalCustomerBackingRequired + data.requiredInGameReserves.totalHouseEquity)} g`,
+      "TOTAL CAPITAL ON PLATFORM",
+      "All citizen liabilities + corporate treasuries + House profits"
     ],
   ];
 
@@ -223,8 +229,26 @@ export function generateAuditLedgerPdf(data: AuditLedgerData) {
         data.cell.styles.fillColor = [254, 243, 199]; // gold highlight
         data.cell.styles.textColor = [146, 64, 14];
       }
+      if (data.row.index === 7) {
+        data.cell.styles.fillColor = [241, 245, 249]; // light slate highlight
+        data.cell.styles.textColor = [15, 23, 42];
+      }
     },
   });
+
+  currentY = (doc as any).lastAutoTable.finalY + 12;
+
+  // Vault Rule explainer
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(80, 80, 80);
+  doc.text(
+    "* VAULT RULE: As long as your in-game character holds at least 13,588.39 g, 100% of all player balances and company treasuries are safe. Any gold in your in-game wallet above 13,588.39 g is YOUR earned profit to keep or spend freely.",
+    40,
+    currentY,
+    { maxWidth: 515 }
+  );
+  currentY += 20;
 
   currentY = (doc as any).lastAutoTable.finalY + 25;
 
