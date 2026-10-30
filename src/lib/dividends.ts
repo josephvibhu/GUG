@@ -205,6 +205,20 @@ export async function reportEarningsAndDividend(params: {
   const scheduledIso = params.scheduledFor || nextFriday.toISOString();
   const periodTitle = params.periodTitle || `Week ending ${nextFriday.toISOString().slice(0, 10)}`;
 
+  // Prevent duplicate scheduled reports for the same period if distributeImmediately is not true
+  if (!params.distributeImmediately) {
+    const existingRes = await db.execute({
+      sql: "SELECT id FROM earnings_reports WHERE company_id = ? AND scheduled_for = ? AND status = 'SCHEDULED'",
+      args: [params.companyId, scheduledIso],
+    });
+    if (existingRes.rows.length > 0) {
+      return {
+        success: false,
+        message: `An earnings report and dividend for period ending ${scheduledIso.slice(0, 10)} is already scheduled. Cancel the existing report first if you wish to amend it.`,
+      };
+    }
+  }
+
   const reportId = `rep_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
 
