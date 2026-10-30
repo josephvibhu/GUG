@@ -11,10 +11,15 @@ interface Props {
 
 function describe(schedule: FloorSchedule, nowMs: number) {
   const f = floorAt(schedule, nowMs);
+  if (f.byOperator && !f.isOpen) {
+    const detail = schedule.reason || "Closed due to the World War";
+    return { f, status: "Floor closed (World War)", detail };
+  }
+  if (f.is247 || schedule.is247) {
+    return { f, status: "Floor open", detail: "24/7 continuous trading" };
+  }
   if (f.byOperator) {
-    const isClosed = !f.isOpen;
-    const detail = isClosed ? (schedule.reason || "Closed due to the World War") : "operator override";
-    return { f, status: f.isOpen ? "Floor open" : "Floor closed (World War)", detail };
+    return { f, status: "Floor open", detail: "operator override" };
   }
   return f.isOpen
     ? { f, status: "Floor open", detail: `closes in ${fmtDuration(f.secondsLeft || 0)}` }
@@ -27,7 +32,7 @@ export function FloorClock({ schedule, clockOffset }: Props) {
   if (!schedule || !now) return <span className="inline-block w-36" aria-hidden />;
   const { f, status, detail } = describe(schedule, now + clockOffset);
   return (
-    <span className="inline-flex items-center gap-2 text-xs whitespace-nowrap" title={`Trading hours ${schedule.openTimeStr}–${schedule.closeTimeStr} UTC`}>
+    <span className="inline-flex items-center gap-2 text-xs whitespace-nowrap" title={f.is247 ? "Trading floor open 24/7" : `Trading hours ${schedule.openTimeStr}–${schedule.closeTimeStr} UTC`}>
       <span className={`h-2 w-2 rounded-full ${f.isOpen ? "bg-bullion" : f.byOperator ? "bg-rose-500 animate-pulse" : "bg-zinc-600"}`} />
       <span className={f.isOpen ? "text-bullion font-semibold" : f.byOperator ? "text-rose-400 font-bold" : "text-paper font-semibold"}>{status}</span>
       <span className="text-ash hidden lg:inline">{detail}</span>
@@ -36,8 +41,7 @@ export function FloorClock({ schedule, clockOffset }: Props) {
 }
 
 /**
- * The trading day as a 24-hour UTC strip: the one-hour session in gold, a marker for now.
- * This exchange only trades during that window, so it leads the market page.
+ * The trading day as a 24-hour UTC strip: the session in gold, a marker for now.
  */
 export function FloorStrip({ schedule, clockOffset }: Props) {
   const now = useNow();
@@ -47,18 +51,22 @@ export function FloorStrip({ schedule, clockOffset }: Props) {
   const day = 24 * 60;
   const open = (f?.openMinutes ?? 0) / day;
   const close = (f?.closeMinutes ?? 0) / day;
-  const bands = close > open ? [[open, close]] : [[open, 1], [0, close]];
+  const bands = f?.is247 ? [[0, 1]] : close > open ? [[open, close]] : [[open, 1], [0, close]];
   const nowPos = f ? f.nowMinutes / day : null;
   const nowLabel = nowMs ? new Date(nowMs).toISOString().slice(11, 16) : "";
 
   let headline = "";
   let detail = "";
   if (f) {
-    if (f.byOperator) {
-      headline = f.isOpen ? "The floor is open." : "The floor is closed due to the World War.";
-      detail = f.isOpen
-        ? `The operator opened it; usual hours are ${schedule.openTimeStr}–${schedule.closeTimeStr} UTC.`
-        : (schedule.reason || "Trading floor suspended by the operator due to the outbreak of the World War in Parlamentum.");
+    if (f.byOperator && !f.isOpen) {
+      headline = "The floor is closed due to the World War.";
+      detail = schedule.reason || "Trading floor suspended by the operator due to the outbreak of the World War in Parlamentum.";
+    } else if (f.is247) {
+      headline = "The trading floor is open 24/7.";
+      detail = "Continuous order matching around the clock for all Parlamentum stocks.";
+    } else if (f.byOperator) {
+      headline = "The floor is open.";
+      detail = `The operator opened it; usual hours are ${schedule.openTimeStr}–${schedule.closeTimeStr} UTC.`;
     } else if (f.isOpen) {
       headline = `The floor is open until ${schedule.closeTimeStr} UTC.`;
       detail = `${fmtDuration(f.secondsLeft || 0)} of trading left.`;

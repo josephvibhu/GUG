@@ -12,6 +12,7 @@ import RecentTrades from "@/components/RecentTrades";
 import OpenOrdersTable, { type OpenOrder } from "@/components/OpenOrdersTable";
 import { BuybackDialog, EarningsDialog, TreasuryPanel, CompanyProfileForm } from "@/components/FounderTools";
 import CompanyLedger from "@/components/CompanyLedger";
+import CompanyGovernance from "@/components/CompanyGovernance";
 import { Company, OrderBookData, TradeItem, PortfolioPosition } from "@/lib/market";
 import { usePoll, stableBody } from "@/hooks/usePoll";
 import { useMarketFeed, type FeedUser } from "@/hooks/useMarketFeed";
@@ -61,7 +62,7 @@ interface TerminalData {
   founderView: { discordHandle: string } | null;
 }
 
-type Tab = "book" | "trades" | "orders" | "position" | "holders" | "dividends" | "ledger" | "about" | "founder";
+type Tab = "book" | "trades" | "orders" | "position" | "holders" | "dividends" | "governance" | "ledger" | "about" | "founder";
 
 // Desktop layout switch read from CSS media, so the default tab suits the screen (false on the server)
 const LG = "(min-width: 1024px)";
@@ -163,6 +164,7 @@ function Terminal({ ticker }: { ticker: string }) {
     { id: "position", label: "Position" },
     { id: "holders", label: "Holders" },
     { id: "dividends", label: "Dividends" },
+    { id: "governance", label: "Governance" },
     { id: "ledger", label: "Ledger" },
     { id: "about", label: "About" },
     ...(canFound ? [{ id: "founder" as Tab, label: "Founder" }] : []),
@@ -376,6 +378,10 @@ function Terminal({ ticker }: { ticker: string }) {
                   </table>
                 )}
               </div>
+            )}
+
+            {active === "governance" && (
+              <CompanyGovernance ticker={c.ticker} isFounderOrAdmin={canFound} />
             )}
 
             {active === "ledger" && (

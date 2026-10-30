@@ -560,6 +560,40 @@ export async function initDb(): Promise<void> {
     );
   `);
 
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS company_motions (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      ticker TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      creator_name TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('ACTIVE', 'PASSED', 'REJECTED', 'EXPIRED')),
+      quorum_pct REAL NOT NULL DEFAULT 10.0,
+      starts_at TEXT NOT NULL,
+      ends_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (company_id) REFERENCES companies(id),
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    );
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS company_motion_votes (
+      id TEXT PRIMARY KEY,
+      motion_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      voter_name TEXT NOT NULL,
+      choice TEXT NOT NULL CHECK(choice IN ('YES', 'NO', 'ABSTAIN')),
+      shares_voted INTEGER NOT NULL,
+      voted_at TEXT NOT NULL,
+      UNIQUE(motion_id, user_id),
+      FOREIGN KEY (motion_id) REFERENCES company_motions(id),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+  `);
+
   // Indexes for the queries every poll runs (order book, trade tape and charts, holders, purses)
   for (const ddl of [
     "CREATE INDEX IF NOT EXISTS idx_orders_book ON orders(company_id, type, status, price)",
@@ -575,6 +609,9 @@ export async function initDb(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_stock_gifts_code ON stock_gifts(code)",
     "CREATE INDEX IF NOT EXISTS idx_stock_gifts_sender ON stock_gifts(sender_id)",
     "CREATE INDEX IF NOT EXISTS idx_company_ledger_company ON company_ledger(company_id, entry_date)",
+    "CREATE INDEX IF NOT EXISTS idx_company_motions_company ON company_motions(company_id, status)",
+    "CREATE INDEX IF NOT EXISTS idx_company_motion_votes_motion ON company_motion_votes(motion_id)",
+    "CREATE INDEX IF NOT EXISTS idx_company_motion_votes_user ON company_motion_votes(user_id)",
   ]) {
     await db.execute(ddl);
   }

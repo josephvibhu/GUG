@@ -8,12 +8,14 @@ export interface FloorSchedule {
   override: "auto" | "force_open" | "force_closed";
   reason?: string;
   statusText?: string;
+  is247?: boolean;
 }
 
 export interface FloorState {
   isOpen: boolean;
   byOperator: boolean;
-  secondsLeft: number | null; // to close when open, to open when closed; null when the operator overrides
+  is247?: boolean;
+  secondsLeft: number | null; // to close when open, to open when closed; null when the operator overrides or 24/7
   openMinutes: number;
   closeMinutes: number;
   nowMinutes: number; // minutes since 00:00 UTC, fractional
@@ -34,8 +36,24 @@ export function floorAt(schedule: FloorSchedule, nowMs: number): FloorState {
   const inWindow = close > open ? nowSeconds >= open && nowSeconds < close : nowSeconds >= open || nowSeconds < close;
   const nowMinutes = nowSeconds / 60;
 
-  if (schedule.override === "force_open" || schedule.override === "force_closed") {
-    return { isOpen: schedule.override === "force_open", byOperator: true, secondsLeft: null, openMinutes, closeMinutes, nowMinutes };
+  if (schedule.override === "force_closed") {
+    return { isOpen: false, byOperator: true, is247: !!schedule.is247, secondsLeft: null, openMinutes, closeMinutes, nowMinutes };
+  }
+
+  if (schedule.is247 || (schedule.openTimeStr === "00:00" && (schedule.closeTimeStr === "24:00" || schedule.closeTimeStr === "00:00"))) {
+    return {
+      isOpen: true,
+      byOperator: schedule.override === "force_open",
+      is247: true,
+      secondsLeft: null,
+      openMinutes: 0,
+      closeMinutes: 1440,
+      nowMinutes,
+    };
+  }
+
+  if (schedule.override === "force_open") {
+    return { isOpen: true, byOperator: true, is247: false, secondsLeft: null, openMinutes, closeMinutes, nowMinutes };
   }
 
   const day = 24 * 3600;
@@ -43,6 +61,7 @@ export function floorAt(schedule: FloorSchedule, nowMs: number): FloorState {
   return {
     isOpen: inWindow,
     byOperator: false,
+    is247: false,
     secondsLeft: inWindow ? until(close) : until(open),
     openMinutes,
     closeMinutes,

@@ -2007,6 +2007,27 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
               <span><strong>IPO Launches:</strong> Welcomes newly chartered companies and alerts traders to initial floats.</span>
             </div>
           </div>
+
+          {/* Discord Slash Commands Endpoint Info */}
+          <div className="mt-2 p-3 bg-floor rounded-[4px] border border-rule flex flex-col gap-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-bullion flex items-center gap-1.5">
+                🤖 Discord Slash Commands (/gug) Interactions Endpoint
+              </span>
+              <span className="text-[10px] text-zinc-400 font-mono">Serverless Ed25519</span>
+            </div>
+            <p className="text-[11px] text-zinc-300">
+              In your <strong>Discord Developer Portal</strong> (General Information &rarr; <em>Interactions Endpoint URL</em>), paste:
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-pane px-3 py-1.5 rounded border border-rule font-mono text-[11px] text-bullion select-all">
+                https://growurgold.vercel.app/api/discord/interactions
+              </code>
+            </div>
+            <p className="text-[10px] text-zinc-400">
+              Active commands: <code className="text-paper">/gug price &lt;ticker&gt;</code> &middot; <code className="text-paper">/gug portfolio &lt;citizen&gt;</code> &middot; <code className="text-paper">/gug market</code>. To register commands globally with Discord, run <code className="text-paper">node scripts/register-discord-commands.mjs</code>.
+            </p>
+          </div>
         </div>
 
         {/* Section 4: Listed Companies & Ticker Controls (Method 5) */}

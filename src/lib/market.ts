@@ -1,6 +1,7 @@
 import { getDb, initDb, scheduleBlobPersist } from "./db";
 import { getSetting } from "./wallet";
 import crypto from "crypto";
+import { notifyDiscordIPO } from "./discord";
 
 export interface Company {
   id: string;
@@ -925,6 +926,17 @@ export async function submitIPOApplication(params: {
     ],
   });
 
+  const proposedFloat = Math.round(Number(params.proposedTotalShares) * (1 - Number(params.proposedFounderRetainPercent) / 100));
+  notifyDiscordIPO({
+    ticker: ticker,
+    companyName: String(params.name),
+    founderName: String(params.parlamentumName),
+    floatShares: proposedFloat,
+    offeringPrice: Number(params.proposedIpoPrice),
+    totalRaise: proposedFloat * Number(params.proposedIpoPrice),
+    status: "APPLIED",
+  }).catch((err) => console.warn("Failed to notify discord IPO applied:", err));
+
   return {
     success: true,
     message: "IPO charter request submitted! The High Registrar will review your prospectus, business lore, and negotiate your initial listing price.",
@@ -1066,6 +1078,17 @@ export async function approveAndListIPO(
   });
 
   scheduleBlobPersist();
+
+  const approvedFloat = listRes.company?.floatShares || Math.round(finalShares * (1 - finalFounderRetain / 100));
+  notifyDiscordIPO({
+    ticker: String(app.ticker),
+    companyName: String(app.name),
+    founderName: String(app.parlamentum_name || "Founder"),
+    floatShares: approvedFloat,
+    offeringPrice: finalPrice,
+    totalRaise: approvedFloat * finalPrice,
+    status: "APPROVED",
+  }).catch((err) => console.warn("Failed to notify discord IPO approved:", err));
 
   return {
     success: true,

@@ -12,7 +12,8 @@ import { PortfolioPosition } from "@/lib/market";
 import { usePoll, stableBody } from "@/hooks/usePoll";
 import type { FeedUser } from "@/hooks/useMarketFeed";
 import { fmtGold, fmtPrice, fmtQty, fmtPct, fmtSigned, fmtUtcDate, moveColor } from "@/lib/format";
-import { Gift } from "lucide-react";
+import { Gift, ShieldCheck } from "lucide-react";
+import ShareholderBadgeModal from "@/components/ShareholderBadgeModal";
 
 interface PortfolioResponse {
   positions: PortfolioPosition[];
@@ -61,6 +62,7 @@ export default function PortfolioPage() {
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [giftModalCompany, setGiftModalCompany] = useState<string | undefined>(undefined);
   const [holdingsTab, setHoldingsTab] = useState<"trading" | "founder" | "all">("trading");
+  const [badgeTicker, setBadgeTicker] = useState<string | null>(null);
   const lastBody = useRef("");
 
   const load = useCallback(async (signal?: AbortSignal) => {
@@ -241,6 +243,10 @@ export default function PortfolioPage() {
                         <Link href={`/trade/${f.ticker}?tab=founder`} className="h-8 px-3 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold flex items-center">
                           Founder tools
                         </Link>
+                        <button type="button" onClick={() => setBadgeTicker(f.ticker)} className="h-8 px-3 rounded-[4px] border border-bullion/40 text-bullion hover:bg-bullion/10 text-[13px] font-medium flex items-center gap-1.5">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          Badge
+                        </button>
                         <Link href={`/company/${f.ticker}/ledger`} className="h-8 px-3 rounded-[4px] border border-rule hover:border-zinc-500 text-[13px] text-paper flex items-center">
                           Ledger
                         </Link>
@@ -309,6 +315,15 @@ export default function PortfolioPage() {
                                   Gift
                                 </button>
                               )}
+                              <button
+                                type="button"
+                                onClick={() => setBadgeTicker(pos.ticker)}
+                                className="h-7 px-2.5 rounded-[3px] border border-bullion/40 text-bullion hover:bg-bullion/10 text-[12px] inline-flex items-center gap-1 ml-1.5"
+                                title="View & share verified shareholder card"
+                              >
+                                <ShieldCheck className="h-3 w-3" />
+                                Badge
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -386,6 +401,14 @@ export default function PortfolioPage() {
           positions={positions}
           initialCompanyId={giftModalCompany}
           onGiftCreated={refresh}
+        />
+      )}
+
+      {badgeTicker && user && (
+        <ShareholderBadgeModal
+          ticker={badgeTicker}
+          username={user.username}
+          onClose={() => setBadgeTicker(null)}
         />
       )}
     </div>
