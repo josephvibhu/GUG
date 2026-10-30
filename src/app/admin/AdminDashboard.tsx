@@ -869,6 +869,16 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   >
                     All-Time Genesis
                   </button>
+                  {pdfMode === "since_last" && (
+                    <button
+                      type="button"
+                      onClick={handleResetPdfBookmark}
+                      title="Reset checkpoint to beginning of time so 'Since Last' includes all records"
+                      className="px-2 py-1 text-[10px] text-zinc-400 hover:text-amber-300 underline cursor-pointer"
+                    >
+                      Reset to Day 1
+                    </button>
+                  )}
                 </div>
 
                 <button
