@@ -249,25 +249,21 @@ export function generateAuditLedgerPdf(data: AuditLedgerData) {
     },
   });
 
-  currentY = (doc as any).lastAutoTable.finalY + 12;
+  currentY = (doc as any).lastAutoTable.finalY + 14;
 
   // Vault Rule explainer
   doc.setFontSize(8.5);
   doc.setFont("helvetica", "italic");
   doc.setTextColor(80, 80, 80);
-  doc.text(
-    "* VAULT RULE: As long as your in-game character holds at least 13,588.39 g, 100% of all player balances and company treasuries are safe. Any gold in your in-game wallet above 13,588.39 g is YOUR earned profit to keep or spend freely.",
-    40,
-    currentY,
-    { maxWidth: 515 }
-  );
-  currentY += 20;
-
-  currentY = (doc as any).lastAutoTable.finalY + 25;
+  const vaultRule = "* VAULT RULE: As long as your in-game character holds at least 13,588.39 g, 100% of all player balances and company treasuries are safe. Any gold in your in-game wallet above 13,588.39 g is YOUR earned profit to keep or spend freely.";
+  const splitRule = doc.splitTextToSize(vaultRule, 515);
+  doc.text(splitRule, 40, currentY);
+  currentY += splitRule.length * 11 + 18;
 
   // Pending withdrawals detail if any
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
+  doc.setTextColor(darkBg[0], darkBg[1], darkBg[2]);
   doc.text("Pending In-Game Payouts Queue (Immediate Action Required In-Game)", 40, currentY);
   currentY += 10;
 
