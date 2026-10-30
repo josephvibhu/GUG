@@ -31,7 +31,9 @@ import {
   PieChart,
   Users,
   Sliders,
-  DollarSign
+  DollarSign,
+  Download,
+  FileText
 } from "lucide-react";
 
 interface CitizenHolding {
@@ -147,6 +149,8 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
   const [financialSummary, setFinancialSummary] = useState<any | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfMode, setPdfMode] = useState<"since_last" | "all_time">("since_last");
   // A one-time password reset code, shown once to the operator to send privately
   const [resetCode, setResetCode] = useState<{ username: string; code: string; expiresAt: string } | null>(null);
   const [resetCopied, setResetCopied] = useState(false);
@@ -654,6 +658,65 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
     }
   };
 
+  const handleExportAuditPdf = async (mode: "since_last" | "all_time" = "since_last") => {
+    setPdfGenerating(true);
+    setFeedback(null);
+    try {
+      const url = mode === "all_time" 
+        ? "/api/admin/audit-ledger?since=2026-01-01T00:00:00.000Z"
+        : "/api/admin/audit-ledger";
+      
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.message || "Failed to fetch audit data");
+      }
+
+      // Dynamic import to keep bundle small
+      const { generateAuditLedgerPdf } = await import("@/lib/auditPdf");
+      generateAuditLedgerPdf(data);
+
+      // Bookmark this point in time if running in since_last mode
+      if (mode === "since_last") {
+        await fetch("/api/admin/audit-ledger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "set_cutoff", timestamp: data.period.to }),
+        });
+      }
+
+      setFeedback({
+        type: "success",
+        message: `Audit Ledger PDF generated and downloaded successfully! ${
+          mode === "since_last"
+            ? `Bookmark updated to current time (${new Date(data.period.to).toUTCString().slice(17, 25)} UTC). Next export will record changes from this point forward.`
+            : "Genesis all-time report generated."
+        }`,
+      });
+    } catch (err: any) {
+      console.error("PDF generation failed:", err);
+      setFeedback({ type: "error", message: `Failed to generate PDF: ${err.message}` });
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
+
+  const handleResetPdfBookmark = async () => {
+    try {
+      const res = await fetch("/api/admin/audit-ledger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reset_cutoff" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback({ type: "success", message: "PDF audit bookmark reset to genesis. Next click will include all historical transactions." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", message: "Failed to reset bookmark." });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-floor text-white flex flex-col">
@@ -782,13 +845,55 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 </div>
               </div>
 
-              <div className="text-right">
-                <span className="text-[10px] font-sans text-zinc-400 uppercase tracking-wider block">
-                  Total Platform Net Profit
-                </span>
-                <span className="tabular text-xl sm:text-2xl font-black text-paper">
-                  +{Number(financialSummary.totalPlatformProfit || 0).toLocaleString()} gold
-                </span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-1.5 p-1 bg-floor rounded-[4px] border border-rule self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setPdfMode("since_last")}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${
+                      pdfMode === "since_last"
+                        ? "bg-bullion text-floor shadow-sm"
+                        : "text-ash hover:text-paper"
+                    }`}
+                  >
+                    Since Last Audit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPdfMode("all_time")}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${
+                      pdfMode === "all_time"
+                        ? "bg-bullion text-floor shadow-sm"
+                        : "text-ash hover:text-paper"
+                    }`}
+                  >
+                    All-Time Genesis
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleExportAuditPdf(pdfMode)}
+                  disabled={pdfGenerating}
+                  className="h-10 px-4 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs flex items-center gap-2 shadow-lg transition cursor-pointer disabled:opacity-50"
+                  title="Generate multi-page PDF audit statement with all inflows, outflows, trades, corporate balance sheets, and cap tables"
+                >
+                  {pdfGenerating ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>{pdfGenerating ? "Generating Audit PDF..." : "Export Audit Ledger PDF"}</span>
+                </button>
+
+                <div className="text-right pl-2 sm:border-l sm:border-rule">
+                  <span className="text-[10px] font-sans text-zinc-400 uppercase tracking-wider block">
+                    Total Platform Net Profit
+                  </span>
+                  <span className="tabular text-xl sm:text-2xl font-black text-paper">
+                    +{Number(financialSummary.totalPlatformProfit || 0).toLocaleString()} gold
+                  </span>
+                </div>
               </div>
             </div>
 
