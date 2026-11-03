@@ -277,6 +277,14 @@ export async function initDb(): Promise<void> {
   } catch {}
 
   try {
+    await db.execute(`ALTER TABLE users ADD COLUMN referred_by TEXT;`);
+  } catch {}
+
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN referral_code_used TEXT;`);
+  } catch {}
+
+  try {
     await db.execute(`ALTER TABLE users ADD COLUMN terms_accepted_at TEXT;`);
   } catch {}
 
@@ -594,6 +602,38 @@ export async function initDb(): Promise<void> {
     );
   `);
 
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS referral_codes (
+      code TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL,
+      owner_name TEXT NOT NULL,
+      commission_pct REAL NOT NULL DEFAULT 20.0,
+      total_referred INTEGER NOT NULL DEFAULT 0,
+      total_volume REAL NOT NULL DEFAULT 0.0,
+      total_earned REAL NOT NULL DEFAULT 0.0,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (owner_id) REFERENCES users(id)
+    );
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS referral_rewards (
+      id TEXT PRIMARY KEY,
+      referrer_id TEXT NOT NULL,
+      referrer_name TEXT NOT NULL,
+      referral_code TEXT NOT NULL,
+      referred_user_id TEXT NOT NULL,
+      referred_username TEXT NOT NULL,
+      source_type TEXT NOT NULL CHECK(source_type IN ('TRADE_COMMISSION', 'SIGNUP_BONUS', 'DEPOSIT_BONUS')),
+      trade_id TEXT,
+      trade_volume REAL NOT NULL DEFAULT 0.0,
+      commission_gold REAL NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (referrer_id) REFERENCES users(id),
+      FOREIGN KEY (referred_user_id) REFERENCES users(id)
+    );
+  `);
+
   // Indexes for the queries every poll runs (order book, trade tape and charts, holders, purses)
   for (const ddl of [
     "CREATE INDEX IF NOT EXISTS idx_orders_book ON orders(company_id, type, status, price)",
@@ -612,6 +652,9 @@ export async function initDb(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_company_motions_company ON company_motions(company_id, status)",
     "CREATE INDEX IF NOT EXISTS idx_company_motion_votes_motion ON company_motion_votes(motion_id)",
     "CREATE INDEX IF NOT EXISTS idx_company_motion_votes_user ON company_motion_votes(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_referral_rewards_referrer ON referral_rewards(referrer_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_referral_codes_owner ON referral_codes(owner_id)",
+    "CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by)",
   ]) {
     await db.execute(ddl);
   }

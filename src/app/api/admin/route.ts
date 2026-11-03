@@ -206,6 +206,9 @@ export async function GET() {
       netGoldInCustody: Math.round((Number(walletStatsRow.total_deposits || 0) - Number(walletStatsRow.total_withdrawals || 0)) * 100) / 100,
     };
 
+    const { adminGetAllReferralCodes } = await import("@/lib/referrals");
+    const referralCodes = await adminGetAllReferralCodes();
+
     return NextResponse.json({
       success: true,
       settings: {
@@ -225,6 +228,7 @@ export async function GET() {
       earningsReports,
       nextFriday: nextFriday.toISOString(),
       financialSummary,
+      referralCodes,
     });
   } catch (error: any) {
     console.error("GET /api/admin error:", error);
@@ -391,6 +395,17 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json({ success: true, message: "Test alert delivered to Discord successfully!" });
+    }
+
+    if (action === "set_custom_referral_code") {
+      const { code, targetUsername, commissionPct } = body;
+      const { adminSetCustomReferralCode } = await import("@/lib/referrals");
+      const res = await adminSetCustomReferralCode({
+        code,
+        targetUsername,
+        commissionPct: Number(commissionPct) || 20.0,
+      });
+      return NextResponse.json(res, { status: res.success ? 200 : 400 });
     }
 
     if (action === "register_discord_commands") {

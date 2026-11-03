@@ -162,7 +162,8 @@ export async function registerUser(
   username: string, 
   password: string, 
   adminCode?: string,
-  acceptedTerms?: boolean
+  acceptedTerms?: boolean,
+  referralCode?: string
 ): Promise<{ success: boolean; message?: string; user?: UserSession }> {
   await initDb();
   const db = getDb();
@@ -214,6 +215,19 @@ export async function registerUser(
       now
     ],
   });
+
+  if (referralCode && referralCode.trim()) {
+    try {
+      const { recordReferralSignup } = await import("./referrals");
+      await recordReferralSignup(id, referralCode.trim());
+    } catch (e) {
+      console.warn("Failed to record referral on register:", e);
+    }
+  }
+  try {
+    const { getOrCreateUserReferralCode } = await import("./referrals");
+    await getOrCreateUserReferralCode(id, cleanUser);
+  } catch {}
 
   await persistDbToBlob();
 

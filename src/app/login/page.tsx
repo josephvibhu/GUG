@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { CoinMark } from "@/components/CoinMark";
 import { KeyRound, ArrowLeft } from "lucide-react";
@@ -24,12 +24,29 @@ export default function LoginPage() {
   const [adminCode, setAdminCode] = useState("");
   const [showAdminField, setShowAdminField] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
   // Changing the password with a one-time code from the operator instead of the current password
   const [useCode, setUseCode] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const r = params.get("ref") || params.get("r");
+      if (r && r.trim()) {
+        const clean = r.trim().toUpperCase();
+        setReferralCode(clean);
+        localStorage.setItem("gug_ref", clean);
+        if (mode === "login" && !chosen) setChosen("register");
+      } else {
+        const stored = localStorage.getItem("gug_ref");
+        if (stored) setReferralCode(stored);
+      }
+    } catch {}
+  }, [mode, chosen]);
 
   const switchTo = (m: Mode) => {
     setChosen(m);
@@ -80,7 +97,7 @@ export default function LoginPage() {
         mode === "login"
           ? { action: "login", username: cleanUser, password }
           : mode === "register"
-          ? { action: "register", username: cleanUser, password, adminCode: adminCode.trim(), acceptedTerms: agreeTerms }
+          ? { action: "register", username: cleanUser, password, adminCode: adminCode.trim(), acceptedTerms: agreeTerms, referralCode: referralCode.trim() }
           : useCode
           ? { action: "reset_password", username: cleanUser, code: password, newPassword }
           : { action: "change_password", username: cleanUser, currentPassword: password, newPassword };
@@ -207,7 +224,22 @@ export default function LoginPage() {
           {mode === "register" && (
             <>
               <label className="flex flex-col gap-1">
-                <span className="text-[12px] text-ash">Repeat the password</span>
+                <div className="flex items-center justify-between">
+                <span className="text-[12px] text-ash">Referral code (optional)</span>
+                {referralCode && (
+                  <span className="text-[11px] text-emerald-400 font-medium">Applied ✓</span>
+                )}
+              </div>
+              <input
+                type="text"
+                placeholder="e.g. TEXY"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                className={`${field} uppercase tracking-wider`}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[12px] text-ash">Repeat the password</span>
                 <input type="password" required minLength={6} autoComplete="new-password" value={repeatPassword} onChange={(e) => setRepeatPassword(e.target.value)} className={field} />
               </label>
               <label className="flex items-start gap-2.5 text-[13px] text-paper">

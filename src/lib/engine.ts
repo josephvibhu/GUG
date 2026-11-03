@@ -1,5 +1,6 @@
 import { getDb, initDb } from "./db";
 import { getSetting } from "./wallet";
+import { distributeTradeReferralCommissions } from "./referrals";
 import crypto from "crypto";
 
 export interface PlaceOrderParams {
@@ -374,6 +375,14 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
         total: matchCost,
       });
 
+      distributeTradeReferralCommissions({
+        tradeId,
+        buyerId: userId,
+        sellerId: String(ask.user_id),
+        matchCost,
+        tradeFee,
+      }).catch((e) => console.warn("Referral error:", e));
+
       // Update company current price to latest executed trade
       await updateCompanyPrice(db, actualCompanyId, execPrice, matchCost);
     }
@@ -468,6 +477,14 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
         quantity: matchQty,
         total: matchCost,
       });
+
+      distributeTradeReferralCommissions({
+        tradeId,
+        buyerId: String(bid.user_id),
+        sellerId: userId,
+        matchCost,
+        tradeFee,
+      }).catch((e) => console.warn("Referral error:", e));
 
       // Update company current price to latest executed trade
       await updateCompanyPrice(db, actualCompanyId, execPrice, matchCost);

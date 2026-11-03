@@ -20,6 +20,7 @@ import {
   KeyRound,
   MessageSquare,
   Gavel,
+  Users,
 } from "lucide-react";
 import WalletModal from "./WalletModal";
 import TermsModal from "./TermsModal";
@@ -105,6 +106,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
     { href: "/ipo", label: "List a company", short: "List", icon: CirclePlus, active: pathname === "/ipo" },
     { href: "/crypto", label: "Crypto", icon: Coins, active: pathname === "/crypto", soon: true },
     { href: "/funds", label: "Funds", icon: Landmark, active: pathname === "/funds" },
+    { href: "/referrals", label: "Referrals", icon: Users, active: pathname === "/referrals" },
   ];
   const name = user ? (user.displayName || user.username) : "";
   // Founders see each company's treasury next to their purse
@@ -242,6 +244,9 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                           </button>
                           <Link role="menuitem" href="/portfolio" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
                             <Briefcase className="h-4 w-4 text-ash" /> Portfolio
+                          </Link>
+                          <Link role="menuitem" href="/referrals" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60 text-bullion font-medium">
+                            <Users className="h-4 w-4" /> Affiliate Hub
                           </Link>
                         </>
                       )}

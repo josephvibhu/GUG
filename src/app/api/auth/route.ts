@@ -31,8 +31,8 @@ export async function POST(request: Request) {
     }
 
     if (action === "register") {
-      const { username, password, adminCode, acceptedTerms } = body;
-      const res = await registerUser(username, password, adminCode, acceptedTerms);
+      const { username, password, adminCode, acceptedTerms, referralCode } = body;
+      const res = await registerUser(username, password, adminCode, acceptedTerms, referralCode);
       return NextResponse.json(res);
     }
 
