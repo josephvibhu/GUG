@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { auctionId, amount } = body;
+    const { auctionId, amount, maxBid } = body;
 
     if (!auctionId) return NextResponse.json({ success: false, message: "auctionId is required." }, { status: 400 });
     if (!amount || Number(amount) <= 0) {
@@ -25,6 +25,7 @@ export async function POST(request: Request) {
       bidderId: user.id,
       auctionId: String(auctionId),
       amount: Number(amount),
+      maxBid: maxBid ? Number(maxBid) : undefined,
     });
 
     return NextResponse.json(result, { status: result.success ? 200 : 400 });

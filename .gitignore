@@ -43,3 +43,5 @@ next-env.d.ts
 .vercel
 .env*
 parlamentum_market.db*
+parlamentum_wiki_dump.txt
+scripts/

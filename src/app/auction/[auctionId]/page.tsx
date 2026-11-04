@@ -62,6 +62,8 @@ function AuctionLotInner({ auctionId }: { auctionId: string }) {
   const nft = auction?.nft ?? null;
 
   const [bidAmount, setBidAmount] = useState("");
+  const [maxProxyBid, setMaxProxyBid] = useState("");
+  const [useProxy, setUseProxy] = useState(false);
   const [bidding, setBidding] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -77,18 +79,29 @@ function AuctionLotInner({ auctionId }: { auctionId: string }) {
       setMsg({ ok: false, text: `Minimum bid is ${minBid.toLocaleString()} g.` });
       return;
     }
+    const maxBidNum = useProxy && maxProxyBid ? parseFloat(maxProxyBid) : undefined;
+    if (useProxy && maxBidNum !== undefined && maxBidNum < amount) {
+      setMsg({ ok: false, text: "Proxy maximum bid cannot be lower than your initial bid." });
+      return;
+    }
+
     setBidding(true);
     setMsg(null);
     try {
       const res = await fetch("/api/nft/bid", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ auctionId, amount }),
+        body: JSON.stringify({
+          auctionId,
+          amount,
+          maxBid: maxBidNum,
+        }),
       });
       const json = await res.json();
       setMsg({ ok: json.success, text: json.message });
       if (json.success) {
         setBidAmount("");
+        setMaxProxyBid("");
         refresh();
       }
     } catch {
@@ -211,10 +224,20 @@ function AuctionLotInner({ auctionId }: { auctionId: string }) {
 
           {/* Bid form */}
           {canBid && (
-            <div className="flex flex-col gap-2">
-              <label className="text-[12px] text-ash">
-                Your bid (gold) — minimum {fmtPrice(minBid)}
-              </label>
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[12px] text-ash">
+                  Your bid (gold) — minimum {fmtPrice(minBid)}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setUseProxy(!useProxy)}
+                  className="text-[11px] text-bullion hover:underline font-medium"
+                >
+                  {useProxy ? "Simple bid" : "⚡ Set Automatic Proxy Bid"}
+                </button>
+              </div>
+
               <div className="flex gap-2">
                 <input
                   type="number"
@@ -229,15 +252,37 @@ function AuctionLotInner({ auctionId }: { auctionId: string }) {
                 <button
                   onClick={handleBid}
                   disabled={bidding || !bidAmount}
-                  className="h-10 px-5 rounded-[4px] bg-bullion hover:bg-amber-300 disabled:opacity-50 text-floor font-semibold text-[13px] flex items-center gap-1.5 transition-colors"
+                  className="h-10 px-5 rounded-[4px] bg-bullion hover:bg-amber-300 disabled:opacity-50 text-floor font-semibold text-[13px] flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Gavel className="h-4 w-4" />
                   {bidding ? "Bidding…" : "Bid"}
                 </button>
               </div>
+
+              {useProxy && (
+                <div className="p-3 bg-pane border border-rule rounded-[4px] flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-200 font-semibold">Automatic Proxy Ceiling (Max Bid)</span>
+                    <span className="text-ash">System bids for you up to this limit</span>
+                  </div>
+                  <input
+                    type="number"
+                    min={parseFloat(bidAmount) || minBid}
+                    step="0.01"
+                    value={maxProxyBid}
+                    onChange={(e) => setMaxProxyBid(e.target.value)}
+                    placeholder="e.g. 5000"
+                    className="w-full h-8 rounded-[4px] border border-rule bg-floor px-2.5 text-[13px] text-zinc-50 placeholder:text-ash focus:outline-none focus:border-zinc-500 tabular"
+                  />
+                  <p className="text-[10px] text-ash">
+                    Funds up to this ceiling are locked. Unspent gold is refunded immediately if you win for less or are outbid.
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-start gap-1 text-[11px] text-ash">
                 <Lock className="h-3 w-3 mt-0.5 shrink-0" />
-                Gold is locked immediately. Refunded if you are outbid.
+                Gold is locked in your vault. Refunded automatically if you are outbid.
               </div>
               {msg && (
                 <p className={`text-[12px] font-medium ${msg.ok ? "text-bull" : "text-bear"}`}>{msg.text}</p>

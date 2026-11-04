@@ -12,8 +12,10 @@ import { PortfolioPosition } from "@/lib/market";
 import { usePoll, stableBody } from "@/hooks/usePoll";
 import type { FeedUser } from "@/hooks/useMarketFeed";
 import { fmtGold, fmtPrice, fmtQty, fmtPct, fmtSigned, fmtUtcDate, moveColor } from "@/lib/format";
-import { Gift, ShieldCheck } from "lucide-react";
+import { Gift, ShieldCheck, Trophy } from "lucide-react";
 import ShareholderBadgeModal from "@/components/ShareholderBadgeModal";
+import NftVaultSection from "@/components/NftVaultSection";
+import type { Nft, NftListing, NftOffer } from "@/lib/nft";
 
 interface PortfolioResponse {
   positions: PortfolioPosition[];
@@ -63,6 +65,22 @@ export default function PortfolioPage() {
   const [giftModalCompany, setGiftModalCompany] = useState<string | undefined>(undefined);
   const [holdingsTab, setHoldingsTab] = useState<"trading" | "founder" | "all">("trading");
   const [badgeTicker, setBadgeTicker] = useState<string | null>(null);
+  // NFT Vault & P2P Trade State
+  const [nftVault, setNftVault] = useState<(Nft & { activeListing?: NftListing | null; activeOffersCount?: number })[]>([]);
+  const [nftOffersReceived, setNftOffersReceived] = useState<NftOffer[]>([]);
+  const [nftOffersSent, setNftOffersSent] = useState<NftOffer[]>([]);
+
+  const loadNftVault = useCallback(async () => {
+    try {
+      const res = await fetch("/api/nft/trade", { cache: "no-store" });
+      const json = await res.json();
+      if (json.success) {
+        setNftVault(json.vault || []);
+        setNftOffersReceived(json.offersReceived || []);
+        setNftOffersSent(json.offersSent || []);
+      }
+    } catch {}
+  }, []);
   const lastBody = useRef("");
 
   const load = useCallback(async (signal?: AbortSignal) => {
@@ -83,6 +101,7 @@ export default function PortfolioPage() {
 
   // Holdings only change when you trade or a dividend lands; trades and deposits refresh it at once
   usePoll(load, 10000);
+  usePoll(loadNftVault, 10000);
   const refresh = useCallback(() => window.dispatchEvent(new Event("wallet_updated")), []);
 
   const p = data?.portfolio;
@@ -333,6 +352,17 @@ export default function PortfolioPage() {
                 </div>
               )}
             </section>
+
+                        {/* Citizen NFT Trophy Vault & Gallery */}
+            <NftVaultSection
+              vault={nftVault}
+              offersReceived={nftOffersReceived}
+              offersSent={nftOffersSent}
+              onRefresh={() => {
+                loadNftVault();
+                refresh();
+              }}
+            />
 
             <StockGiftsSection
               onPortfolioRefresh={refresh}

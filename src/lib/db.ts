@@ -760,7 +760,7 @@ export async function initDb(): Promise<void> {
       edition_note        TEXT,
       creator_royalty_bps INTEGER NOT NULL DEFAULT 500,
       status              TEXT NOT NULL DEFAULT 'OWNED'
-                            CHECK(status IN ('OWNED','IN_AUCTION')),
+                            CHECK(status IN ('OWNED','IN_AUCTION','LISTED_FOR_SALE')),
       minted_at           TEXT NOT NULL,
       FOREIGN KEY (creator_id)       REFERENCES users(id),
       FOREIGN KEY (current_owner_id) REFERENCES users(id)
@@ -796,6 +796,7 @@ export async function initDb(): Promise<void> {
       auction_id  TEXT NOT NULL,
       bidder_id   TEXT NOT NULL,
       amount      REAL NOT NULL,
+      max_bid     REAL,
       placed_at   TEXT NOT NULL,
       status      TEXT NOT NULL DEFAULT 'ACTIVE'
                     CHECK(status IN ('ACTIVE','OUTBID','WON','REFUNDED')),
@@ -804,11 +805,51 @@ export async function initDb(): Promise<void> {
     );
   `);
 
+  try {
+    await db.execute(`ALTER TABLE nft_bids ADD COLUMN max_bid REAL;`);
+  } catch {}
+
+  // P2P Marketplace Listings (Fixed price instant buy)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS nft_listings (
+      id             TEXT PRIMARY KEY,
+      nft_id         TEXT NOT NULL,
+      seller_id      TEXT NOT NULL,
+      price          REAL NOT NULL,
+      status         TEXT NOT NULL DEFAULT 'ACTIVE'
+                       CHECK(status IN ('ACTIVE','SOLD','CANCELLED')),
+      created_at     TEXT NOT NULL,
+      completed_at   TEXT,
+      FOREIGN KEY (nft_id)    REFERENCES nfts(id),
+      FOREIGN KEY (seller_id) REFERENCES users(id)
+    );
+  `);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_nft_listings_nft ON nft_listings(nft_id, status)`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_nft_listings_seller ON nft_listings(seller_id, status)`);
+
+  // Direct Private Offers & P2P Trade Offers
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS nft_offers (
+      id             TEXT PRIMARY KEY,
+      nft_id         TEXT NOT NULL,
+      buyer_id       TEXT NOT NULL,
+      amount         REAL NOT NULL,
+      status         TEXT NOT NULL DEFAULT 'ACTIVE'
+                       CHECK(status IN ('ACTIVE','ACCEPTED','REJECTED','CANCELLED')),
+      created_at     TEXT NOT NULL,
+      completed_at   TEXT,
+      FOREIGN KEY (nft_id)   REFERENCES nfts(id),
+      FOREIGN KEY (buyer_id) REFERENCES users(id)
+    );
+  `);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_nft_offers_nft ON nft_offers(nft_id, status)`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_nft_offers_buyer ON nft_offers(buyer_id, status)`);
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS nft_history (
       id           TEXT PRIMARY KEY,
       nft_id       TEXT NOT NULL,
-      event        TEXT NOT NULL CHECK(event IN ('MINTED','SOLD','TRANSFERRED','GIFTED')),
+      event        TEXT NOT NULL CHECK(event IN ('MINTED','SOLD','TRANSFERRED','GIFTED','P2P_SALE','DIRECT_OFFER')),
       from_user_id TEXT,
       to_user_id   TEXT NOT NULL,
       price        REAL,
