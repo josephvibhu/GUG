@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { getDb, initDb } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
-export const dynamic = "force-dynamic";
-
 export async function GET() {
   try {
     await initDb();
