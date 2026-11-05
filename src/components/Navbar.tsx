@@ -21,11 +21,13 @@ import {
   MessageSquare,
   Gavel,
   Users,
+  Bell,
 } from "lucide-react";
 import WalletModal from "./WalletModal";
 import TermsModal from "./TermsModal";
 import DepositAdjustmentModal from "./DepositAdjustmentModal";
 import DCLiquidationModal from "./DCLiquidationModal";
+import NotificationsModal from "./NotificationsModal";
 import { FloorClock } from "./FloorClock";
 import { CoinMark } from "./CoinMark";
 import { useMarketFeed, refreshMarketFeed } from "@/hooks/useMarketFeed";
@@ -38,6 +40,8 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [walletTab, setWalletTab] = useState<"deposit" | "withdraw" | "history">("deposit");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isDcDecreeOpen, setIsDcDecreeOpen] = useState(false);
   const [pulseNote, setPulseNote] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -249,6 +253,17 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                           <Link role="menuitem" href="/referrals" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60 text-bullion font-medium">
                             <Users className="h-4 w-4" /> Affiliate Hub
                           </Link>
+                          <button
+                            role="menuitem"
+                            type="button"
+                            onClick={() => {
+                              setMenuOpen(false);
+                              setIsNotificationsOpen(true);
+                            }}
+                            className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60 text-paper"
+                          >
+                            <Bell className="h-4 w-4 text-ash" /> Notifications
+                          </button>
                         </>
                       )}
                       <Link role="menuitem" href="/login?mode=change" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
@@ -364,8 +379,19 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
         user={user}
       />
 
+      {/* Notifications Modal */}
+      <NotificationsModal
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        onOpenDcDecree={() => setIsDcDecreeOpen(true)}
+        user={user}
+      />
+
       {/* Regulatory Enforcement & Liquidation Decree Modal for $DC */}
-      <DCLiquidationModal user={user} />
+      <DCLiquidationModal
+        isOpen={isDcDecreeOpen}
+        onClose={() => setIsDcDecreeOpen(false)}
+      />
     </>
   );
 }
