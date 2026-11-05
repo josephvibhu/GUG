@@ -209,6 +209,11 @@ export async function GET() {
     const { adminGetAllReferralCodes } = await import("@/lib/referrals");
     const referralCodes = await adminGetAllReferralCodes();
 
+    const appealsRes = await db.execute("SELECT key, value FROM settings WHERE key LIKE '%_founder_appeal'");
+    const regulatoryAppeals = appealsRes.rows.map((r) => {
+      try { return JSON.parse(String(r.value)); } catch { return null; }
+    }).filter(Boolean);
+
     return NextResponse.json({
       success: true,
       settings: {
@@ -229,6 +234,7 @@ export async function GET() {
       nextFriday: nextFriday.toISOString(),
       financialSummary,
       referralCodes,
+      regulatoryAppeals,
     });
   } catch (error: any) {
     console.error("GET /api/admin error:", error);

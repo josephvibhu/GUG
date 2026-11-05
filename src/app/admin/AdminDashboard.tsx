@@ -28,6 +28,7 @@ import {
   Search,
   Wallet,
   TrendingUp,
+  Scale,
   PieChart,
   Users,
   Sliders,
@@ -124,6 +125,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
 
   // Pending IPO Applications
   const [ipoApplications, setIpoApplications] = useState<any[]>([]);
+  const [regulatoryAppeals, setRegulatoryAppeals] = useState<any[]>([]);
   const [negotiatingApp, setNegotiatingApp] = useState<{ [id: string]: { price: string; shares: string; floatPercent: string; notes: string } }>({});
 
   // Manual loader form
@@ -179,6 +181,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
         setCitizens(data.citizens || []);
         setPendingDeposits(data.pendingDeposits || []);
         setIpoApplications(data.ipoApplications || []);
+        if (data.regulatoryAppeals) setRegulatoryAppeals(data.regulatoryAppeals);
         setCompanies(data.companies || []);
         if (data.earningsReports) setEarningsReports(data.earningsReports);
         if (data.nextFriday) setNextFriday(data.nextFriday);
@@ -1538,6 +1541,52 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
             </button>
           </div>
         </div>
+
+        {/* Section 2.75: Regulatory Appeals & Dissolution Petitions */}
+        {regulatoryAppeals.length > 0 && (
+          <div className="bg-amber-950/20 border border-amber-500/40 rounded-[6px] p-5 flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-amber-500/30 pb-3">
+              <div>
+                <h3 className="font-bold text-amber-400 text-sm flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-amber-400" />
+                  Regulatory Enforcement Appeals & Petitions ({regulatoryAppeals.length})
+                </h3>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
+                  Formal appeals submitted by founders of dissolved or penalized corporations.
+                </p>
+              </div>
+              <span className="text-[11px] tabular text-amber-400 font-bold bg-floor border border-amber-500/30 px-2.5 py-1 rounded-[4px]">
+                Pending Board Review
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {regulatoryAppeals.map((app, idx) => (
+                <div key={idx} className="p-4 rounded bg-floor/80 border border-amber-500/20 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-sm">
+                      ${app.ticker} — Appeal by {app.founderUsername}
+                    </span>
+                    <span className="text-[10px] text-ash">
+                      {new Date(app.submittedAt).toUTCString()}
+                    </span>
+                  </div>
+                  <div className="text-zinc-300">
+                    <strong className="text-amber-400">Reason / Defense:</strong> {app.reason}
+                  </div>
+                  {app.restitutionPlan && (
+                    <div className="text-zinc-400">
+                      <strong className="text-zinc-200">Restitution Plan:</strong> {app.restitutionPlan}
+                    </div>
+                  )}
+                  <div className="text-[10px] text-amber-400/80 font-mono">
+                    Status: {app.status}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Section 2.8: IPO Applications & Price Negotiation Queue */}
         <div className="bg-pane/60 border border-rule rounded-[6px] p-5 flex flex-col gap-4">
