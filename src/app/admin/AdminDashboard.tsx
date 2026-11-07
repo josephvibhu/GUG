@@ -816,7 +816,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
       generateShareholderCardPdf(data.cardData);
       setFeedback({
         type: "success",
-        message: "Visual Shareholder Report Card ($GUG Week 2) generated and downloaded!",
+        message: "Visual Shareholder Report Card ($GUG Week 3) generated and downloaded!",
       });
     } catch (err: any) {
       console.error("Card generation failed:", err);
@@ -826,8 +826,8 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
     }
   };
 
-  const handleFileWeek2Report = async () => {
-    if (!confirm("Confirm filing Week 2 operational profits (554.20 gold) and distributing 50% dividend (277.10 gold total, 0.0277g/share) to all shareholders?")) return;
+  const handleFileWeek3Report = async () => {
+    if (!confirm("Confirm filing Week 3 operational profits (680.00 gold) and distributing 50% dividend (340.00 gold total, 0.0340g/share) to all shareholders?")) return;
     setReportFiling(true);
     setFeedback(null);
     try {
@@ -842,7 +842,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
       }
       setFeedback({
         type: "success",
-        message: data.message || "Week 2 report successfully filed and dividends distributed!",
+        message: data.message || "Week 3 report successfully filed and dividends distributed!",
       });
       fetchAdminData();
     } catch (err: any) {
@@ -1037,7 +1037,7 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                   onClick={handleExportShareholderCard}
                   disabled={cardGenerating}
                   className="h-10 px-4 rounded-[4px] bg-zinc-900 border border-amber-500/50 hover:border-amber-400 text-amber-300 font-bold text-xs flex items-center gap-2 shadow-lg transition cursor-pointer disabled:opacity-50"
-                  title="Generate sleek visual 1-page dark Shareholder Report Card ($GUG Week 2)"
+                  title="Generate sleek visual 1-page dark Shareholder Report Card ($GUG Week 3)"
                 >
                   {cardGenerating ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1066,12 +1066,12 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-zinc-100">$GUG Shareholder Report & Dividends (Week 2)</span>
+                    <span className="font-bold text-sm text-zinc-100">$GUG Shareholder Report & Dividends (Week 3)</span>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-black">OFFICIAL</span>
                   </div>
                   <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
-                    Week 2 Operating Profit: <span className="text-amber-400 font-bold tabular">+554.20 gold</span> (Trading fees + IPO charters + deposit rail spread, excluding primary share capital). 
-                    50% Payout Pool: <span className="text-emerald-400 font-bold tabular">277.10 gold</span> (0.0277g on each of 10,000 shares; 31.02g to public float).
+                    Week 3 Operating Profit: <span className="text-amber-400 font-bold tabular">+680.00 gold</span> (Trading fees + deposit rail spread, excluding primary share capital). 
+                    50% Payout Pool: <span className="text-emerald-400 font-bold tabular">340.00 gold</span> (0.0340g on each of 10,000 shares; 52.80g to public float).
                   </p>
                 </div>
               </div>
@@ -1088,10 +1088,10 @@ export default function AdminDashboard({ initialUser }: { initialUser?: any }) {
                 </button>
                 <button
                   type="button"
-                  onClick={handleFileWeek2Report}
+                  onClick={handleFileWeek3Report}
                   disabled={reportFiling}
                   className="px-4 py-2 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 shadow-md"
-                  title="File audited Week 2 profit and immediately distribute 50% dividends to all shareholders"
+                  title="File audited Week 3 profit and immediately distribute 50% dividends to all shareholders"
                 >
                   {reportFiling ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Award className="w-3.5 h-3.5" />}
                   <span>File Profits & Distribute 50%</span>

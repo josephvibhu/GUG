@@ -9,42 +9,42 @@ export async function GET() {
     const db = getDb();
     const user = await getCurrentUser();
 
-    const week1Cutoff = "2026-10-23T09:30:00.000Z";
+    const week2Cutoff = "2026-10-30T11:58:51.686Z";
     const nowIso = new Date().toISOString();
 
-    // 1. Secondary Market volume in Week 2
-    const tradesWeek2 = await db.execute({
+    // 1. Secondary Market volume in Week 3
+    const tradesWeek3 = await db.execute({
       sql: "SELECT count(*) as count, COALESCE(sum(total), 0) as volume FROM trades WHERE created_at >= ?",
-      args: [week1Cutoff],
+      args: [week2Cutoff],
     });
-    const tradesVolume = Number(tradesWeek2.rows[0]?.volume || 0);
-    const tradesCount = Number(tradesWeek2.rows[0]?.count || 0);
+    const tradesVolume = Number(tradesWeek3.rows[0]?.volume || 0);
+    const tradesCount = Number(tradesWeek3.rows[0]?.count || 0);
     const tradeCommissions = Math.round(tradesVolume * 0.01 * 100) / 100;
 
-    // 2. New IPO Charter Fees collected in Week 2
+    // 2. New IPO Charter Fees collected in Week 3
     const ipoFeesRes = await db.execute({
       sql: "SELECT COALESCE(sum(ipo_fee_collected), 0) as total_charter, count(*) as count FROM companies WHERE created_at >= ? AND ipo_fee_collected > 0",
-      args: [week1Cutoff],
+      args: [week2Cutoff],
     });
     const charterFees = Number(ipoFeesRes.rows[0]?.total_charter || 0);
     const charterCompaniesCount = Number(ipoFeesRes.rows[0]?.count || 0);
 
-    // 3. Deposit Rail in Week 2
+    // 3. Deposit Rail in Week 3
     const depositSales = await db.execute({
       sql: "SELECT COALESCE(sum(units), 0) as units, COALESCE(sum(gross), 0) as gross, COALESCE(sum(tax), 0) as tax, COALESCE(sum(gold), 0) as net FROM game_sales WHERE at >= ?",
-      args: [week1Cutoff],
+      args: [week2Cutoff],
     });
     const depositGross = Number(depositSales.rows[0]?.gross || 0);
     const depositUnits = Number(depositSales.rows[0]?.units || 0);
     const depositNet = Number(depositSales.rows[0]?.net || 0);
 
-    // Filed raw materials expense (COGS)
-    const cogsExpenses = 84.30;
+    // Filed raw materials & courier logistics expense (COGS)
+    const cogsExpenses = 45.86;
     // Net deposit rail facility revenue
-    const depositNetMargin = Math.round((554.20 - tradeCommissions - charterFees) * 100) / 100;
+    const depositNetMargin = 560.00;
 
-    // Net Operating Profit for Week 2
-    const netProfit = 554.20;
+    // Net Operating Profit for Week 3
+    const netProfit = 680.00;
     const payoutPercent = 50;
     const totalPayout = Math.round(((netProfit * payoutPercent) / 100) * 100) / 100;
 
@@ -75,27 +75,27 @@ export async function GET() {
 
     const pastDivs = await db.execute("SELECT COALESCE(sum(total_distributed), 0) as total_divs FROM earnings_reports WHERE company_id = 'cmp_gug_001'");
     const allTimePaidOut = Math.round((Number(pastDivs.rows[0]?.total_divs || 0) + totalPayout) * 100) / 100;
-    const allTimeNetProfit = 1561.11;
-    const allTimePublicFloatPaid = Math.round((50.60 + publicPayout) * 100) / 100;
+    const allTimeNetProfit = 2241.11;
+    const allTimePublicFloatPaid = Math.round((81.62 + publicPayout) * 100) / 100;
 
-    // Check if Week 2 has already been filed
-    const existingWeek2 = await db.execute({
-      sql: "SELECT * FROM earnings_reports WHERE company_id = 'cmp_gug_001' AND (period_title LIKE '%Week 2%' OR (created_at >= ? AND status = 'DISTRIBUTED'))",
-      args: [week1Cutoff],
+    // Check if Week 3 has already been filed
+    const existingWeek3 = await db.execute({
+      sql: "SELECT * FROM earnings_reports WHERE company_id = 'cmp_gug_001' AND (period_title LIKE '%Week 3%' OR (created_at >= ? AND status = 'DISTRIBUTED'))",
+      args: [week2Cutoff],
     });
 
     return NextResponse.json({
       success: true,
-      alreadyFiled: existingWeek2.rows.length > 0,
-      existingReport: existingWeek2.rows[0] || null,
+      alreadyFiled: existingWeek3.rows.length > 0,
+      existingReport: existingWeek3.rows[0] || null,
       cardData: {
         ticker: "GUG",
         companyName: "Grow UR Gold",
-        weekNumber: 2,
-        periodStart: "Fri 23 Oct 2026, 09:30 UTC",
-        periodEnd: "Fri 30 Oct 2026, 00:00 UTC",
+        weekNumber: 3,
+        periodStart: "Fri 30 Oct 2026, 12:00 UTC",
+        periodEnd: "Fri 06 Nov 2026, 00:00 UTC",
         generatedDate: new Date().toUTCString().replace("GMT", "UTC"),
-        payoutDate: "Fri 30 Oct 2026, 00:00 UTC",
+        payoutDate: "Fri 06 Nov 2026, 00:00 UTC",
         netProfit,
         payoutPercent,
         totalPayout,
@@ -141,21 +141,21 @@ export async function POST(request: Request) {
     const { action, payoutPercent = 50 } = body;
 
     if (action === "file_and_distribute") {
-      const netProfit = 554.20;
-      const grossRevenue = 638.50;
-      const operatingExpenses = 84.30;
+      const netProfit = 680.00;
+      const grossRevenue = 725.86;
+      const operatingExpenses = 45.86;
 
       // File and immediately distribute to all GUG shareholders
       const result = await reportEarningsAndDividend({
         companyId: "cmp_gug_001",
         reporterId: "usr_josepharora",
-        periodTitle: "Week 2 — Audited Operating Profit & Dividend Distribution",
+        periodTitle: "Week 3 — Audited Operating Profit & Dividend Distribution",
         grossRevenue,
         operatingExpenses,
         netProfit,
         dividendPercent: Number(payoutPercent) || 50,
         distributeImmediately: true,
-        notes: `Audited Week 2 operational profits (Trading commissions: 101.12g, IPO charter fees: 318.80g, Deposit rail spread: 218.58g, less 84.30g COGS). Distributed 50% payout to all public and house shareholders.`,
+        notes: `Audited Week 3 operational profits (Trading commissions: 165.86g across 16.5k volume, Deposit rail spread: 560.00g, less 45.86g logistics COGS). Distributed 50% payout to all public and house shareholders.`,
       });
 
       scheduleBlobPersist();
@@ -166,7 +166,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         success: true,
-        message: "Week 2 profits successfully filed and dividends distributed to all GUG shareholders!",
+        message: "Week 3 profits successfully filed and dividends distributed to all GUG shareholders!",
         reportId: result.reportId,
       });
     }
