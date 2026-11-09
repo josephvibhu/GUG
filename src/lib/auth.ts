@@ -554,3 +554,61 @@ export async function resetPasswordWithCode(
 
   return { success: true, message: "Password set. Any other device that was logged in has been logged out." };
 }
+
+
+export async function loginOrRegisterCivixUser(citizen: {
+  id: string;
+  username: string;
+  gameProfileId: string;
+  verificationTier?: string;
+}): Promise<{ success: boolean; user?: UserSession; message?: string }> {
+  await initDb();
+  const db = getDb();
+  const cleanUser = citizen.username.trim();
+
+  // Search by username or parlamentum name
+  let res = await db.execute({
+    sql: "SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(parlamentum_name) = ?",
+    args: [cleanUser.toLowerCase(), cleanUser.toLowerCase()],
+  });
+
+  if (res.rows.length === 0) {
+    await syncDbFromBlob(true);
+    res = await db.execute({
+      sql: "SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(parlamentum_name) = ?",
+      args: [cleanUser.toLowerCase(), cleanUser.toLowerCase()],
+    });
+  }
+
+  let targetUserId: string;
+
+  if (res.rows.length > 0) {
+    // Existing GUG user -> Log them in!
+    targetUserId = String(res.rows[0].id);
+  } else {
+    // New user coming through Civix ID -> Auto-create GUG citizen account!
+    targetUserId = `usr_${cleanUser.toLowerCase().replace(/[^a-z0-9]/g, "")}_${crypto.randomBytes(3).toString("hex")}`;
+    const dummyPasswordHash = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), 10);
+    const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanUser}`;
+
+    await db.execute({
+      sql: `INSERT INTO users (id, username, display_name, parlamentum_name, password_hash, avatar, cash_balance, terms_accepted)
+            VALUES (?, ?, ?, ?, ?, ?, 0.0, 1)`,
+      args: [targetUserId, cleanUser, cleanUser, cleanUser, dummyPasswordHash, avatar],
+    });
+    await persistDbToBlob();
+  }
+
+  // Set session cookie
+  const epochRes = await db.execute({
+    sql: "SELECT session_epoch FROM users WHERE id = ?",
+    args: [targetUserId],
+  });
+  const epoch = Number(epochRes.rows[0]?.session_epoch || 0);
+
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, await signSession(targetUserId, epoch), SESSION_COOKIE);
+
+  const updatedUser = await getCurrentUser();
+  return { success: true, user: updatedUser || undefined };
+}

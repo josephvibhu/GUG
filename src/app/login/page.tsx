@@ -3,7 +3,7 @@
 import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { CoinMark } from "@/components/CoinMark";
-import { KeyRound, ArrowLeft } from "lucide-react";
+import { KeyRound, ArrowLeft, Shield } from "lucide-react";
 
 type Mode = "login" | "register" | "change";
 
@@ -153,6 +153,27 @@ export default function LoginPage() {
               : "The player-run stock exchange of Parlamentum"}
           </p>
         </header>
+
+        {mode !== "change" && (
+          <div className="flex flex-col gap-3">
+            <a
+              href="https://civix-plum.vercel.app/api/oauth/authorize?client_id=civ_client_gug_live&redirect_uri=https://growurgold.vercel.app/api/auth/callback/civix&scope=identity%20banking:kyc"
+              className="h-10 w-full rounded-[4px] border border-amber-500/40 bg-zinc-900/90 hover:bg-zinc-800 text-amber-400 hover:text-amber-300 text-[13px] font-bold flex items-center justify-center gap-2 transition-all shadow-sm group"
+            >
+              <div className="flex h-5 w-5 items-center justify-center rounded bg-amber-500/20 text-amber-400 group-hover:scale-105 transition-transform">
+                <Shield className="h-3.5 w-3.5 stroke-[2.5]" />
+              </div>
+              <span>Sign in with Civix ID</span>
+              <span className="text-[10px] text-zinc-400 font-mono uppercase bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700">One Login</span>
+            </a>
+
+            <div className="flex items-center gap-3 my-1">
+              <div className="h-px flex-1 bg-rule" />
+              <span className="text-[11px] font-medium text-ash uppercase tracking-wider">or sign in with password</span>
+              <div className="h-px flex-1 bg-rule" />
+            </div>
+          </div>
+        )}
 
         {mode !== "change" && (
           <div role="tablist" aria-label="Account" className="grid grid-cols-2 gap-0.5 p-0.5 rounded-[4px] border border-rule">
