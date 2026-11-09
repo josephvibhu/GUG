@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 64" width="1024" height="64" style="background: #08080C; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.8);">
+  <defs>
+    <!-- LED Glow Filter -->
+    <filter id="ledGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Top / Bottom Track Mounting Bezel -->
+  <rect x="0" y="0" width="1024" height="8" fill="#181A22" />
+  <rect x="0" y="56" width="1024" height="8" fill="#181A22" />
+  <line x1="0" y1="8" x2="1024" y2="8" stroke="#2D313E" stroke-width="1" />
+  <line x1="0" y1="56" x2="1024" y2="56" stroke="#2D313E" stroke-width="1" />
+
+  <!-- LED Grid Backdrop (128x8 diodes) -->
+  <pattern id="diodeGrid" width="8" height="8" patternUnits="userSpaceOnUse">
+    <circle cx="4" cy="4" r="2.2" fill="#12131A" />
+  </pattern>
+  <rect x="0" y="8" width="1024" height="48" fill="url(#diodeGrid)" />
+
+  <!-- Slogan Typography: GROW UR GOLD · INVEST RIGHT (Crafted in Glowing Stadium Amber LED) -->
+  <text x="512" y="38" font-family="'Courier New', monospace, sans-serif" font-weight="900" font-size="28" fill="#F5AF19" text-anchor="middle" letter-spacing="4" filter="url(#ledGlow)">
+    GROW UR GOLD · INVEST RIGHT
+  </text>
+</svg>
