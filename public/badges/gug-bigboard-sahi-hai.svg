@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 256" width="768" height="256" style="background: #0A0B10; border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.85);">
+  <defs>
+    <radialGradient id="coinGlow" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FEF08A" />
+      <stop offset="35%" stop-color="#FBBF24" />
+      <stop offset="70%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#92400E" />
+    </radialGradient>
+    <filter id="ledGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Stadium Mounting Frame -->
+  <rect x="0" y="0" width="768" height="256" rx="8" fill="#12141D" stroke="#2D313E" stroke-width="4" />
+  
+  <!-- Subtle Stadium LED Matrix grid -->
+  <pattern id="diodeGrid" width="8" height="8" patternUnits="userSpaceOnUse">
+    <circle cx="4" cy="4" r="2.2" fill="#181A24" />
+  </pattern>
+  <rect x="8" y="8" width="752" height="240" fill="url(#diodeGrid)" />
+
+  <!-- LEFT: 3D GUG Gold Coin (Diameter ~180px) -->
+  <g transform="translate(40, 38)">
+    <!-- Outer Rim -->
+    <circle cx="90" cy="90" r="86" fill="#78350F" />
+    <circle cx="90" cy="90" r="80" fill="url(#coinGlow)" stroke="#FEF08A" stroke-width="3" />
+    <circle cx="90" cy="90" r="66" fill="none" stroke="#78350F" stroke-width="2" />
+    <circle cx="90" cy="90" r="62" fill="url(#coinGlow)" />
+
+    <!-- Embossed G -->
+    <path d="M 110 65 C 105 60 97 57 88 57 C 69 57 55 71 55 90 C 55 109 69 123 88 123 C 104 123 114 114 116 99 L 88 99 L 88 88 L 127 88 L 127 102 C 124 119 110 133 88 133 C 63 133 44 113 44 90 C 44 66 63 47 88 47 C 101 47 112 52 120 60 Z" fill="#451A03" />
+    <path d="M 108 67 C 103 62 96 59 88 59 C 71 59 58 72 58 90 C 58 107 71 121 88 121 C 102 121 112 112 114 97 L 88 97 L 88 90 L 124 90 L 124 100 C 122 117 108 130 88 130 C 65 130 47 111 47 90 C 47 68 65 49 88 49 C 100 49 110 54 117 62 Z" fill="#FDE047" />
+
+    <!-- Sparkle -->
+    <circle cx="65" cy="65" r="6" fill="#FFFFFF" filter="url(#ledGlow)" />
+  </g>
+
+  <!-- RIGHT: 3-Line High-Impact Typography -->
+  <g transform="translate(260, 0)">
+    <!-- Line 1: Header / Brand -->
+    <text x="0" y="72" font-family="'Courier New', monospace, sans-serif" font-weight="900" font-size="44" fill="#F5AF19" letter-spacing="4" filter="url(#ledGlow)">
+      GROW UR GOLD
+    </text>
+
+    <!-- Line 2: The Campaign ("Mutual Funds Sahi Hai" Style) -->
+    <text x="0" y="142" font-family="'Courier New', monospace, sans-serif" font-weight="900" font-size="40" fill="#FFFFFF" letter-spacing="3" filter="url(#ledGlow)">
+      STOCKS SAHI HAI
+    </text>
+
+    <!-- Line 3: Proof / Yield -->
+    <text x="0" y="210" font-family="'Courier New', monospace, sans-serif" font-weight="800" font-size="34" fill="#34D399" letter-spacing="2" filter="url(#ledGlow)">
+      50% WEEKLY DIVS · GUG
+    </text>
+  </g>
+</svg>
