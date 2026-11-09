@@ -37,11 +37,21 @@ export async function GET(req: Request) {
 
     // Auto-login or register citizen in GUG
     const loginResult = await loginOrRegisterCivixUser(data.citizen);
-    if (!loginResult.success) {
+    if (!loginResult.success || !loginResult.user) {
       return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(loginResult.message || "civix_error")}`, req.url));
     }
 
-    const redirectPath = loginResult.user?.isManager ? "/admin" : "/";
+    // Auto-link referral in GUG if referred via Civix ecosystem
+    if (data.citizen.referredBy) {
+      try {
+        const { recordReferralSignup } = await import("@/lib/referrals");
+        await recordReferralSignup(loginResult.user.id, data.citizen.referredBy);
+      } catch (refErr) {
+        console.error("GUG referral link error:", refErr);
+      }
+    }
+
+    const redirectPath = loginResult.user.isManager ? "/admin" : "/";
     return NextResponse.redirect(new URL(redirectPath, req.url));
   } catch (err: any) {
     console.error("Civix callback error:", err);
