@@ -3,6 +3,7 @@
 import { use, useState, useCallback, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { usePoll, stableBody } from "@/hooks/usePoll";
+import { useMarketFeed } from "@/hooks/useMarketFeed";
 import Navbar from "@/components/Navbar";
 import AuctionCountdown from "@/components/AuctionCountdown";
 import NFTProvenance from "@/components/NFTProvenance";
@@ -60,6 +61,9 @@ function AuctionLotInner({ auctionId }: { auctionId: string }) {
 
   const auction = data?.auction ?? null;
   const nft = auction?.nft ?? null;
+  const { user } = useMarketFeed();
+  const isOwner = Boolean(user && nft && auction && nft.currentOwnerId === user.id && auction.status === "SETTLED");
+  const isLiveOrScheduled = Boolean(auction && (auction.status === "LIVE" || auction.status === "SCHEDULED"));
 
   const [bidAmount, setBidAmount] = useState("");
   const [maxProxyBid, setMaxProxyBid] = useState("");
@@ -190,28 +194,63 @@ function AuctionLotInner({ auctionId }: { auctionId: string }) {
                 </span>
               </div>
             </div>
-            <div className="flex items-center justify-between pt-1 border-t border-rule">
-              <a
-                href={nft.imageUrl}
-                download="zyro_tactical_operative_signed.jpg"
-                className="text-bullion hover:underline flex items-center gap-1 text-[11px] font-medium"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download Signed Asset
-              </a>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText("7a9e5e1aa79ad0f97dff0e91e6428d54131de8f6422826a1ffca200f3366f60e");
-                  setCopiedSig(true);
-                  setTimeout(() => setCopiedSig(false), 2000);
-                }}
-                className="text-ash hover:text-zinc-200 flex items-center gap-1 text-[11px] cursor-pointer"
-              >
-                {copiedSig ? <Check className="h-3.5 w-3.5 text-bull" /> : <Copy className="h-3.5 w-3.5" />}
-                {copiedSig ? "Copied Sig" : "Copy Signature"}
-              </button>
-            </div>
+            {isOwner ? (
+              <div className="flex items-center justify-between pt-2 border-t border-rule">
+                <a
+                  href={nft.imageUrl}
+                  download="zyro_tactical_operative_signed.jpg"
+                  className="text-bullion hover:underline flex items-center gap-1.5 text-[11px] font-semibold"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download Master Signed Asset
+                </a>
+                <span className="text-[10px] uppercase font-bold text-bull bg-bull/10 border border-bull/30 px-1.5 py-0.5 rounded-[2px]">
+                  Owner Verified
+                </span>
+              </div>
+            ) : isLiveOrScheduled ? (
+              <div className="flex flex-col gap-1.5 pt-2 border-t border-rule">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="flex items-center gap-1.5 text-amber-400/90 font-medium">
+                    <Lock className="h-3.5 w-3.5 shrink-0" />
+                    Master Asset Locked in Escrow
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText("7a9e5e1aa79ad0f97dff0e91e6428d54131de8f6422826a1ffca200f3366f60e");
+                      setCopiedSig(true);
+                      setTimeout(() => setCopiedSig(false), 2000);
+                    }}
+                    className="text-ash hover:text-zinc-200 flex items-center gap-1 text-[11px] cursor-pointer"
+                  >
+                    {copiedSig ? <Check className="h-3.5 w-3.5 text-bull" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedSig ? "Copied Sig" : "Copy Signature"}
+                  </button>
+                </div>
+                <p className="text-[10px] text-ash">
+                  The cryptographically signed original binary unlocks in the winning bidder&apos;s Trophy Vault once the auction is settled.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between pt-2 border-t border-rule text-[11px]">
+                <span className="text-ash">
+                  Owned by <span className="text-zinc-300 font-medium">{nft.currentOwnerName || "Collector"}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText("7a9e5e1aa79ad0f97dff0e91e6428d54131de8f6422826a1ffca200f3366f60e");
+                    setCopiedSig(true);
+                    setTimeout(() => setCopiedSig(false), 2000);
+                  }}
+                  className="text-ash hover:text-zinc-200 flex items-center gap-1 text-[11px] cursor-pointer"
+                >
+                  {copiedSig ? <Check className="h-3.5 w-3.5 text-bull" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copiedSig ? "Copied Sig" : "Copy Signature"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
