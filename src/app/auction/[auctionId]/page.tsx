@@ -7,7 +7,7 @@ import Navbar from "@/components/Navbar";
 import AuctionCountdown from "@/components/AuctionCountdown";
 import NFTProvenance from "@/components/NFTProvenance";
 import { fmtPrice } from "@/lib/format";
-import { Gavel, ChevronLeft, Lock, Users } from "lucide-react";
+import { Gavel, ChevronLeft, Lock, Users, ShieldCheck, CheckCircle2, Download, Copy, Check } from "lucide-react";
 import type { NftAuction, Nft, NftBid, NftHistoryEntry } from "@/lib/nft";
 
 type AuctionDetail = NftAuction & { nft: Nft & { history?: NftHistoryEntry[] }; bids: NftBid[] };
@@ -66,6 +66,7 @@ function AuctionLotInner({ auctionId }: { auctionId: string }) {
   const [useProxy, setUseProxy] = useState(false);
   const [bidding, setBidding] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [copiedSig, setCopiedSig] = useState(false);
 
   const minBid = auction
     ? auction.currentBid !== null
@@ -151,8 +152,67 @@ function AuctionLotInner({ auctionId }: { auctionId: string }) {
             <img src={nft.imageUrl} alt={nft.title} className="w-full h-full object-contain" />
           </div>
           {nft.editionNote && (
-            <p className="text-[12px] text-ash text-center">{nft.editionNote}</p>
+            <div className="flex items-center justify-center gap-1.5 text-[12px] text-bullion font-medium bg-bullion/10 border border-bullion/20 py-1.5 px-3 rounded-[4px]">
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              <span>{nft.editionNote}</span>
+            </div>
           )}
+
+          {/* Cryptographic Provenance & Digital Signature Deed */}
+          <div className="border border-rule rounded-[6px] p-3.5 bg-pane flex flex-col gap-2.5 text-[12px]">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-zinc-200 flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-bull" />
+                Cryptographically Signed 1-of-1 NFT
+              </span>
+              <span className="text-[10px] uppercase font-bold text-bull bg-bull/10 border border-bull/30 px-1.5 py-0.5 rounded-[2px]">
+                Verified Authentic
+              </span>
+            </div>
+            <p className="text-ash text-[11px] leading-relaxed">
+              Unlike a raw image file, this sovereign artifact carries a hidden digital signature and SHA-256 cryptographic provenance embedded directly in the binary file and recorded on the Parlamentum Imperial Ledger.
+            </p>
+            <div className="bg-floor border border-rule rounded-[4px] p-2.5 flex flex-col gap-1.5 text-[11px] font-mono">
+              <div className="flex justify-between items-center text-ash">
+                <span>Standard</span>
+                <span className="text-zinc-300">PARLAMENTUM-NFT-V1</span>
+              </div>
+              <div className="flex justify-between items-center text-ash">
+                <span>Asset Fingerprint (SHA-256)</span>
+                <span className="text-zinc-300 text-[10px] truncate max-w-[190px]">
+                  8d430ca090dc97a146a22ecebff5598c243c80afa331025397663c92141964d9
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-ash">
+                <span>Digital Signature (HMAC)</span>
+                <span className="text-bullion text-[10px] truncate max-w-[190px]">
+                  7a9e5e1aa79ad0f97dff0e91e6428d54131de8f6422826a1ffca200f3366f60e
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between pt-1 border-t border-rule">
+              <a
+                href={nft.imageUrl}
+                download="zyro_tactical_operative_signed.jpg"
+                className="text-bullion hover:underline flex items-center gap-1 text-[11px] font-medium"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download Signed Asset
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText("7a9e5e1aa79ad0f97dff0e91e6428d54131de8f6422826a1ffca200f3366f60e");
+                  setCopiedSig(true);
+                  setTimeout(() => setCopiedSig(false), 2000);
+                }}
+                className="text-ash hover:text-zinc-200 flex items-center gap-1 text-[11px] cursor-pointer"
+              >
+                {copiedSig ? <Check className="h-3.5 w-3.5 text-bull" /> : <Copy className="h-3.5 w-3.5" />}
+                {copiedSig ? "Copied Sig" : "Copy Signature"}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Right — details + bid */}

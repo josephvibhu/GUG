@@ -37,7 +37,8 @@ export default function AuctionCard({ auction }: Props) {
           {isScheduled ? "Upcoming" : "Live"}
         </span>
         {nft.editionNote && (
-          <span className="absolute bottom-2 left-2 bg-black/60 text-zinc-300 text-[10px] px-1.5 py-0.5 rounded-[3px]">
+          <span className="absolute bottom-2 left-2 bg-black/80 backdrop-blur text-amber-300 text-[10px] px-2 py-0.5 rounded-[3px] border border-amber-500/30 font-medium flex items-center gap-1 shadow">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
             {nft.editionNote}
           </span>
         )}
