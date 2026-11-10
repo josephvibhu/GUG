@@ -27,6 +27,7 @@ export interface Company {
   sharesBoughtBack: number;
   buybackGoldSpent: number;
   totalDividendsPaid?: number;
+  dividendRate?: number;
   weeklyRevenue?: number;
   treasuryBalance?: number;
   totalProfitDeposited?: number;
@@ -232,6 +233,7 @@ export async function getAllCompanies(): Promise<Company[]> {
       sharesBoughtBack: Number(row.shares_bought_back || 0),
       buybackGoldSpent: Number(row.buyback_gold_spent || 0),
       totalDividendsPaid: Number(row.total_dividends_paid || 0),
+      dividendRate: Number(row.dividend_rate || 50),
       weeklyRevenue: Number(row.weekly_revenue || 0),
       treasuryBalance: Number(row.treasury_balance || 0),
       totalProfitDeposited: Number(row.total_profit_deposited || 0),
@@ -327,6 +329,7 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
     sharesBoughtBack: Number(row.shares_bought_back || 0),
     buybackGoldSpent: Number(row.buyback_gold_spent || 0),
     totalDividendsPaid: Number(row.total_dividends_paid || 0),
+    dividendRate: Number(row.dividend_rate || 50),
     weeklyRevenue: Number(row.weekly_revenue || 0),
     treasuryBalance: Number(row.treasury_balance || 0),
     totalProfitDeposited: Number(row.total_profit_deposited || 0),

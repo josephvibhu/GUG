@@ -104,7 +104,7 @@ export function EarningsDialog({
   onDone: () => void;
 }) {
   const [profit, setProfit] = useState("1006.91");
-  const [payoutRate, setPayoutRate] = useState("20");
+  const [payoutRate, setPayoutRate] = useState(String(company.dividendRate || 50));
   const [note, setNote] = useState("");
   const [payNow, setPayNow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -170,7 +170,7 @@ export function EarningsDialog({
           <label className="flex flex-col gap-1">
             <span className="text-[12px] text-ash">Payout Ratio (%)</span>
             <div className="flex gap-1.5">
-              {[20, 30, 50].map((pct) => (
+              {Array.from(new Set([20, 30, 50, 60, ...(company.dividendRate ? [company.dividendRate] : [])])).sort((a, b) => a - b).map((pct) => (
                 <button
                   key={pct}
                   type="button"
