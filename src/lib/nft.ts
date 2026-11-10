@@ -365,15 +365,15 @@ export async function placeBid(params: PlaceBidParams): Promise<{ success: boole
     // Adjust locked cash to the new maxBid
     const oldLocked = Number(incumbent.max_bid || incumbent.amount);
     const diff = maxBid - oldLocked;
-    const available = Number(user.cash_balance) - Number(user.locked_cash);
+    const available = Number(user.cash_balance);
     if (diff > 0 && available < diff) {
-      return { success: false, message: `Insufficient gold to raise max proxy bid to ${maxBid.toLocaleString()} g.` };
+      return { success: false, message: `Insufficient gold to raise max proxy bid to ${maxBid.toLocaleString()} g (available: ${available.toLocaleString()} g).` };
     }
 
     if (diff !== 0) {
       await db.execute({
-        sql: "UPDATE users SET cash_balance = cash_balance - ?, locked_cash = locked_cash + ? WHERE id = ?",
-        args: [diff, diff, params.bidderId],
+        sql: "UPDATE users SET cash_balance = cash_balance - ?, locked_cash = locked_cash + ? WHERE id = ? AND cash_balance >= ?",
+        args: [diff, diff, params.bidderId, diff > 0 ? diff : 0],
       });
     }
 
@@ -400,17 +400,17 @@ export async function placeBid(params: PlaceBidParams): Promise<{ success: boole
 
   // New challenger placing a bid
   // Challenger must lock their full maxBid
-  const available = Number(user.cash_balance) - Number(user.locked_cash);
+  const available = Number(user.cash_balance);
   if (available < maxBid) {
-    return { success: false, message: `Insufficient gold. You need ${maxBid.toLocaleString()} g available to back your bid.` };
+    return { success: false, message: `Insufficient gold. You need ${maxBid.toLocaleString()} g available to back your bid (you have ${available.toLocaleString()} g).` };
   }
 
   const now = new Date().toISOString();
 
   // Deduct challenger's maxBid from available cash into locked_cash
   await db.execute({
-    sql: "UPDATE users SET cash_balance = cash_balance - ?, locked_cash = locked_cash + ? WHERE id = ?",
-    args: [maxBid, params.bidderId],
+    sql: "UPDATE users SET cash_balance = cash_balance - ?, locked_cash = locked_cash + ? WHERE id = ? AND cash_balance >= ?",
+    args: [maxBid, maxBid, params.bidderId, maxBid],
   });
 
   let winningBidderId = params.bidderId;
@@ -819,14 +819,14 @@ export async function buyNftListing(
 
   if (sellerId === buyerId) return { success: false, message: "You cannot buy your own listing." };
 
-  const available = Number(buyer.cash_balance) - Number(buyer.locked_cash);
+  const available = Number(buyer.cash_balance);
   if (available < price) {
     return { success: false, message: `Insufficient gold. Price is ${price.toLocaleString()} g, you have ${available.toLocaleString()} g available.` };
   }
 
   // Deduct from buyer
   const debitRes = await db.execute({
-    sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ? AND (cash_balance - locked_cash) >= ?",
+    sql: "UPDATE users SET cash_balance = cash_balance - ? WHERE id = ? AND cash_balance >= ?",
     args: [price, buyerId, price],
   });
   if (debitRes.rowsAffected === 0) {
@@ -909,14 +909,14 @@ export async function makePrivateOffer(
     return { success: false, message: "You already own this NFT." };
   }
 
-  const available = Number(buyer.cash_balance) - Number(buyer.locked_cash);
+  const available = Number(buyer.cash_balance);
   if (available < safeAmount) {
     return { success: false, message: `Insufficient gold. Offer requires ${safeAmount.toLocaleString()} g available, you have ${available.toLocaleString()} g.` };
   }
 
   // Lock offer funds from buyer
   const lockRes = await db.execute({
-    sql: "UPDATE users SET cash_balance = cash_balance - ?, locked_cash = locked_cash + ? WHERE id = ? AND (cash_balance - locked_cash) >= ?",
+    sql: "UPDATE users SET cash_balance = cash_balance - ?, locked_cash = locked_cash + ? WHERE id = ? AND cash_balance >= ?",
     args: [safeAmount, safeAmount, buyerId, safeAmount],
   });
   if (lockRes.rowsAffected === 0) {
