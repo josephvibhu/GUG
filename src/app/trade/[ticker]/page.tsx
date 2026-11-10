@@ -63,6 +63,7 @@ interface TerminalData {
 }
 
 type Tab = "book" | "trades" | "orders" | "position" | "holders" | "dividends" | "governance" | "ledger" | "about" | "founder";
+const VALID_TABS: readonly Tab[] = ["book", "trades", "orders", "position", "holders", "dividends", "governance", "ledger", "about", "founder"];
 
 // Desktop layout switch read from CSS media, so the default tab suits the screen (false on the server)
 const LG = "(min-width: 1024px)";
@@ -89,9 +90,11 @@ function Terminal({ ticker }: { ticker: string }) {
   const [data, setData] = useState<TerminalData | null>(null);
   const [missing, setMissing] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
-  const [tab, setTab] = useState<Tab | null>(() =>
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "founder" ? "founder" : null
-  );
+  const [tab, setTab] = useState<Tab | null>(() => {
+    if (typeof window === "undefined") return null;
+    const requested = new URLSearchParams(window.location.search).get("tab") as Tab | null;
+    return requested && VALID_TABS.includes(requested) ? requested : null;
+  });
   const [dialog, setDialog] = useState<"buyback" | "earnings" | null>(null);
   const lastBody = useRef("");
 

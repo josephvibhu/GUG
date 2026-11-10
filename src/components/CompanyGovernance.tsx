@@ -27,7 +27,8 @@ export default function CompanyGovernance({ ticker, isFounderOrAdmin }: Props) {
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Voting state
-  const [votingMotionId, setVotingMotionId] = useState<string | null>(null);
+  const [votingState, setVotingState] = useState<{ motionId: string; choice: "YES" | "NO" | "ABSTAIN" } | null>(null);
+  const [voteFeedback, setVoteFeedback] = useState<{ motionId: string; ok: boolean; message: string } | null>(null);
 
   const fetchMotions = useCallback(async () => {
     try {
@@ -85,7 +86,8 @@ export default function CompanyGovernance({ ticker, isFounderOrAdmin }: Props) {
   };
 
   const handleVote = async (motionId: string, choice: "YES" | "NO" | "ABSTAIN") => {
-    setVotingMotionId(motionId);
+    setVotingState({ motionId, choice });
+    setVoteFeedback(null);
     setActionError(null);
     try {
       const res = await fetch(`/api/companies/${ticker}/motions`, {
@@ -98,15 +100,16 @@ export default function CompanyGovernance({ ticker, isFounderOrAdmin }: Props) {
         }),
       });
       const data = await res.json();
-      if (!data.success) {
-        alert(data.message || "Failed to register vote.");
+      if (!res.ok || !data.success) {
+        setVoteFeedback({ motionId, ok: false, message: data.message || "Failed to register vote." });
         return;
       }
-      fetchMotions();
+      await fetchMotions();
+      setVoteFeedback({ motionId, ok: true, message: `Vote (${choice}) recorded.` });
     } catch {
-      alert("Network error casting vote.");
+      setVoteFeedback({ motionId, ok: false, message: "Network error casting vote. Please try again." });
     } finally {
-      setVotingMotionId(null);
+      setVotingState(null);
     }
   };
 
@@ -187,7 +190,8 @@ export default function CompanyGovernance({ ticker, isFounderOrAdmin }: Props) {
                 motion={motion}
                 userShares={userShares}
                 onVote={handleVote}
-                voting={votingMotionId === motion.id}
+                votingChoice={votingState?.motionId === motion.id ? votingState.choice : null}
+                feedback={voteFeedback?.motionId === motion.id ? voteFeedback : null}
               />
             ))}
           </div>
@@ -208,7 +212,8 @@ export default function CompanyGovernance({ ticker, isFounderOrAdmin }: Props) {
                 motion={motion}
                 userShares={userShares}
                 onVote={handleVote}
-                voting={false}
+                votingChoice={null}
+                feedback={null}
               />
             ))}
           </div>
@@ -318,13 +323,16 @@ function MotionCard({
   motion,
   userShares,
   onVote,
-  voting,
+  votingChoice,
+  feedback,
 }: {
   motion: CompanyMotion;
   userShares: number;
   onVote: (motionId: string, choice: "YES" | "NO" | "ABSTAIN") => void;
-  voting: boolean;
+  votingChoice: "YES" | "NO" | "ABSTAIN" | null;
+  feedback: { ok: boolean; message: string } | null;
 }) {
+  const voting = votingChoice !== null;
   const totalShares = motion.totalCompanyShares || 10000;
   const quorumSharesNeeded = Math.round((totalShares * motion.quorumPct) / 100);
   const quorumMet = motion.totalVotedShares >= quorumSharesNeeded;
@@ -404,55 +412,64 @@ function MotionCard({
 
       {/* Voting Section */}
       {isActive && !isExpired && (
-        <div className="pt-3 border-t border-rule/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-[12px] text-ash">
-            {motion.userVote ? (
-              <span className="text-zinc-50">
-                You voted: <strong className="text-bullion uppercase">{motion.userVote}</strong> with {fmtQty(userShares)} shares.
-              </span>
-            ) : userShares > 0 ? (
-              <span>Cast your vote ({fmtQty(userShares)} shares voting power):</span>
-            ) : (
-              <span className="text-ash/80">Only shareholders holding $GUG can cast proxy votes.</span>
+        <div className="pt-3 border-t border-rule/80 flex flex-col gap-2.5">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-[12px] text-ash">
+              {motion.userVote ? (
+                <span className="text-zinc-50">
+                  You voted: <strong className="text-bullion uppercase">{motion.userVote}</strong> with {fmtQty(userShares)} shares.
+                </span>
+              ) : userShares > 0 ? (
+                <span>Cast your vote ({fmtQty(userShares)} shares voting power):</span>
+              ) : (
+                <span className="text-ash/80">Only shareholders holding {motion.ticker ? `$${motion.ticker}` : "shares"} can cast proxy votes.</span>
+              )}
+            </div>
+
+            {userShares > 0 && (
+              <div className="flex items-center gap-2">
+                {(
+                  [
+                    {
+                      choice: "YES" as const,
+                      label: "Vote YES",
+                      activeClass: "bg-emerald-500 text-floor font-bold ring-2 ring-emerald-400",
+                      idleClass: "bg-emerald-950/60 text-emerald-400 border border-emerald-800 hover:bg-emerald-900/60",
+                    },
+                    {
+                      choice: "NO" as const,
+                      label: "Vote NO",
+                      activeClass: "bg-rose-500 text-floor font-bold ring-2 ring-rose-400",
+                      idleClass: "bg-rose-950/60 text-rose-400 border border-rose-800 hover:bg-rose-900/60",
+                    },
+                    {
+                      choice: "ABSTAIN" as const,
+                      label: "Abstain",
+                      activeClass: "bg-zinc-600 text-zinc-50 font-bold",
+                      idleClass: "bg-floor text-ash border border-rule hover:text-paper",
+                    },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.choice}
+                    type="button"
+                    disabled={voting}
+                    onClick={() => onVote(motion.id, opt.choice)}
+                    className={`h-8 px-3 rounded-[3px] text-[12px] font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                      motion.userVote === opt.choice ? opt.activeClass : opt.idleClass
+                    }`}
+                  >
+                    {votingChoice === opt.choice ? "Saving…" : opt.label}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
-          {userShares > 0 && (
-            <div className="flex items-center gap-2">
-              <button
-                disabled={voting}
-                onClick={() => onVote(motion.id, "YES")}
-                className={`h-8 px-3 rounded-[3px] text-[12px] font-semibold transition-colors ${
-                  motion.userVote === "YES"
-                    ? "bg-emerald-500 text-floor font-bold ring-2 ring-emerald-400"
-                    : "bg-emerald-950/60 text-emerald-400 border border-emerald-800 hover:bg-emerald-900/60"
-                }`}
-              >
-                Vote YES
-              </button>
-              <button
-                disabled={voting}
-                onClick={() => onVote(motion.id, "NO")}
-                className={`h-8 px-3 rounded-[3px] text-[12px] font-semibold transition-colors ${
-                  motion.userVote === "NO"
-                    ? "bg-rose-500 text-floor font-bold ring-2 ring-rose-400"
-                    : "bg-rose-950/60 text-rose-400 border border-rose-800 hover:bg-rose-900/60"
-                }`}
-              >
-                Vote NO
-              </button>
-              <button
-                disabled={voting}
-                onClick={() => onVote(motion.id, "ABSTAIN")}
-                className={`h-8 px-2.5 rounded-[3px] text-[12px] transition-colors ${
-                  motion.userVote === "ABSTAIN"
-                    ? "bg-zinc-600 text-zinc-50 font-bold"
-                    : "bg-floor text-ash border border-rule hover:text-paper"
-                }`}
-              >
-                Abstain
-              </button>
-            </div>
+          {feedback && (
+            <p className={`text-[12px] ${feedback.ok ? "text-emerald-400" : "text-rose-400"}`} role="status">
+              {feedback.message}
+            </p>
           )}
         </div>
       )}
