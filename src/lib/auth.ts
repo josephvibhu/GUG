@@ -180,15 +180,24 @@ export async function registerUser(
   }
 
   const existing = await db.execute({
-    sql: "SELECT id FROM users WHERE LOWER(username) = ?",
+    sql: "SELECT id, password_hash FROM users WHERE LOWER(username) = ?",
     args: [cleanUser.toLowerCase()],
   });
 
+  let id: string;
+  let isClaimingPromoter = false;
+
   if (existing.rows.length > 0) {
-    return { success: false, message: "A citizen with this name is already registered." };
+    if (existing.rows[0].password_hash === "PROMOTER_NO_LOGIN") {
+      isClaimingPromoter = true;
+      id = String(existing.rows[0].id);
+    } else {
+      return { success: false, message: "A citizen with this name is already registered." };
+    }
+  } else {
+    id = `usr_${crypto.randomUUID().slice(0, 8)}`;
   }
 
-  const id = `usr_${crypto.randomUUID().slice(0, 8)}`;
   const passwordHash = await bcrypt.hash(password, 10);
   const now = new Date().toISOString();
   
@@ -197,24 +206,34 @@ export async function registerUser(
   const avatar = isAdmin ? "🏛️" : "🎩";
   const displayName = cleanUser;
 
-  // Balance starts at strictly 0.0 gold
-  await db.execute({
-    sql: `INSERT INTO users (
-            id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, 
-            avatar, is_admin, account_type, terms_accepted_at, created_at
-          ) VALUES (?, ?, ?, ?, ?, 0.0, 0.0, ?, ?, 'CITIZEN', ?, ?)`,
-    args: [
-      id, 
-      cleanUser, 
-      passwordHash, 
-      displayName, 
-      cleanUser, 
-      avatar, 
-      isAdmin,
-      now,
-      now
-    ],
-  });
+  if (isClaimingPromoter) {
+    await db.execute({
+      sql: `UPDATE users SET 
+              username = ?, password_hash = ?, display_name = ?, parlamentum_name = ?, 
+              avatar = ?, is_admin = ?, account_type = 'CITIZEN', terms_accepted_at = ?, created_at = ?
+            WHERE id = ?`,
+      args: [cleanUser, passwordHash, displayName, cleanUser, avatar, isAdmin, now, now, id],
+    });
+  } else {
+    // Balance starts at strictly 0.0 gold
+    await db.execute({
+      sql: `INSERT INTO users (
+              id, username, password_hash, display_name, parlamentum_name, cash_balance, locked_cash, 
+              avatar, is_admin, account_type, terms_accepted_at, created_at
+            ) VALUES (?, ?, ?, ?, ?, 0.0, 0.0, ?, ?, 'CITIZEN', ?, ?)`,
+      args: [
+        id, 
+        cleanUser, 
+        passwordHash, 
+        displayName, 
+        cleanUser, 
+        avatar, 
+        isAdmin,
+        now,
+        now
+      ],
+    });
+  }
 
   if (referralCode && referralCode.trim()) {
     try {
