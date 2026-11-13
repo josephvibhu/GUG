@@ -9,9 +9,11 @@ import Sparkline from "@/components/Sparkline";
 import { FloorStrip } from "@/components/FloorClock";
 import { useMarketFeed } from "@/hooks/useMarketFeed";
 import { fmtPrice, fmtPct, fmtCompact, moveColor } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 
 export default function HomePage() {
   const router = useRouter();
+  const { t } = useI18n();
   const { loaded, companies, schedule, clockOffset, sparklines } = useMarketFeed();
   const [query, setQuery] = useState("");
 
@@ -41,7 +43,7 @@ export default function HomePage() {
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search ticker, name or sector"
+                  placeholder={t("markets.searchPlaceholder")}
                   className="h-9 sm:h-8 w-full sm:w-64 rounded-[4px] border border-rule bg-floor pl-8 pr-2 text-[13px] text-paper placeholder:text-ash focus:outline-none focus:border-zinc-500"
                 />
               </label>
@@ -63,12 +65,12 @@ export default function HomePage() {
               <table className="w-full text-[13px] tabular">
                 <thead>
                   <tr className="text-[12px] text-ash border-b border-rule">
-                    <th scope="col" className="text-left font-normal py-2.5 pl-3 sm:pl-4 pr-2">Company</th>
-                    <th scope="col" className="text-right font-normal py-2.5 px-2">Last</th>
-                    <th scope="col" className="text-right font-normal py-2.5 pl-2 pr-3 sm:px-2">24h</th>
-                    <th scope="col" className="text-right font-normal py-2.5 px-2 hidden md:table-cell">24h volume</th>
-                    <th scope="col" className="text-right font-normal py-2.5 px-2 hidden sm:table-cell">Market cap</th>
-                    <th scope="col" className="text-right font-normal py-2.5 px-2 hidden md:table-cell">Revenue / wk</th>
+                    <th scope="col" className="text-left font-normal py-2.5 pl-3 sm:pl-4 pr-2">{t("markets.thCompany")}</th>
+                    <th scope="col" className="text-right font-normal py-2.5 px-2">{t("markets.thPrice")}</th>
+                    <th scope="col" className="text-right font-normal py-2.5 pl-2 pr-3 sm:px-2">{t("markets.th24h")}</th>
+                    <th scope="col" className="text-right font-normal py-2.5 px-2 hidden md:table-cell">{t("markets.thVolume")}</th>
+                    <th scope="col" className="text-right font-normal py-2.5 px-2 hidden sm:table-cell">{t("markets.thMarketCap")}</th>
+                    <th scope="col" className="text-right font-normal py-2.5 px-2 hidden md:table-cell">{t("trade.weeklyRevenue")}</th>
                     <th scope="col" className="text-right font-normal py-2.5 pl-2 pr-4 hidden lg:table-cell">14 days</th>
                   </tr>
                 </thead>

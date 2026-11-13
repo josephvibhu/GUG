@@ -27,17 +27,18 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "Manager accounts do not have a wallet." }, { status: 403 });
     }
 
-    const [taxRateStr, houseName] = await Promise.all([
+    const [taxRateStr, houseName, minWithdrawStr] = await Promise.all([
       getSetting("tax_rate", "10"),
       getSetting("house_name", "JosephArora"),
+      getSetting("min_withdraw", "200"),
     ]);
 
     const taxRate = parseFloat(taxRateStr) || 10;
+    const minWithdraw = parseFloat(minWithdrawStr) || 200;
 
     const isFridayUtc = new Date().getUTCDay() === 5;
     const isExempt = Boolean(user.isAdmin);
     const canWithdrawNow = isFridayUtc || isExempt;
-    const minWithdraw = 100;
 
     // Fetch user's wallet transactions
     const ledgerRes = await db.execute({
@@ -112,12 +113,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: `Minimum transaction is ${minTransaction} gold.` }, { status: 400 });
     }
 
-    const [taxRateStr, houseName] = await Promise.all([
+    const [taxRateStr, houseName, minWithdrawStr] = await Promise.all([
       getSetting("tax_rate", "10"),
       getSetting("house_name", "JosephArora"),
+      getSetting("min_withdraw", "200"),
     ]);
 
     const taxRate = parseFloat(taxRateStr) || 10;
+    const minWithdraw = parseFloat(minWithdrawStr) || 200;
 
     const now = new Date().toISOString();
     const txId = `tx_${crypto.randomUUID().slice(0, 8)}`;
@@ -186,18 +189,18 @@ export async function POST(request: Request) {
     }
 
     if (action === "withdraw") {
-      // 2. WITHDRAWAL POLICY: Fridays only (00:00 - 23:59 UTC), min 100 gold, 48h SLA
+      // 2. WITHDRAWAL POLICY: Fridays only (00:00 - 23:59 UTC), min 200 gold, 48h SLA
       if (!isFridayUtc && !isExempt) {
         return NextResponse.json({
           success: false,
-          message: "Withdrawal requests can only be made on Fridays (00:00 – 23:59 UTC) and are fulfilled in-game within 48 hours. Minimum withdrawal is 100 gold. For support or queries, join: https://discord.gg/q3QA6WzHQZ",
+          message: `Withdrawal requests can only be made on Fridays (00:00 – 23:59 UTC) and are fulfilled in-game within 48 hours. Minimum withdrawal is ${minWithdraw} gold. For support or queries, join: https://discord.gg/q3QA6WzHQZ`,
         }, { status: 400 });
       }
 
-      if (numAmount < 100) {
+      if (numAmount < minWithdraw) {
         return NextResponse.json({
           success: false,
-          message: "Minimum withdrawal amount is 100 gold. Requests must be at least 100 gold.",
+          message: `Minimum withdrawal amount is ${minWithdraw} gold. Requests must be at least ${minWithdraw} gold.`,
         }, { status: 400 });
       }
 

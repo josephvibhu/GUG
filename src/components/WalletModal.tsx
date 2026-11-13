@@ -17,6 +17,7 @@ import {
   MessageSquare,
   X 
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export default function WalletModal({
   onBalanceUpdated,
   initialTab = "deposit",
 }: WalletModalProps) {
+  const { t } = useI18n();
   const [tab, setTab] = useState<"deposit" | "withdraw" | "history">(initialTab);
   const [depositMethod, setDepositMethod] = useState<"MARKET_IRON" | "CONTRACT">("MARKET_IRON");
   
@@ -57,7 +59,7 @@ export default function WalletModal({
   const [selectedTaxRate, setSelectedTaxRate] = useState<number>(10);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [canWithdrawNow, setCanWithdrawNow] = useState(false);
-  const [minWithdraw, setMinWithdraw] = useState(100);
+  const [minWithdraw, setMinWithdraw] = useState(200);
   const [isExempt, setIsExempt] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -78,7 +80,7 @@ export default function WalletModal({
         setLedger(data.ledger || []);
 
         const serverCanWithdraw = Boolean(data.canWithdrawNow);
-        const serverMin = Number(data.minWithdraw) || 100;
+        const serverMin = Number(data.minWithdraw) || 200;
         const serverExempt = Boolean(data.isExempt);
         setCanWithdrawNow(serverCanWithdraw);
         setMinWithdraw(serverMin);
@@ -269,7 +271,7 @@ export default function WalletModal({
             }`}
           >
             <ArrowDownLeft className="w-3.5 h-3.5" />
-            Put Gold In
+            {t("wallet.tabDeposit")}
           </button>
 
           <button
@@ -285,7 +287,7 @@ export default function WalletModal({
             }`}
           >
             <ArrowUpRight className="w-3.5 h-3.5" />
-            Take Gold Out
+            {t("wallet.tabWithdraw")}
           </button>
 
           <button
@@ -301,7 +303,7 @@ export default function WalletModal({
             }`}
           >
             <History className="w-3.5 h-3.5" />
-            Ledger
+            {t("wallet.tabHistory")}
           </button>
         </div>
 
@@ -584,7 +586,7 @@ export default function WalletModal({
                   </div>
                   <div className="text-[12px] text-paper space-y-1">
                     <p>• <strong>Friday Requests Only:</strong> Cash-out requests can only be submitted on <strong>Fridays (00:00 – 23:59 UTC)</strong>.</p>
-                    <p>• <strong>Minimum Cash Out:</strong> <strong>100 gold minimum</strong> (no requests under 100g accepted).</p>
+                    <p>• <strong>Minimum Cash Out:</strong> <strong>{minWithdraw} gold minimum</strong> (no requests under {minWithdraw}g accepted).</p>
                     <p>• <strong>48-Hour In-Game Fulfillment:</strong> All Friday requests are reviewed and fulfilled in-game by the House Operator within <strong>48 hours</strong>.</p>
                   </div>
                 </div>

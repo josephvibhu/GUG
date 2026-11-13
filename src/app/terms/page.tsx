@@ -75,7 +75,7 @@ export default function TermsPage() {
           </p>
           <ul className={list}>
             <li><strong>Friday Windows Only:</strong> Withdrawal requests can only be submitted on <strong>Fridays (00:00 – 23:59 UTC)</strong>.</li>
-            <li><strong>Minimum Amount:</strong> The minimum withdrawal is strictly <strong>100 gold</strong>. No requests under 100 gold are accepted.</li>
+            <li><strong>Minimum Amount:</strong> The minimum withdrawal is strictly <strong>200 gold</strong>. No requests under 200 gold are accepted.</li>
             <li><strong>48-Hour Processing Window:</strong> All Friday withdrawal requests are reviewed and fulfilled in-game by the House Operator within <strong>48 hours</strong> of submission.</li>
             <li><strong>Support & Tickets:</strong> If your in-game withdrawal has not been fulfilled within 48 hours or you need assistance with your contract, join our official Discord server (<a href="https://discord.gg/q3QA6WzHQZ" target="_blank" rel="noopener noreferrer" className="text-bullion underline">discord.gg/q3QA6WzHQZ</a>) and raise a support ticket.</li>
           </ul>

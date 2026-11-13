@@ -32,10 +32,12 @@ import { FloorClock } from "./FloorClock";
 import { CoinMark } from "./CoinMark";
 import { useMarketFeed, refreshMarketFeed } from "@/hooks/useMarketFeed";
 import { fmtGold } from "@/lib/format";
+import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 
 function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useI18n();
   const { user, schedule, clockOffset, companies } = useMarketFeed();
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [walletTab, setWalletTab] = useState<"deposit" | "withdraw" | "history">("deposit");
@@ -104,14 +106,14 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
 
   const tradeHref = pathname.startsWith("/trade/") ? pathname : companies.length > 0 ? `/trade/${companies[0].ticker}` : "/trade";
   const links = [
-    { href: "/", label: "Markets", icon: ChartNoAxesColumn, active: pathname === "/" },
-    { href: tradeHref, label: "Trade", icon: ChartCandlestick, active: pathname.startsWith("/trade") },
-    { href: "/portfolio", label: "Portfolio", icon: Briefcase, active: pathname === "/portfolio" },
-    { href: "/auction", label: "Auction", icon: Gavel, active: pathname.startsWith("/auction") },
-    { href: "/ipo", label: "List a company", short: "List", icon: CirclePlus, active: pathname === "/ipo" },
-    { href: "/crypto", label: "Crypto", icon: Coins, active: pathname === "/crypto", soon: true },
-    { href: "/funds", label: "Funds", icon: Landmark, active: pathname === "/funds" },
-    { href: "/referrals", label: "Referrals", icon: Users, active: pathname === "/referrals" },
+    { href: "/", label: t("nav.markets"), icon: ChartNoAxesColumn, active: pathname === "/" },
+    { href: tradeHref, label: t("nav.trade"), icon: ChartCandlestick, active: pathname.startsWith("/trade") },
+    { href: "/portfolio", label: t("nav.portfolio"), icon: Briefcase, active: pathname === "/portfolio" },
+    { href: "/auction", label: t("nav.auction"), icon: Gavel, active: pathname.startsWith("/auction") },
+    { href: "/ipo", label: t("nav.listCompany"), short: t("nav.listShort"), icon: CirclePlus, active: pathname === "/ipo" },
+    { href: "/crypto", label: t("nav.crypto"), icon: Coins, active: pathname === "/crypto", soon: true },
+    { href: "/funds", label: t("nav.funds"), icon: Landmark, active: pathname === "/funds" },
+    { href: "/referrals", label: t("nav.referrals"), icon: Users, active: pathname === "/referrals" },
   ];
   const name = user ? (user.displayName || user.username) : "";
   // Founders see each company's treasury next to their purse
@@ -144,13 +146,13 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                 }`}
               >
                 <ShieldCheck className="h-3.5 w-3.5 text-bullion" />
-                Operator Desk
+                {t("nav.operatorDesk")}
               </Link>
             ) : (
               <>
                 {links.map((l) => (
                   <Link
-                    key={l.label}
+                    key={l.href}
                     href={l.href}
                     aria-current={l.active ? "page" : undefined}
                     className={`px-3 flex items-center gap-1.5 text-[13px] border-b-2 transition-colors ${
@@ -158,7 +160,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                     }`}
                   >
                     <span>{l.label}</span>
-                    {l.soon && <span className="text-[11px] text-ash/70">soon</span>}
+                    {l.soon && <span className="text-[11px] text-ash/70">{t("nav.soon")}</span>}
                   </Link>
                 ))}
                 {user?.isAdmin && (
@@ -170,7 +172,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                     }`}
                   >
                     <ShieldCheck className="h-3.5 w-3.5" />
-                    Operator
+                    {t("nav.operator")}
                   </Link>
                 )}
               </>
@@ -179,6 +181,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <FloorClock schedule={schedule} clockOffset={clockOffset} />
+            <LanguageSwitcher />
 
             {user ? (
               <>
@@ -191,12 +194,12 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                   >
                     <CoinMark className="h-3.5 w-3.5" />
                     <span className="text-[13px] font-semibold text-bullion">{fmtGold(user.cashBalance)}</span>
-                    <span className="text-[11px] text-ash hidden sm:inline">gold</span>
+                    <span className="text-[11px] text-ash hidden sm:inline">{t("nav.gold")}</span>
                   </button>
                 ) : (
                   <span className="h-8 px-2.5 rounded-[4px] border border-rule flex items-center gap-1.5 text-[12px] text-zinc-300">
                     <ShieldCheck className="h-3.5 w-3.5 text-bullion" />
-                    <span className="hidden sm:inline font-mono">Operator</span>
+                    <span className="hidden sm:inline font-mono">{t("nav.operator")}</span>
                   </span>
                 )}
 
@@ -223,11 +226,15 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                           {user.isManager ? "Operator Desk Manager" : `In game as ${user.parlamentumName || user.username}`}
                         </div>
                       </div>
+                      <div className="px-3 py-1.5 border-b border-rule flex items-center justify-between">
+                        <span className="text-[11px] text-ash">Language / Dil:</span>
+                        <LanguageSwitcher />
+                      </div>
                       {!user.isManager && (
                         <>
                           <dl className="px-3 py-2 border-b border-rule flex flex-col gap-1">
                             <div className="flex justify-between gap-3">
-                              <dt className="text-ash">Purse</dt>
+                              <dt className="text-ash">{t("nav.purse")}</dt>
                               <dd className="tabular text-bullion font-semibold">{fmtGold(user.cashBalance)}</dd>
                             </div>
                             {founded.map((c) => (
@@ -242,13 +249,13 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                             ))}
                           </dl>
                           <button role="menuitem" onClick={() => openWallet("deposit")} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
-                            <ArrowDownToLine className="h-4 w-4 text-ash" /> Deposit gold
+                            <ArrowDownToLine className="h-4 w-4 text-ash" /> {t("nav.deposit")} {t("nav.gold")}
                           </button>
                           <button role="menuitem" onClick={() => openWallet("withdraw")} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
-                            <ArrowUpFromLine className="h-4 w-4 text-ash" /> Withdraw gold
+                            <ArrowUpFromLine className="h-4 w-4 text-ash" /> {t("nav.withdraw")} {t("nav.gold")}
                           </button>
                           <Link role="menuitem" href="/portfolio" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60">
-                            <Briefcase className="h-4 w-4 text-ash" /> Portfolio
+                            <Briefcase className="h-4 w-4 text-ash" /> {t("nav.portfolio")}
                           </Link>
                           <Link role="menuitem" href="/referrals" onClick={() => setMenuOpen(false)} className="px-3 py-2 flex items-center gap-2 hover:bg-rule/60 text-bullion font-medium">
                             <Users className="h-4 w-4" /> Affiliate Hub
@@ -296,7 +303,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                       </a>
                       <div className="border-t border-rule mt-1 pt-1">
                         <button role="menuitem" onClick={handleLogout} className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rule/60">
-                          <LogOut className="h-4 w-4 text-ash" /> Log out
+                          <LogOut className="h-4 w-4 text-ash" /> {t("nav.logout")}
                         </button>
                       </div>
                     </div>
@@ -309,7 +316,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
                 className="h-8 px-3 rounded-[4px] bg-bullion hover:bg-amber-300 text-floor text-[13px] font-semibold flex items-center gap-1.5 transition-colors"
               >
                 <LogIn className="h-4 w-4" />
-                Log in
+                {t("nav.login")}
               </Link>
             )}
           </div>

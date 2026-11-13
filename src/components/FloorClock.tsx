@@ -3,6 +3,7 @@
 import { useNow } from "@/hooks/useNow";
 import { floorAt, type FloorSchedule } from "@/lib/session";
 import { fmtDuration } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 
 interface Props {
   schedule: FloorSchedule | null;
@@ -29,8 +30,12 @@ function describe(schedule: FloorSchedule, nowMs: number) {
 /** Compact status for the header: a dot, open/closed, and the countdown */
 export function FloorClock({ schedule, clockOffset }: Props) {
   const now = useNow();
+  const { t } = useI18n();
   if (!schedule || !now) return <span className="inline-block w-36" aria-hidden />;
-  const { f, status, detail } = describe(schedule, now + clockOffset);
+  const { f, status: rawStatus, detail: rawDetail } = describe(schedule, now + clockOffset);
+  const status = f.isOpen ? t("clock.floorOpen") : t("clock.floorClosed");
+  const detail = f.is247 || schedule.is247 ? t("clock.247Continuous") : rawDetail;
+
   return (
     <span className="inline-flex items-center gap-2 text-xs whitespace-nowrap" title={f.is247 ? "Trading floor open 24/7" : `Trading hours ${schedule.openTimeStr}–${schedule.closeTimeStr} UTC`}>
       <span className={`h-2 w-2 rounded-full ${f.isOpen ? "bg-bullion" : f.byOperator ? "bg-rose-500 animate-pulse" : "bg-zinc-600"}`} />
