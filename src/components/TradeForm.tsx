@@ -316,7 +316,7 @@ export default function TradeForm({
           ) : (
             <p className="text-[12px] text-ash leading-relaxed">
               {side === "BUY"
-                ? `Buys at the best asks up to ${fmtPrice(company.currentPrice * 1.05)} (last price + 5%). Anything left is cancelled.`
+                ? `Buys at the best asks up to ${fmtPrice((lowestAsk ?? company.currentPrice) * 1.05)} (best ask + 5%). Anything left is cancelled.`
                 : "Sells at the best bids on the book. Anything left is cancelled."}
             </p>
           )}

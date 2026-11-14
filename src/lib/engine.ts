@@ -103,12 +103,12 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
   // 2. Validate Available Balance / Shares & Lock Escrow
   let effectiveMarketBuyPrice = Number(company.current_price);
   if (type === "BUY" && orderType === "MARKET") {
-    // Find the best available ask on the book
-    const bestAskRes = await db.execute({
-      sql: "SELECT price FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND user_id != ? ORDER BY price ASC LIMIT 1",
-      args: [actualCompanyId, userId],
+    // Check if there are ANY asks on the book
+    const anyAskRes = await db.execute({
+      sql: "SELECT price FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') ORDER BY price ASC LIMIT 1",
+      args: [actualCompanyId],
     });
-    if (bestAskRes.rows.length === 0) {
+    if (anyAskRes.rows.length === 0) {
       return {
         success: false,
         message: "No shares currently available for sale on the order book. Please use a Limit order to post your bid.",
@@ -118,19 +118,54 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
         tradesExecuted: [],
       };
     }
+
+    // Check if there are asks from OTHER sellers (self-trade prevention)
+    const bestAskRes = await db.execute({
+      sql: "SELECT price FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND user_id != ? ORDER BY price ASC LIMIT 1",
+      args: [actualCompanyId, userId],
+    });
+    if (bestAskRes.rows.length === 0) {
+      return {
+        success: false,
+        message: "Self-Trade Prevention: The only shares for sale on the order book are your own offering. You cannot buy from yourself.",
+        filledQuantity: 0,
+        remainingQuantity: 0,
+        averageFillPrice: 0,
+        tradesExecuted: [],
+      };
+    }
     effectiveMarketBuyPrice = Number(bestAskRes.rows[0].price);
   }
+
+  // Self-Trade Prevention: check limit orders against user's own active opposing orders
+  if (type === "BUY" && orderType === "LIMIT") {
+    const ownAskRes = await db.execute({
+      sql: "SELECT id, price FROM orders WHERE company_id = ? AND type = 'SELL' AND status IN ('OPEN', 'PARTIAL') AND user_id = ? AND price <= ? LIMIT 1",
+      args: [actualCompanyId, userId, price],
+    });
+    if (ownAskRes.rows.length > 0) {
+      return {
+        success: false,
+        message: `Self-Trade Prevention: You already have an active sell order at Ᵽ${Number(ownAskRes.rows[0].price).toFixed(2)}. You cannot buy shares from your own sell order.`,
+        filledQuantity: 0,
+        remainingQuantity: 0,
+        averageFillPrice: 0,
+        tradesExecuted: [],
+      };
+    }
+  }
+
   // Market buys take asks up to 5% above the best ask. The cap is rounded down and used for the escrow,
   // the matching and the refund alike, so a fill can never cost more than was escrowed for it.
   const marketBuyCap = Math.floor((Math.round(effectiveMarketBuyPrice * 100) * 105) / 100 + 1e-9) / 100;
   let marketSellFloor = 0;
 
   if (type === "SELL" && orderType === "MARKET") {
-    const bestBidRes = await db.execute({
-      sql: "SELECT price FROM orders WHERE company_id = ? AND type = 'BUY' AND status IN ('OPEN', 'PARTIAL') AND user_id != ? ORDER BY price DESC LIMIT 1",
-      args: [actualCompanyId, userId],
+    const anyBidRes = await db.execute({
+      sql: "SELECT price FROM orders WHERE company_id = ? AND type = 'BUY' AND status IN ('OPEN', 'PARTIAL') ORDER BY price DESC LIMIT 1",
+      args: [actualCompanyId],
     });
-    if (bestBidRes.rows.length === 0) {
+    if (anyBidRes.rows.length === 0) {
       return {
         success: false,
         message: "No active buy orders on the order book. Please switch to Advanced to place a Limit Sell order at your desired price.",
@@ -140,8 +175,41 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
         tradesExecuted: [],
       };
     }
+
+    const bestBidRes = await db.execute({
+      sql: "SELECT price FROM orders WHERE company_id = ? AND type = 'BUY' AND status IN ('OPEN', 'PARTIAL') AND user_id != ? ORDER BY price DESC LIMIT 1",
+      args: [actualCompanyId, userId],
+    });
+    if (bestBidRes.rows.length === 0) {
+      return {
+        success: false,
+        message: "Self-Trade Prevention: The only buy orders on the order book are your own bids. You cannot sell to yourself.",
+        filledQuantity: 0,
+        remainingQuantity: 0,
+        averageFillPrice: 0,
+        tradesExecuted: [],
+      };
+    }
     // Market sells take bids down to 5% below the best bid, so a stray low bid can't absorb the rest
     marketSellFloor = Math.ceil((Math.round(Number(bestBidRes.rows[0].price) * 100) * 95) / 100 - 1e-9) / 100;
+  }
+
+  // Self-Trade Prevention: check limit sell orders against user's own active buy orders
+  if (type === "SELL" && orderType === "LIMIT") {
+    const ownBidRes = await db.execute({
+      sql: "SELECT id, price FROM orders WHERE company_id = ? AND type = 'BUY' AND status IN ('OPEN', 'PARTIAL') AND user_id = ? AND price >= ? LIMIT 1",
+      args: [actualCompanyId, userId, price],
+    });
+    if (ownBidRes.rows.length > 0) {
+      return {
+        success: false,
+        message: `Self-Trade Prevention: You already have an active buy order at Ᵽ${Number(ownBidRes.rows[0].price).toFixed(2)}. You cannot sell shares to your own buy order.`,
+        filledQuantity: 0,
+        remainingQuantity: 0,
+        averageFillPrice: 0,
+        tradesExecuted: [],
+      };
+    }
   }
 
   if (type === "BUY") {
