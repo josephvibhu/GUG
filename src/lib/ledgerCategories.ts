@@ -33,6 +33,7 @@ export const INCOME_CATEGORIES = [
 export const EXPENSE_CATEGORIES = [
   { value: "WORKER_WAGES", label: "Wages" },
   { value: "RAW_MATERIALS", label: "Raw materials" },
+  { value: "MEDIA_ADVERTISING", label: "Media and advertisement" },
   { value: "FACILITY_UPGRADE", label: "Factory and workshop upgrades" },
   { value: "MAINTENANCE", label: "Maintenance and couriers" },
   { value: "TAXES_FEES", label: "In-game taxes and fees" },
