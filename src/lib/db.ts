@@ -19,113 +19,17 @@ export function getDbPath(): string {
   return path.resolve(process.cwd(), "parlamentum_market.db");
 }
 
-export async function syncDbFromBlob(force = false): Promise<void> {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token || remoteDbUrl()) return;
-
-  const now = Date.now();
-  if (!force && now - lastBlobCheckAt < 3000) {
-    return;
-  }
-  lastBlobCheckAt = now;
-
-  if (isSyncing) return;
-  isSyncing = true;
-
-  try {
-    const { head, get, put } = await import("@vercel/blob");
-    const dbPath = getDbPath();
-    const repoDbPath = path.resolve(process.cwd(), "parlamentum_market.db");
-
-    let meta: any = null;
-    try {
-      meta = await head("parlamentum_market.db", { token });
-    } catch {
-      meta = null;
-    }
-
-    if (!meta) {
-      if (fs.existsSync(repoDbPath)) {
-        const buf = fs.readFileSync(repoDbPath);
-        if (process.env.VERCEL) {
-          fs.writeFileSync(dbPath, buf);
-        }
-        try {
-          await put("parlamentum_market.db", buf, {
-            token,
-            access: "private",
-            addRandomSuffix: false,
-            allowOverwrite: true,
-          });
-        } catch {}
-        lastBlobSyncedAt = Date.now();
-      }
-      return;
-    }
-
-    const remoteTime = new Date(meta.uploadedAt).getTime();
-    const localExists = fs.existsSync(dbPath);
-
-    if (force || !localExists || remoteTime > lastBlobSyncedAt) {
-      const fileBlob = await get("parlamentum_market.db", { token, access: "private" });
-      if (fileBlob && fileBlob.stream) {
-        const buf = Buffer.from(await new Response(fileBlob.stream).arrayBuffer());
-        if (clientInstance) {
-          try {
-            clientInstance.close();
-          } catch {}
-          clientInstance = null;
-        }
-        fs.writeFileSync(dbPath, buf);
-        try { if (fs.existsSync(dbPath + "-wal")) fs.unlinkSync(dbPath + "-wal"); } catch {}
-        try { if (fs.existsSync(dbPath + "-shm")) fs.unlinkSync(dbPath + "-shm"); } catch {}
-        lastBlobSyncedAt = remoteTime;
-      }
-    }
-  } catch (err) {
-    console.warn("Failed to sync DB from Vercel Blob:", err);
-  } finally {
-    isSyncing = false;
-  }
+export async function syncDbFromBlob(_force = false): Promise<void> {
+  // No-op: Database is managed remotely via Turso or locally via SQLite. Vercel Blob sync is disabled.
 }
 
 export async function persistDbToBlob(): Promise<{ success: boolean; error?: string }> {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token || remoteDbUrl()) return { success: false, error: "No BLOB_READ_WRITE_TOKEN, or a remote DATABASE_URL is in use" };
-
-  try {
-    const dbPath = getDbPath();
-    if (!fs.existsSync(dbPath)) return { success: false, error: "dbPath does not exist: " + dbPath };
-
-    if (clientInstance) {
-      try {
-        await clientInstance.execute("PRAGMA wal_checkpoint(TRUNCATE);");
-      } catch {}
-    }
-
-    const { put } = await import("@vercel/blob");
-    const buf = fs.readFileSync(dbPath);
-    await put("parlamentum_market.db", buf, {
-      token,
-      access: "private",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-    });
-    lastBlobSyncedAt = Date.now();
-    lastBlobCheckAt = Date.now();
-    return { success: true };
-  } catch (err: any) {
-    console.error("Failed to persist DB to Vercel Blob:", err);
-    return { success: false, error: err?.message || String(err) };
-  }
+  // No-op
+  return { success: true };
 }
 
 export function scheduleBlobPersist(): void {
-  if (remoteDbUrl() || !process.env.BLOB_READ_WRITE_TOKEN) return;
-  if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => {
-    persistDbToBlob().catch((e) => console.warn("Background Blob persist error:", e));
-  }, 300);
+  // No-op
 }
 
 export function getDb(): Client {

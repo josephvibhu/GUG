@@ -50,7 +50,7 @@ let failures = 0;
 function schedule() {
   clearTimeout(timer);
   if (listeners.size === 0 || document.hidden) return;
-  const base = state.schedule?.isOpen ? 5000 : 20000;
+  const base = state.schedule?.isOpen ? 10000 : 30000;
   timer = setTimeout(refreshMarketFeed, base * Math.min(8, 2 ** failures));
 }
 

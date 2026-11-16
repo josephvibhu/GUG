@@ -100,8 +100,8 @@ export default function PortfolioPage() {
   }, []);
 
   // Holdings only change when you trade or a dividend lands; trades and deposits refresh it at once
-  usePoll(load, 10000);
-  usePoll(loadNftVault, 10000);
+  usePoll(load, 25000);
+  usePoll(loadNftVault, 30000);
   const refresh = useCallback(() => window.dispatchEvent(new Event("wallet_updated")), []);
 
   const p = data?.portfolio;

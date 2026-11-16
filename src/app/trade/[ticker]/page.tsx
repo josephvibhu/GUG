@@ -117,8 +117,8 @@ function Terminal({ ticker }: { ticker: string }) {
     [ticker]
   );
 
-  // 3 s while the floor is open, 15 s while closed; paused in background tabs
-  usePoll(load, data?.marketSchedule?.isOpen === false ? 15000 : 3000, ticker);
+  // 8 s while the floor is open, 25 s while closed; paused in background tabs
+  usePoll(load, data?.marketSchedule?.isOpen === false ? 25000 : 8000, ticker);
   const refresh = useCallback(() => window.dispatchEvent(new Event("wallet_updated")), []);
 
   if (missing) {
