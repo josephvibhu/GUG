@@ -63,7 +63,7 @@ export async function seedMarketData(force = false) {
   `);
 
   // Ensure Grow UR Gold (GUG) is chartered as the flagship sovereign marketplace company
-  // Specs: Grow UR Gold - GUG, The Official Marketplace of the Singaporean Stock Exchange
+  // Specs: Grow UR Gold - GUG, The Official Marketplace of the Mexican Stock Exchange
   // List 10% at 1000 stocks each at 3 gold per stock (Total: 10,000 shares, 1,000 float, 9,000 founder)
   const gugRes = await db.execute("SELECT id FROM companies WHERE UPPER(ticker) = 'GUG'");
   if (gugRes.rows.length === 0 || force) {
@@ -76,7 +76,7 @@ export async function seedMarketData(force = false) {
 
     await db.execute({
       sql: `INSERT OR REPLACE INTO companies (id, ticker, name, description, sector, creator_id, total_shares, float_shares, ipo_price, current_price, change_24h, volume_24h, high_24h, low_24h, logo_url, status, created_at)
-            VALUES (?, 'GUG', 'Grow UR Gold', 'The Official Marketplace of the Singaporean Stock Exchange', 'FINANCIAL_SERVICES', 'usr_josepharora', ?, ?, ?, ?, 0.0, 0.0, ?, ?, '🪙', 'ACTIVE', ?)`,
+            VALUES (?, 'GUG', 'Grow UR Gold', 'The Official Marketplace of the Mexican Stock Exchange', 'FINANCIAL_SERVICES', 'usr_josepharora', ?, ?, ?, ?, 0.0, 0.0, ?, ?, '🪙', 'ACTIVE', ?)`,
       args: [gugCompanyId, totalShares, floatShares, ipoPrice, ipoPrice, ipoPrice, ipoPrice, now],
     });
 
@@ -100,7 +100,7 @@ export async function seedMarketData(force = false) {
 
     await db.execute({
       sql: `INSERT OR REPLACE INTO announcements (id, company_id, title, content, author_id, created_at)
-            VALUES (?, ?, 'Official IPO Charter: $GUG (Grow UR Gold)', 'The Official Marketplace of the Singaporean Stock Exchange ($GUG) has formally listed on the sovereign exchange floor. 1,000 primary float shares (10% equity) are officially open for public subscription at 3.00 gold per stock.', 'usr_josepharora', ?)`,
+            VALUES (?, ?, 'Official IPO Charter: $GUG (Grow UR Gold)', 'The Official Marketplace of the Mexican Stock Exchange ($GUG) has formally listed on the sovereign exchange floor. 1,000 primary float shares (10% equity) are officially open for public subscription at 3.00 gold per stock.', 'usr_josepharora', ?)`,
       args: [`anc_gug_init`, gugCompanyId, now],
     });
 
