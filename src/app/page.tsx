@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, Star } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sparkline from "@/components/Sparkline";
 import { FloorStrip } from "@/components/FloorClock";
@@ -11,17 +11,49 @@ import { useMarketFeed } from "@/hooks/useMarketFeed";
 import { fmtPrice, fmtPct, fmtCompact, moveColor } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 
+const WATCHLIST_KEY = "gug_watchlist";
+
+function useWatchlist() {
+  const [starred, setStarred] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      return new Set(JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]"));
+    } catch {
+      return new Set();
+    }
+  });
+
+  const toggle = (ticker: string) => {
+    setStarred((prev) => {
+      const next = new Set(prev);
+      next.has(ticker) ? next.delete(ticker) : next.add(ticker);
+      localStorage.setItem(WATCHLIST_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  return { starred, toggle };
+}
+
 export default function HomePage() {
   const router = useRouter();
   const { t } = useI18n();
   const { loaded, companies, schedule, clockOffset, sparklines } = useMarketFeed();
   const [query, setQuery] = useState("");
+  const { starred, toggle } = useWatchlist();
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return companies;
-    return companies.filter((c) => [c.ticker, c.name, c.sector].some((v) => v.toLowerCase().includes(q)));
-  }, [companies, query]);
+    const filtered = !q
+      ? companies
+      : companies.filter((c) => [c.ticker, c.name, c.sector].some((v) => v.toLowerCase().includes(q)));
+    // Starred companies float to the top
+    return [...filtered].sort((a, b) => {
+      const aS = starred.has(a.ticker) ? 0 : 1;
+      const bS = starred.has(b.ticker) ? 0 : 1;
+      return aS - bS;
+    });
+  }, [companies, query, starred]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -65,7 +97,8 @@ export default function HomePage() {
               <table className="w-full text-[13px] tabular">
                 <thead>
                   <tr className="text-[12px] text-ash border-b border-rule">
-                    <th scope="col" className="text-left font-normal py-2.5 pl-3 sm:pl-4 pr-2">{t("markets.thCompany")}</th>
+                    <th scope="col" className="w-7 py-2.5 pl-3 sm:pl-4 pr-0 hidden sm:table-cell" aria-label="Watchlist" />
+                    <th scope="col" className="text-left font-normal py-2.5 pl-3 sm:pl-2 pr-2">{t("markets.thCompany")}</th>
                     <th scope="col" className="text-right font-normal py-2.5 px-2">{t("markets.thPrice")}</th>
                     <th scope="col" className="text-right font-normal py-2.5 pl-2 pr-3 sm:px-2">{t("markets.th24h")}</th>
                     <th scope="col" className="text-right font-normal py-2.5 px-2 hidden md:table-cell">{t("markets.thVolume")}</th>
@@ -89,7 +122,19 @@ export default function HomePage() {
                       onClick={() => router.push(`/trade/${c.ticker}`)}
                       className="border-b border-rule last:border-0 hover:bg-pane cursor-pointer"
                     >
-                      <td className="py-2.5 pl-3 sm:pl-4 pr-2">
+                      {/* Star / watchlist toggle */}
+                      <td className="py-2.5 pl-3 sm:pl-4 pr-0 w-7 hidden sm:table-cell" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => toggle(c.ticker)}
+                          aria-label={starred.has(c.ticker) ? `Unstar ${c.ticker}` : `Star ${c.ticker}`}
+                          className="flex items-center justify-center w-5 h-5 rounded hover:scale-110 transition-transform"
+                        >
+                          <Star
+                            className={`w-3.5 h-3.5 transition-colors ${starred.has(c.ticker) ? "fill-amber-400 text-amber-400" : "text-zinc-600 hover:text-amber-400"}`}
+                          />
+                        </button>
+                      </td>
+                      <td className="py-2.5 pl-3 sm:pl-2 pr-2">
                         <Link href={`/trade/${c.ticker}`} className="flex items-center gap-3 min-w-0" onClick={(e) => e.stopPropagation()}>
                           <span className="h-8 w-8 shrink-0 rounded-[4px] bg-pane border border-rule flex items-center justify-center text-base" aria-hidden>
                             {c.logoUrl}

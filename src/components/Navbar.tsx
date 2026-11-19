@@ -22,6 +22,7 @@ import {
   Gavel,
   Users,
   Bell,
+  Newspaper,
 } from "lucide-react";
 import WalletModal from "./WalletModal";
 import TermsModal from "./TermsModal";
@@ -109,6 +110,7 @@ function NavbarInner({ onUserRefresh }: { onUserRefresh?: () => void }) {
     { href: "/", label: t("nav.markets"), icon: ChartNoAxesColumn, active: pathname === "/" },
     { href: tradeHref, label: t("nav.trade"), icon: ChartCandlestick, active: pathname.startsWith("/trade") },
     { href: "/portfolio", label: t("nav.portfolio"), icon: Briefcase, active: pathname === "/portfolio" },
+    { href: "/news", label: "News", icon: Newspaper, active: pathname === "/news" },
     { href: "/auction", label: t("nav.auction"), icon: Gavel, active: pathname.startsWith("/auction") },
     { href: "/ipo", label: t("nav.listCompany"), short: t("nav.listShort"), icon: CirclePlus, active: pathname === "/ipo" },
     { href: "/crypto", label: t("nav.crypto"), icon: Coins, active: pathname === "/crypto", soon: true },

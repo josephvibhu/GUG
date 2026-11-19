@@ -101,10 +101,13 @@ export default function WalletModal({
   };
 
   useEffect(() => {
-    if (isOpen) {
-      fetchWallet();
-      setFeedback(null);
-    }
+    if (!isOpen) return;
+    fetchWallet();
+    setFeedback(null);
+
+    // If modal is open, poll wallet every 12 seconds so users see deposits clear live
+    const interval = setInterval(fetchWallet, 12000);
+    return () => clearInterval(interval);
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -864,17 +867,28 @@ export default function WalletModal({
                           </div>
                         </div>
 
-                        <div className="text-right tabular shrink-0">
+                        <div className="text-right tabular shrink-0 flex flex-col items-end gap-1">
                           <div
                             className={`font-bold text-[13px] ${
-                              isDeposit ? "text-bullion" : "text-bullion"
+                              isDeposit ? "text-emerald-400" : "text-zinc-200"
                             }`}
                           >
                             {isDeposit ? "+" : "-"}{tx.amount.toLocaleString()} gold
                           </div>
-                          <span className={`text-[12px] ${tx.status === "COMPLETED" ? "text-bullion" : "text-bullion"}`}>
-                            {tx.status}
-                          </span>
+                          {tx.status === "PENDING" ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                              Verifying Deposit
+                            </span>
+                          ) : tx.status === "COMPLETED" ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+                              ✓ Completed
+                            </span>
+                          ) : (
+                            <span className="text-[11px] px-1.5 py-0.5 rounded bg-zinc-800 text-ash">
+                              {tx.status}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );

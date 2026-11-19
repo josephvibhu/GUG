@@ -4,6 +4,7 @@ import "./globals.css";
 import Footer from "@/components/Footer";
 import ReferralTracker from "@/components/ReferralTracker";
 import { I18nProvider } from "@/lib/i18n";
+import ToastContainer from "@/components/Toast";
 
 // One variable family: normal width for the interface, condensed for symbols and prices (see globals.css)
 const archivo = Archivo({
@@ -40,6 +41,7 @@ export default function RootLayout({
             {children}
           </div>
           <Footer />
+          <ToastContainer />
         </I18nProvider>
       </body>
     </html>

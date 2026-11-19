@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/sync-ledger",
-      "schedule": "0 0 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/tick-auctions",
-      "schedule": "0 12 * * *"
+      "schedule": "*/5 * * * *"
     }
   ]
 }

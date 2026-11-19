@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
@@ -46,6 +46,18 @@ interface PortfolioData {
   openOrders: OpenOrder[];
   dividendHistory: Payout[];
   totalDividendsEarned: number;
+  tradeHistory?: TradeRecord[];
+}
+
+interface TradeRecord {
+  id: string;
+  ticker: string;
+  companyName: string;
+  side: "BUY" | "SELL";
+  price: number;
+  quantity: number;
+  total: number;
+  createdAt: string;
 }
 
 function Figure({ label, value, tone = "text-zinc-50", big = false }: { label: string; value: string; tone?: string; big?: boolean }) {
@@ -378,6 +390,58 @@ export default function PortfolioPage() {
               </h2>
               <div className="border border-rule rounded-[4px]">
                 {data && <OpenOrdersTable orders={data.openOrders} onOrderCancelled={refresh} showTicker />}
+              </div>
+            </section>
+
+            {/* Trade History */}
+            <section aria-labelledby="trade-history" className="flex flex-col gap-3">
+              <h2 id="trade-history" className="text-[15px] font-semibold text-zinc-50">
+                Trade history{" "}
+                <span className="text-ash font-normal">{data?.tradeHistory ? data.tradeHistory.length : ""}</span>
+              </h2>
+              <div className="border border-rule rounded-[4px] overflow-x-auto">
+                {!data || (data.tradeHistory || []).length === 0 ? (
+                  <p className="px-4 py-6 text-[13px] text-ash">No filled trades yet.</p>
+                ) : (
+                  <table className="w-full text-[13px] tabular">
+                    <thead>
+                      <tr className="text-[12px] text-ash text-left border-b border-rule">
+                        <th scope="col" className="font-normal py-2.5 pl-4 pr-2">Date</th>
+                        <th scope="col" className="font-normal py-2.5 px-2">Company</th>
+                        <th scope="col" className="font-normal py-2.5 px-2">Side</th>
+                        <th scope="col" className="font-normal py-2.5 px-2 text-right">Qty</th>
+                        <th scope="col" className="font-normal py-2.5 px-2 text-right hidden sm:table-cell">Price</th>
+                        <th scope="col" className="font-normal py-2.5 pl-2 pr-4 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(data.tradeHistory || []).map((t) => (
+                        <tr key={t.id} className="border-b border-rule last:border-0">
+                          <td className="py-2.5 pl-4 pr-2 text-ash whitespace-nowrap">{fmtUtcDate(t.createdAt)}</td>
+                          <td className="py-2.5 px-2">
+                            <Link href={`/trade/${t.ticker}`} className="condensed font-bold text-zinc-50 hover:text-amber-400 transition-colors">
+                              {t.ticker}
+                            </Link>
+                          </td>
+                          <td className="py-2.5 px-2">
+                            <span className={`px-1.5 py-0.5 rounded-[3px] text-[11px] font-bold ${
+                              t.side === "BUY"
+                                ? "bg-emerald-500/15 text-emerald-400"
+                                : "bg-rose-500/15 text-rose-400"
+                            }`}>
+                              {t.side}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-2 text-right text-paper">{fmtQty(t.quantity)}</td>
+                          <td className="py-2.5 px-2 text-right text-paper hidden sm:table-cell">{fmtPrice(t.price)}</td>
+                          <td className={`py-2.5 pl-2 pr-4 text-right font-semibold ${t.side === "BUY" ? "text-rose-400" : "text-emerald-400"}`}>
+                            {t.side === "BUY" ? "−" : "+"}{fmtPrice(t.total)} gold
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </section>
 

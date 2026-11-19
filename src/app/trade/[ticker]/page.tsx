@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useCallback, useRef, useState, useSyncExternalStore, Suspense } from "react";
+import { emitToast } from "@/components/Toast";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -97,6 +98,8 @@ function Terminal({ ticker }: { ticker: string }) {
   });
   const [dialog, setDialog] = useState<"buyback" | "earnings" | null>(null);
   const lastBody = useRef("");
+  // Track open order IDs to detect fills between polls
+  const prevOrderIds = useRef<Set<string>>(new Set());
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -111,6 +114,25 @@ function Terminal({ ticker }: { ticker: string }) {
       const body = stableBody(json, ["serverNow", "currentUTC", "timeRemainingSeconds", "timeRemainingFormatted"]);
       if (body !== lastBody.current) {
         lastBody.current = body;
+
+        // Detect filled orders: IDs that were open before but are gone now
+        const newOrderIds = new Set<string>((json.userOrders || []).map((o: any) => String(o.id)));
+        if (prevOrderIds.current.size > 0) {
+          for (const prevId of prevOrderIds.current) {
+            if (!newOrderIds.has(prevId)) {
+              // Find the filled order detail from previous data snapshot
+              const filled = (json.recentTrades || []).find((t: any) => t.buyOrderId === prevId || t.sellOrderId === prevId);
+              const price = filled ? `@ ${filled.price.toFixed(2)} gold` : "";
+              emitToast({
+                type: "fill",
+                title: "Order filled ✓",
+                body: `Your order on ${ticker} was executed ${price}`.trim(),
+              });
+            }
+          }
+        }
+        prevOrderIds.current = newOrderIds;
+
         setData(json);
       }
     },
